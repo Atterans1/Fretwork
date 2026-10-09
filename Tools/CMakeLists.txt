@@ -1,0 +1,6 @@
+cmake_minimum_required (VERSION 3.22)
+project (fretwork_tools CXX)
+add_executable (loopcap loopcap.cpp)
+target_link_libraries (loopcap PRIVATE ole32)
+add_executable (midisend midisend.cpp)
+target_link_libraries (midisend PRIVATE winmm)

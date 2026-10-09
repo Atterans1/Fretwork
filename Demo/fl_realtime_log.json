@@ -1,0 +1,26 @@
+[
+ {
+  "note": 40,
+  "lbl": "soft",
+  "startMs": 0,
+  "endMs": 5144
+ },
+ {
+  "note": 40,
+  "lbl": "hard",
+  "startMs": 8179,
+  "endMs": 13444
+ },
+ {
+  "note": 52,
+  "lbl": "soft",
+  "startMs": 16471,
+  "endMs": 23607
+ },
+ {
+  "note": 52,
+  "lbl": "hard",
+  "startMs": 26681,
+  "endMs": 375328
+ }
+]

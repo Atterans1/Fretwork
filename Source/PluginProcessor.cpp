@@ -1,0 +1,503 @@
+#include "PluginProcessor.h"
+#include "PluginEditor.h"
+#include "dsp/ModelTables.h"
+
+#include <algorithm>
+#include <cmath>
+
+namespace
+{
+    // Base open-string pitch per tuning preset: Standard, Drop D, DADGAD,
+    // Open G, Open D. Transpose, capo and fine tune are folded in on top.
+    constexpr float kTunings[5][6] =
+    {
+        { 40.f, 45.f, 50.f, 55.f, 59.f, 64.f },   // Standard
+        { 38.f, 45.f, 50.f, 55.f, 59.f, 64.f },   // Drop D
+        { 38.f, 45.f, 50.f, 55.f, 57.f, 62.f },   // DADGAD
+        { 38.f, 43.f, 50.f, 55.f, 59.f, 62.f },   // Open G
+        { 38.f, 50.f, 54.f, 57.f, 62.f, 66.f }    // Open D
+    };
+
+    constexpr const char* tuningIds[6] =
+    {
+        fw::id::tune0, fw::id::tune1, fw::id::tune2,
+        fw::id::tune3, fw::id::tune4, fw::id::tune5
+    };
+}
+
+//==============================================================================
+FretworkAudioProcessor::FretworkAudioProcessor()
+    : AudioProcessor (BusesProperties().withOutput ("Output",
+                                                    juce::AudioChannelSet::stereo(),
+                                                    true))
+    , vts (*this, nullptr, juce::Identifier ("Fretwork"), fw::createLayout())
+{
+    midiIn.resize (128);
+}
+
+FretworkAudioProcessor::~FretworkAudioProcessor() = default;
+
+//==============================================================================
+void FretworkAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
+{
+    currentSampleRate = sampleRate > 0.0 ? sampleRate : 44100.0;
+    maxBlockSize = std::max (64, samplesPerBlock);
+
+    perf.prepare (currentSampleRate);
+    engine.prepare (currentSampleRate, maxBlockSize);
+
+    renderL_.assign ((std::size_t) maxBlockSize, 0.f);
+    renderR_.assign ((std::size_t) maxBlockSize, 0.f);
+}
+
+void FretworkAudioProcessor::releaseResources()
+{
+}
+
+//==============================================================================
+bool FretworkAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
+{
+    if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
+        return false;
+
+    return layouts.getMainInputChannelSet() == juce::AudioChannelSet::disabled();
+}
+
+//==============================================================================
+void FretworkAudioProcessor::buildPerfParams (fw::PerfParams& p)
+{
+    p.strumTime  = getScaled (fw::id::strumTime);
+    p.timeOffset = getScaled (fw::id::timeOffset);
+    p.separation = getScaled (fw::id::separation) * 0.01f;
+    p.velOffset  = getScaled (fw::id::velOffset);
+    p.strokeVol  = getScaled (fw::id::strokeVol) * 0.01f;
+    p.humanize   = getScaled (fw::id::humanize) * 0.01f;
+    p.release    = getScaled (fw::id::release);
+
+    p.quantize  = getChoiceParam (fw::id::quantize);
+    p.signature = getChoiceParam (fw::id::signature);
+    p.bpm       = getScaled (fw::id::bpm);
+
+    p.transpose = (int) std::lround (getScaled (fw::id::transpose));
+    p.hold      = getParam (fw::id::hold) > 0.5f;
+    p.mode      = (fw::PlayMode) getChoiceParam (fw::id::mode);
+
+    p.art.exc   = (fw::Excitation) getChoiceParam (fw::id::excitation);
+    p.art.damp  = (fw::Damping)    getChoiceParam (fw::id::damping);
+    p.art.trans = (fw::Transition) getChoiceParam (fw::id::transition);
+    p.art.harm  = (fw::Harmonic)   getChoiceParam (fw::id::harmonic);
+    p.art.tremolo = getParam (fw::id::tremolo) > 0.5f;
+
+    p.arpStrings = (int) std::lround (getScaled (fw::id::arpStrings));
+    for (int s = 0; s < fw::kNumStrings; ++s)
+    {
+        static constexpr const char* maskIds[6] =
+        {
+            fw::id::arpMask0, fw::id::arpMask1, fw::id::arpMask2,
+            fw::id::arpMask3, fw::id::arpMask4, fw::id::arpMask5
+        };
+        p.arpMask[s] = getParam (maskIds[s]) > 0.5f;
+    }
+
+    p.arpOrder = getChoiceParam (fw::id::arpOrder);
+    p.arpRate  = getChoiceParam (fw::id::arpRate);
+    p.arpGate  = getScaled (fw::id::arpGate);
+    p.arpSwing = getScaled (fw::id::arpSwing);
+
+    p.tremRate = getScaled (fw::id::tremRate);
+
+    const int tuning = std::clamp (getChoiceParam (fw::id::tuning), 0, 4);
+    const float capo = getScaled (fw::id::capo);
+
+    for (int s = 0; s < fw::kNumStrings; ++s)
+        p.open[s] = kTunings[tuning][s] + capo + getScaled (tuningIds[s]) * 0.01f;
+
+    const int body = std::clamp (getChoiceParam (fw::id::body), 0, 3);
+    p.maxFret = fw::dsp::kBodyMaxFret[body];
+
+    p.seqPlay   = getParam (fw::id::seqPlay) > 0.5f;
+    p.seqSlot   = getChoiceParam (fw::id::seqSlot);
+    p.metronome = getParam (fw::id::metronome) > 0.5f;
+
+    p.seqSlots = seqSlots.data();
+}
+
+void FretworkAudioProcessor::buildEngineParams (fw::dsp::EngineParams& p)
+{
+    const int body = std::clamp (getChoiceParam (fw::id::body), 0, 3);
+    const int material = std::clamp (getChoiceParam (fw::id::material), 0, 3);
+
+    for (int s = 0; s < fw::kNumStrings; ++s)
+    {
+        fw::dsp::StringModelParams& sp = p.strings[(std::size_t) s];
+        sp.material      = material;
+        sp.age           = getScaled (fw::id::stringAge);
+        sp.stiffness     = getScaled (fw::id::stiffness);
+        sp.pickPos       = getScaled (fw::id::pickPos);
+        sp.pickHard      = getScaled (fw::id::pickHard);
+        sp.sustain       = getScaled (fw::id::sustain);
+        sp.fretNoise     = getScaled (fw::id::fretNoise);
+        sp.bodyLossScale = fw::dsp::kBodyLossScale[body];
+        sp.scaleLengthM  = fw::dsp::kScaleLengthM[s];
+    }
+
+    p.body         = body;
+    p.sympathetic  = getScaled (fw::id::sympathetic);
+    p.glideTime    = getScaled (fw::id::glideTime);
+    p.bendAmount   = getScaled (fw::id::bendAmount);
+    p.bendTime     = getScaled (fw::id::bendTime);
+    p.vibRate      = getScaled (fw::id::vibRate);
+    p.vibDepth     = getScaled (fw::id::vibDepth);
+
+    p.pickupType   = getChoiceParam (fw::id::pickupType);
+    p.pickupSel    = getChoiceParam (fw::id::pickupSel);
+    p.pickupHeight = getScaled (fw::id::pickupHeight);
+    p.pickupTone   = getScaled (fw::id::pickupTone);
+    p.pickupOut    = getScaled (fw::id::pickupOut);
+
+    p.bodySize     = getScaled (fw::id::bodySize);
+    p.bodyRes      = getScaled (fw::id::bodyRes);
+    p.topDamp      = getScaled (fw::id::topDamp);
+    p.micBlend     = getScaled (fw::id::micBlend);
+
+    p.tone         = getScaled (fw::id::tone);
+    p.drive        = getScaled (fw::id::drive);
+    p.room         = getScaled (fw::id::room);
+    p.width        = getScaled (fw::id::width);
+    p.output       = getScaled (fw::id::output);
+    p.power        = getParam (fw::id::power) > 0.5f ? 1 : 0;
+}
+
+//==============================================================================
+void FretworkAudioProcessor::processBlock (juce::AudioBuffer<float>& audio,
+                                           juce::MidiBuffer& midi)
+{
+    juce::ScopedNoDenormals noDenormals;
+
+    const int numSamples = audio.getNumSamples();
+    const int numChannels = audio.getNumChannels();
+
+    audio.clear();
+
+    if (numSamples <= 0) return;
+
+    // ---- merge host MIDI with the on-screen keyboard ---------------------
+    // injectIndirectEvents must be true: it is the flag that actually drains
+    // the notes queued by MidiKeyboardState::noteOn into the buffer. With it
+    // false this call only reads events back out of the buffer, so a click on
+    // the on-screen keyboard was silently discarded and no note ever sounded.
+    // keyboardMidi is a reused member: clear it first, or every on-screen key
+    // event from earlier blocks is replayed and re-plucks the string forever.
+    keyboardMidi.clear();
+    keyboardState.processNextMidiBuffer (keyboardMidi, 0, numSamples, true);
+
+    combinedMidi.clear();
+    combinedMidi.addEvents (midi, 0, numSamples, 0);
+    combinedMidi.addEvents (keyboardMidi, 0, numSamples, 0);
+    midi.clear();
+
+    midiIn.clear();
+
+    for (auto it = combinedMidi.begin(); it != combinedMidi.end(); ++it)
+    {
+        const auto meta = *it;
+        const juce::uint8* d = meta.data;
+        const int size = meta.numBytes;
+
+        if (size < 3 || d[0] < 0x80 || d[0] >= 0xf0) continue;
+        if (midiIn.size() >= midiIn.capacity()) break;
+
+        fw::MidiMsg msg {};
+        msg.offset = meta.samplePosition;
+        msg.status = d[0];
+        msg.d1     = d[1];
+        msg.d2     = d[2];
+        midiIn.push_back (msg);
+    }
+
+    // ---- one block of parameters, reused across the chunk loop ----------
+    fw::PerfParams perfParams {};
+    buildPerfParams (perfParams);
+    perf.setParams (perfParams);
+
+    fw::dsp::EngineParams engineParams {};
+    buildEngineParams (engineParams);
+    engine.setParams (engineParams);
+
+    seqStore.refresh();
+    for (int s = 0; s < fw::kNumSeqSlots; ++s)
+        seqSlots[(std::size_t) s] = seqStore.snapshot (s);
+
+    fw::Transport transport {};
+    transport.bpm = (double) perfParams.bpm;
+
+    if (auto* ph = getPlayHead())
+    {
+        if (const auto pos = ph->getPosition())
+        {
+            transport.hostValid   = true;
+            transport.hostPlaying = pos->getIsPlaying();
+
+            if (const auto hostBpm = pos->getBpm())
+                if (*hostBpm > 0.0) transport.bpm = *hostBpm;
+
+            if (const auto ppq = pos->getPpqPosition())
+                transport.ppq = *ppq;
+            else if (const auto secs = pos->getTimeInSeconds())
+                transport.ppq = *secs * transport.bpm / 60.0;
+        }
+    }
+
+    // ---- render in chunks the DSP engine was prepared for ----------------
+    int pos = 0;
+    std::size_t midiCursor = 0;
+
+    while (pos < numSamples)
+    {
+        const int chunk = std::min (maxBlockSize, numSamples - pos);
+
+        fw::StringEvent chunkEvents[64];
+        int numChunkEvents = 0;
+        for (auto& e : chunkEvents) e = fw::StringEvent {};
+
+        // Only the MIDI that falls inside this chunk, rebased to it.
+        fw::MidiMsg chunkMidi[64];
+        int numChunkMidi = 0;
+        while (midiCursor < midiIn.size() && numChunkMidi < 64)
+        {
+            const fw::MidiMsg& m = midiIn[midiCursor];
+            if (m.offset >= pos + chunk) break;
+
+            if (m.offset >= pos)
+            {
+                fw::MidiMsg c = m;
+                c.offset = m.offset - pos;
+                chunkMidi[numChunkMidi++] = c;
+            }
+            ++midiCursor;
+        }
+
+        fw::ClickEvent chunkClicks[32];
+        for (auto& c : chunkClicks) c = fw::ClickEvent {};
+        int numChunkClicks = 0;
+
+        numChunkEvents = perf.process (chunkMidi, numChunkMidi, transport, chunk,
+                                       chunkEvents, 64, chunkClicks, numChunkClicks);
+
+        // Events arrive in time order; render up to each one, then apply it.
+        int i = 0;
+        int ev = 0, cl = 0;
+
+        while (i < chunk)
+        {
+            int next = chunk;
+
+            if (ev < numChunkEvents && chunkEvents[ev].sampleOffset < next)
+                next = std::max (i, chunkEvents[ev].sampleOffset);
+
+            if (cl < numChunkClicks && chunkClicks[cl].sampleOffset < next)
+                next = std::max (i, chunkClicks[cl].sampleOffset);
+
+            if (next > i)
+            {
+                for (; cl < numChunkClicks && chunkClicks[cl].sampleOffset < next; ++cl)
+                    engine.clickAt (chunkClicks[cl].sampleOffset - i,
+                                    chunkClicks[cl].accent);
+
+                engine.render (renderL_.data() + i, renderR_.data() + i, next - i);
+                i = next;
+                continue;
+            }
+
+            if (ev < numChunkEvents && chunkEvents[ev].sampleOffset == i)
+                engine.handle (chunkEvents[ev++]);
+        }
+
+        // Publish for the editor and for the host.
+        const auto* l = audio.getArrayOfWritePointers();
+        if (l != nullptr)
+        {
+            if (numChannels > 0) std::copy (renderL_.begin(), renderL_.begin() + chunk, l[0] + pos);
+            if (numChannels > 1) std::copy (renderR_.begin(), renderR_.begin() + chunk, l[1] + pos);
+        }
+
+        pos += chunk;
+    }
+
+    // ---- UI state --------------------------------------------------------
+    const fw::UiState s = perf.ui();
+
+    for (int i2 = 0; i2 < fw::kNumStrings; ++i2)
+        ui.fret[i2].store (s.fret[i2]);
+
+    ui.seqStep.store (s.seqStep);
+    ui.ksNotes.store (s.ksNotes);
+
+    for (int g = 0; g < 6; ++g)
+        ui.ks[g].store (s.ks[g]);
+
+    // The engine clears its own dirty mask on read, so OR it in here and let
+    // the editor clear its copy once it has written the matching parameter.
+    ui.ksDirtyMask.fetch_or (s.ksDirtyMask);
+}
+
+//==============================================================================
+juce::AudioProcessorEditor* FretworkAudioProcessor::createEditor()
+{
+    return new PluginEditor (*this);
+}
+
+//==============================================================================
+float FretworkAudioProcessor::getParam (const char* paramId) const
+{
+    if (auto* p = vts.getParameter (paramId))
+        return p->getValue();
+
+    return 0.f;
+}
+
+float FretworkAudioProcessor::getScaled (const char* paramId) const
+{
+    if (auto* p = vts.getParameter (paramId))
+        return p->convertFrom0to1 (p->getValue());
+
+    return 0.f;
+}
+
+int FretworkAudioProcessor::getChoiceParam (const char* paramId) const
+{
+    if (auto* p = dynamic_cast<juce::AudioParameterChoice*> (vts.getParameter (paramId)))
+        return p->getIndex();
+
+    return 0;
+}
+
+void FretworkAudioProcessor::clearKeyswitchDirty (int group) noexcept
+{
+    if (group < 0 || group >= 6) return;
+
+    ui.ksDirtyMask.fetch_and (~(1u << group), std::memory_order_relaxed);
+}
+
+//==============================================================================
+void FretworkAudioProcessor::applyBodyDefaults (int bodyIndex)
+{
+    auto setFloat = [this] (const char* paramId, float value)
+    {
+        if (auto* p = vts.getParameter (paramId))
+            p->setValueNotifyingHost (p->convertTo0to1 (value));
+    };
+
+    auto setChoice = [this] (const char* paramId, int index)
+    {
+        if (auto* p = dynamic_cast<juce::AudioParameterChoice*> (vts.getParameter (paramId)))
+        {
+            const int last = std::max (1, (int) p->choices.size() - 1);
+            p->setValueNotifyingHost ((float) index / (float) last);
+        }
+    };
+
+    switch (std::clamp (bodyIndex, 0, 3))
+    {
+        case 0:  // Dreadnought steel
+            setChoice (fw::id::material, 0);
+            setFloat  (fw::id::pickPos,   15.f);
+            setFloat  (fw::id::pickHard,  55.f);
+            setFloat  (fw::id::micBlend,  70.f);
+            break;
+
+        case 1:  // Classical nylon
+            setChoice (fw::id::material, 2);
+            setFloat  (fw::id::pickPos,   18.f);
+            setFloat  (fw::id::pickHard,  25.f);
+            setFloat  (fw::id::micBlend,  75.f);
+            break;
+
+        case 2:  // Solid electric
+            setChoice (fw::id::material,   1);
+            setChoice (fw::id::pickupType, 0);
+            setChoice (fw::id::pickupSel,  1);
+            setFloat  (fw::id::pickPos,    12.f);
+            setFloat  (fw::id::pickHard,   55.f);
+            setFloat  (fw::id::drive,       0.f);
+            setFloat  (fw::id::micBlend,    0.f);
+            break;
+
+        case 3:  // Semi-hollow
+            setChoice (fw::id::material,   3);
+            setChoice (fw::id::pickupType, 1);
+            setChoice (fw::id::pickupSel,  2);
+            setFloat  (fw::id::pickPos,    14.f);
+            setFloat  (fw::id::pickHard,   50.f);
+            setFloat  (fw::id::micBlend,   25.f);
+            break;
+
+        default:
+            break;
+    }
+}
+
+//==============================================================================
+void FretworkAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
+{
+    juce::ValueTree state = vts.copyState();
+
+    // APVTS only pushes parameter values into its tree on a timer, and its
+    // flush method is private, so a host that saves between ticks would
+    // capture stale values. Write each parameter's current value into the copy.
+    // The children are type "PARAM", keyed by "id", holding "value".
+    // Each "PARAM" child stores its parameter's RAW value, not the normalised
+    // 0..1 one, and APVTS only writes them on its own timer. Flush them here so
+    // a host that saves between ticks still captures the real settings.
+    for (int i = 0; i < state.getNumChildren(); ++i)
+    {
+        auto child = state.getChild (i);
+        if (! child.isValid())
+            continue;
+
+        const juce::String idString = child.getProperty (juce::Identifier ("id")).toString();
+        if (idString.isEmpty())
+            continue;
+
+        if (auto* param = vts.getParameter (idString))
+            child.setProperty (juce::Identifier ("value"),
+                               juce::var (param->convertFrom0to1 (param->getValue())),
+                               nullptr);
+    }
+
+    juce::ValueTree seq ("SEQ");
+
+    for (int slot = 0; slot < fw::kNumSeqSlots; ++slot)
+        seq.setProperty (juce::String (slot), seqStore.serialiseSlot (slot), nullptr);
+
+    state.appendChild (seq, nullptr);
+
+    juce::MemoryOutputStream stream (destData, false);
+    state.writeToStream (stream);
+}
+
+void FretworkAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
+{
+    if (data == nullptr || sizeInBytes <= 0)
+        return;
+
+    auto state = juce::ValueTree::readFromData (data, (std::size_t) sizeInBytes);
+
+    if (! state.isValid())
+        return;
+
+    const auto seq = state.getChildWithName (juce::Identifier ("SEQ"));
+
+    if (seq.isValid())
+    {
+        for (int slot = 0; slot < fw::kNumSeqSlots; ++slot)
+            seqStore.deserialiseSlot (slot, seq.getProperty (juce::String (slot)).toString());
+
+        // Remove only the sequencer node. removeAllChildren would also delete
+        // every PARAM child, leaving replaceState with an empty tree and
+        // silently reverting every parameter to its default.
+        state.removeChild (seq, nullptr);
+    }
+
+    vts.replaceState (state);
+}

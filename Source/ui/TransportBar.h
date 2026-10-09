@@ -1,0 +1,93 @@
+#pragma once
+
+#include <functional>
+
+#include <juce_audio_processors/juce_audio_processors.h>
+#include <juce_gui_basics/juce_gui_basics.h>
+
+#include "FretLookAndFeel.h"
+#include "PluginProcessor.h"
+
+namespace fw::ui
+{
+
+// JUCE 8 removed Button::onRightClick; this reproduces it by routing the
+// right-button case out of the clicked() modifier callback.
+class RightClickButton final : public FretButton
+{
+public:
+    explicit RightClickButton (const juce::String& text) : FretButton (text) {}
+
+    std::function<void()> onRightClick;
+
+protected:
+    void clicked (const juce::ModifierKeys& mods) override
+    {
+        if (mods.isRightButtonDown())
+        {
+            if (onRightClick != nullptr)
+                onRightClick();
+            return;
+        }
+
+        FretButton::clicked (mods);
+    }
+};
+
+
+/** Transport row: power, transpose stepper, slot paging, play, metronome,
+    BPM drag field, sequencer clear/copy/paste and the two strum triggers. */
+class TransportBar final : public juce::Component
+{
+public:
+    TransportBar (FretworkAudioProcessor& processor, juce::AudioProcessorValueTreeState& state);
+    ~TransportBar() override;
+
+    /** Called from the editor timer: refreshes the readouts. */
+    void tick();
+
+    void paint (juce::Graphics&) override;
+    void resized() override;
+
+private:
+    class IconButton;
+    class BpmField;
+    class StrumButton;
+
+    int currentSlot() const noexcept;
+    void nudgeTranspose (int delta);
+    void nudgeSlot (int delta);
+
+    FretworkAudioProcessor& processor;
+
+    juce::Slider transposeProxy, slotProxy, bpmProxy;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> transposeAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> slotAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> bpmAttachment;
+
+    juce::AudioParameterInt* transposeParam = nullptr;
+    juce::AudioParameterBool* playParam = nullptr;
+    juce::AudioParameterInt* slotParam = nullptr;
+    juce::AudioParameterFloat* bpmParam = nullptr;
+
+    IconButton* powerButton = nullptr;
+    RightClickButton* transposeButton = nullptr;
+    FretButton* slotPrevButton = nullptr;
+    FretButton* playButton = nullptr;
+    FretButton* slotNextButton = nullptr;
+    IconButton* metroButton = nullptr;
+    BpmField* bpmField = nullptr;
+    FretButton* clearButton = nullptr;
+    FretButton* copyButton = nullptr;
+    FretButton* pasteButton = nullptr;
+    StrumButton* strumDownButton = nullptr;
+    StrumButton* strumUpButton = nullptr;
+
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> powerAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> playAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> metroAttachment;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TransportBar)
+};
+
+} // namespace fw::ui

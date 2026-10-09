@@ -1,0 +1,135 @@
+{
+ "reference": "FL Studio 2026 Classical Acoustic + Jazz Guitar multisamples (24 files, Demo/ref)",
+ "referenceRange": {
+  "atkHi": [
+   0.3,
+   13.7
+  ],
+  "acMin": 0.982,
+  "decayDb": [
+   -6.7,
+   2.1
+  ]
+ },
+ "results": {
+  "chord_Emaj.wav": {
+   "atkHi": 1.8,
+   "ac": 0.725,
+   "hz": 82.3,
+   "cenAtk": 592,
+   "cenSus": 409,
+   "decayDb": -4.2,
+   "hissPct": 0.19,
+   "peak": 0.824
+  },
+  "note40_hard.wav": {
+   "atkHi": 0.9,
+   "ac": 1,
+   "hz": 82.5,
+   "cenAtk": 413,
+   "cenSus": 160,
+   "decayDb": -3.3,
+   "hissPct": 0.03,
+   "peak": 0.585
+  },
+  "note40_soft.wav": {
+   "atkHi": 0.8,
+   "ac": 1,
+   "hz": 82.5,
+   "cenAtk": 411,
+   "cenSus": 135,
+   "decayDb": -3.3,
+   "hissPct": 0.02,
+   "peak": 0.145
+  },
+  "note52_hard.wav": {
+   "atkHi": 1.7,
+   "ac": 1,
+   "hz": 164.9,
+   "cenAtk": 592,
+   "cenSus": 381,
+   "decayDb": -3.3,
+   "hissPct": 0.18,
+   "peak": 0.633
+  },
+  "note52_soft.wav": {
+   "atkHi": 1.5,
+   "ac": 1,
+   "hz": 164.9,
+   "cenAtk": 570,
+   "cenSus": 323,
+   "decayDb": -3.2,
+   "hissPct": 0.13,
+   "peak": 0.162
+  },
+  "note64_hard.wav": {
+   "atkHi": 3.5,
+   "ac": 0.999,
+   "hz": 328.8,
+   "cenAtk": 833,
+   "cenSus": 623,
+   "decayDb": -4.2,
+   "hissPct": 0.48,
+   "peak": 0.702
+  },
+  "note64_soft.wav": {
+   "atkHi": 3,
+   "ac": 0.999,
+   "hz": 328.8,
+   "cenAtk": 756,
+   "cenSus": 588,
+   "decayDb": -4.3,
+   "hissPct": 0.44,
+   "peak": 0.154
+  }
+ },
+ "pass": {
+  "chord_Emaj.wav": true,
+  "note40_hard.wav": true,
+  "note40_soft.wav": true,
+  "note52_hard.wav": true,
+  "note52_soft.wav": true,
+  "note64_hard.wav": true,
+  "note64_soft.wav": true
+ },
+ "flStudioRealtime": {
+  "file": "fl_realtime.wav",
+  "host": "FL Studio 2026, WASAPI loopback 48 kHz",
+  "note": "on-screen keyboard clicks; E4 and chord not reached due to desktop input latency",
+  "onsets": [
+   {
+    "note": "E2 soft",
+    "hz": 82.8,
+    "atkHi": 0.8,
+    "peak": 0.116
+   },
+   {
+    "note": "E2 hard",
+    "hz": 82.6,
+    "atkHi": 0.9,
+    "peak": 0.221
+   },
+   {
+    "note": "E3 soft",
+    "hz": 164.9,
+    "atkHi": 1.4,
+    "peak": 0.115
+   },
+   {
+    "note": "E3 hard",
+    "hz": 164.9,
+    "atkHi": 1.4,
+    "peak": 0.233
+   }
+  ],
+  "retriggers": 0
+ },
+ "flStudioRealtimeMidi": {
+  "file": "fl_realtime_midi.wav",
+  "schedule": "fl_realtime_midi_plan.json",
+  "via": "midisend -> loopMIDI -> FL Studio 2026 -> Fretwork, captured by loopcap (WASAPI loopback 48 kHz)",
+  "result": "incomplete: only the first event (E2 soft) sounded; FL stopped receiving loopMIDI input after it. The same schedule rendered offline in one plugin instance sounds all 7 events (test T25).",
+  "eventsCaptured": 1,
+  "eventsPlanned": 7
+ }
+}
