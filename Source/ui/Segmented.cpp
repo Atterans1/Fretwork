@@ -116,6 +116,15 @@ void Segmented::refresh()
 
 void Segmented::syncButtons()
 {
+    // A flag mirrors its bool parameter. Driving it from the choice index
+    // (always 0 here) kept Hold lit regardless of the parameter, and every
+    // click was immediately undone, so Hold could never be switched on.
+    if (flagParam != nullptr)
+    {
+        segments.front()->setToggleState (flagParam->get(), juce::dontSendNotification);
+        return;
+    }
+
     for (std::size_t i = 0; i < segments.size(); ++i)
         segments[i]->setToggleState ((int) i == selected, juce::dontSendNotification);
 }

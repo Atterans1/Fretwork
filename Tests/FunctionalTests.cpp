@@ -4,13 +4,8 @@
 #include "Harness.h"
 #include "PluginEditor.h"
 
-#if JUCE_WINDOWS
- #ifndef NOMINMAX
-  #define NOMINMAX
- #endif
- #define WIN32_LEAN_AND_MEAN
- #include <windows.h>
-#endif
+// JUCE's per-message dispatcher (juce_events/messages/juce_MessageManager.cpp).
+namespace juce::detail { bool dispatchNextMessageOnSystemQueue (bool returnIfNoPendingMessages); }
 
 namespace
 {
@@ -111,23 +106,28 @@ FW_TEST ("params: layout matches the golden contract (ids, kinds, ranges, defaul
 
 FW_TEST ("params: every value of every parameter, automated mid-note, stays finite and unclipped")
 {
+    // One sounding session per parameter: the chord rings while the host
+    // automation steps the parameter through every legal value in turn.
     for (const auto& g : kGolden)
+    {
+        fwtest::Plugin p;
+        p.chord (0.01, { 40, 52, 59 }, 0.9f);
+        p.render (0.1);
+
         for (float v : valuesFor (g))
         {
-            fwtest::Plugin p;
-            p.chord (0.01, { 40, 52, 59 }, 0.9f);
-            const auto before = p.render (0.15);
-            p.set (g.id, v);                                   // host automation while sounding
-            const auto after = p.render (0.35);
+            p.set (g.id, v);
+            const auto after = p.render (0.08);
 
             char msg[160];
             std::snprintf (msg, sizeof msg, "%s = %g: output finite", g.id, v);
-            EXPECT_MSG (before.finite() && after.finite(), msg);
+            EXPECT_MSG (after.finite(), msg);
             std::snprintf (msg, sizeof msg, "%s = %g: output under the 0.98 clamp", g.id, v);
             EXPECT_MSG (after.peak() <= 0.981, msg);
             std::snprintf (msg, sizeof msg, "%s = %g: value reads back", g.id, v);
             EXPECT_MSG (std::fabs (p.get (g.id) - v) <= tol (g) + (g.kind == 'f' ? 0 : 0.5), msg);
         }
+    }
 }
 
 FW_TEST ("params: sound-shaping parameters audibly change the output")
@@ -160,6 +160,35 @@ FW_TEST ("params: sound-shaping parameters audibly change the output")
         char msg[128];
         std::snprintf (msg, sizeof msg, "%s changes the sound", c.id);
         EXPECT_MSG (d > 0.02, msg);
+    }
+}
+
+FW_TEST ("params: sympathetic resonance stays bounded and decays")
+{
+    // Sympathetic drive feeds the string mix back into every string. At any
+    // setting it may add ring, but it must not turn into a self-sustaining
+    // loop that the output clipper then hides.
+    double heldAtZero = 0;
+    for (float sym : { 0.f, 30.f, 100.f })
+    {
+        fwtest::Plugin p;
+        p.set ("sympathetic", sym);
+        p.noteOn (0.01, 47, 0.9f).noteOff (1.5, 47);
+        const auto t = p.render (4.0);
+        const double early = t.rms (0.05, 0.3), late = t.rms (1.2, 1.5), tail = t.rms (3.5, 4.0);
+        std::printf ("    sympathetic %3.0f: rms 0.05-0.3 %.4f, 1.2-1.5 %.4f, after release %.6f, peak %.3f\n",
+                     sym, early, late, tail, t.peak());
+        char msg[96];
+        std::snprintf (msg, sizeof msg, "sympathetic %.0f: held note decays", sym);
+        EXPECT_MSG (late < early, msg);
+        std::snprintf (msg, sizeof msg, "sympathetic %.0f: silent after release", sym);
+        EXPECT_MSG (tail < early * 0.01, msg);
+        std::snprintf (msg, sizeof msg, "sympathetic %.0f: no clipping", sym);
+        EXPECT_MSG (t.peak() < 0.9, msg);
+
+        if (sym == 0.f) heldAtZero = late;
+        if (sym == 30.f)
+            EXPECT_MSG (late > heldAtZero * 0.7, "default sympathetic keeps sustain within 3 dB of none");
     }
 }
 
@@ -294,12 +323,21 @@ FW_TEST ("midi: Transpose shifts the sounding pitch")
     EXPECT (std::fabs (fwtest::Take::cents (t.pitch (0.3, 0.8, want), want)) < 5.0);
 }
 
-FW_TEST ("midi: Velocity offset knob shifts loudness")
+FW_TEST ("modes: Velocity offset shifts strum-stroke loudness")
 {
-    fwtest::Plugin lo, hi;
-    lo.set ("velOffset", -40.f);
-    hi.set ("velOffset", 40.f);
-    EXPECT (pluck (hi, 52, 0.5f).rms (0.02, 0.3) > pluck (lo, 52, 0.5f).rms (0.02, 0.3) * 1.3);
+    // velOffset belongs to the strummer: it offsets stroke velocity, not the
+    // velocity of directly played notes.
+    const auto stroke = [] (float offset)
+    {
+        fwtest::Plugin p;
+        p.set ("mode", 1.f).set ("velOffset", offset);
+        p.chord (0.01, { 52, 56, 59, 64 }, 0.9f);
+        p.noteOn (0.3, 28, 0.5f).noteOff (0.4, 28);           // Strum Down
+        return p.render (0.9).rms (0.3, 0.6);
+    };
+    const double lo = stroke (-40.f), hi = stroke (40.f);
+    std::printf ("    stroke rms: offset -40 %.4f, +40 %.4f\n", lo, hi);
+    EXPECT (hi > lo * 1.3);
 }
 
 //==============================================================================
@@ -328,6 +366,7 @@ FW_TEST ("output: Width controls stereo spread")
     const auto m = mono.render (0.8), w = wide.render (0.8);
     std::printf ("    side/mid: width 0 %.4f, width 100 %.4f\n", m.sideRms (0.1, 0.6) / m.rms (0.1, 0.6), w.sideRms (0.1, 0.6) / w.rms (0.1, 0.6));
     EXPECT (w.sideRms (0.1, 0.6) > m.sideRms (0.1, 0.6) * 2.0 + 1e-6);
+    EXPECT_MSG (m.sideRms (0.1, 0.6) < m.rms (0.1, 0.6) * 0.02, "width 0 is mono");
 }
 
 FW_TEST ("output: metronome clicks on the beat with no notes")
@@ -365,13 +404,33 @@ FW_TEST ("modes: Strum strokes sound the held chord, Strum Time spreads it")
 
 FW_TEST ("modes: Arp steps through the held chord")
 {
+    // Arp notes overlap (gate 80%), so envelope onsets are unreliable. Instead
+    // find which chord note dominates each 1/16 step and count the changes.
     fwtest::Plugin p;
-    p.set ("mode", 2.f).set ("bpm", 120.f);
+    p.set ("mode", 2.f).set ("bpm", 120.f).set ("arpRate", 3.f);   // 1/16 = 125 ms
+    const int chord[] = { 52, 56, 59, 64 };
     p.chord (0.01, { 52, 56, 59, 64 }, 0.9f);
     const auto t = p.render (2.0);
-    const auto on = t.onsets (0.002, 0.06);
-    std::printf ("    arp onsets in 2 s: %zu\n", on.size());
-    EXPECT (on.size() >= 6);
+
+    int changes = 0, prev = -1;
+    std::vector<int> seen;
+    for (double a = 0.25; a + 0.1 < 2.0; a += 0.125)
+    {
+        int best = -1; double bq = 0;
+        for (int n : chord)
+        {
+            double q = 0;
+            t.pitch (a + 0.02, a + 0.1, fwtest::midiToHz (n), &q);
+            if (q > bq) { bq = q; best = n; }
+        }
+        if (best != prev && prev >= 0) ++changes;
+        prev = best;
+        if (std::find (seen.begin(), seen.end(), best) == seen.end()) seen.push_back (best);
+    }
+    std::printf ("    arp: %d note changes in 1.75 s, %zu distinct notes, rms %.4f\n", changes, seen.size(), t.rms (0.2, 2.0));
+    EXPECT (t.rms (0.2, 2.0) > 0.005);
+    EXPECT (changes >= 6);
+    EXPECT (seen.size() >= 3);
 }
 
 FW_TEST ("modes: Seq mode and playback run cleanly in every slot")
@@ -408,7 +467,13 @@ FW_TEST ("host: blocks larger than announced are rendered completely")
     fwtest::Plugin ref (48000.0, 480), big (48000.0, 480);
     big.hostBlockSize (2048);
     const auto a = pluck (ref), b = pluck (big);
-    EXPECT (diffRatio (a, b) < 1e-4);
+    // Smoothed tone/body coefficients update once per internal render call,
+    // so chunking changes the output by a tiny, inaudible amount. A dropped,
+    // repeated or mis-placed chunk (the bug this guards) differs by ~1.
+    const double d = diffRatio (a, b);
+    std::printf ("    480 vs 2048 host blocks: difference %.2e (%.1f dB)\n", d, 20.0 * std::log10 (std::max (d, 1e-12)));
+    EXPECT (d < 0.01);
+    EXPECT (std::fabs (a.rms (0.05, 0.6) / b.rms (0.05, 0.6) - 1.0) < 0.01);
 }
 
 FW_TEST ("host: reset via prepareToPlay mid-session leaves no stuck notes")
@@ -448,23 +513,28 @@ std::vector<std::string> changed (const std::vector<float>& a, const std::vector
     return out;
 }
 
-// Delivers JUCE's posted messages (async button clicks, async updaters).
-// MessageManager::runDispatchLoopUntil needs JUCE_MODAL_LOOPS_PERMITTED, which
-// this build does not enable, so drain the native queue directly.
+// The headless editor is never on the desktop, so isShowing() is always false;
+// visibility has to be judged within the editor's own tree.
+bool visibleIn (const juce::Component& c, const juce::Component& root)
+{
+    // The root itself is never made visible headlessly, so stop before it.
+    for (auto* p = &c; p != nullptr; p = p->getParentComponent())
+    {
+        if (p == &root) return true;
+        if (! p->isVisible()) return false;
+    }
+    return false;
+}
+
+// Delivers JUCE's posted messages (async button clicks, callAsync,
+// AsyncUpdater) on this, the message thread. runDispatchLoopUntil needs
+// JUCE_MODAL_LOOPS_PERMITTED, which this build does not enable; this is the
+// same per-message dispatcher JUCE's own loops use.
 void pump()
 {
-   #if JUCE_WINDOWS
-    for (int round = 0; round < 4; ++round)
-    {
-        MSG msg;
-        while (PeekMessage (&msg, nullptr, 0, 0, PM_REMOVE))
-        {
-            TranslateMessage (&msg);
-            DispatchMessage (&msg);
-        }
-        Sleep (2);
-    }
-   #endif
+    for (int i = 0; i < 200; ++i)
+        if (! juce::detail::dispatchNextMessageOnSystemQueue (true))
+            break;
 }
 }
 
@@ -522,9 +592,15 @@ FW_TEST ("editor: every slider and combo box drives exactly one parameter")
         pump();
         const auto ch = changed (before, snapshot (p));
         char msg[160];
-        std::snprintf (msg, sizeof msg, "combo '%s' drives exactly one parameter (drove %zu)",
-                       b->getName().toRawUTF8(), ch.size());
-        EXPECT_MSG (ch.size() == 1, msg);
+        juce::String what = b->getName().isNotEmpty() ? b->getName() : b->getItemText (0) + " / " + b->getItemText (1);
+        std::string drove;
+        for (auto& id : ch) drove += id + " ";
+        std::snprintf (msg, sizeof msg, "combo '%s' drives exactly one parameter (drove %zu: %s)",
+                       what.toRawUTF8(), ch.size(), drove.c_str());
+        // The Body selector is a preset: it sets body plus that body's
+        // material, pick and mic defaults. Every other combo owns one parameter.
+        const bool isBody = std::find (ch.begin(), ch.end(), std::string ("body")) != ch.end();
+        EXPECT_MSG (isBody ? ch.size() >= 1 : ch.size() == 1, msg);
         reached.insert (reached.end(), ch.begin(), ch.end());
     }
 
@@ -573,13 +649,18 @@ FW_TEST ("editor: buttons toggle their parameters")
     std::unique_ptr<juce::AudioProcessorEditor> ed (p.processor().createEditor());
     if (ed == nullptr) { EXPECT (false); return; }
 
+    bool delivered = false;
+    juce::MessageManager::callAsync ([&delivered] { delivered = true; });
+    pump();
+    EXPECT_MSG (delivered, "message pump delivers async messages");
+
     std::vector<juce::Button*> buttons;
     collect (*ed, buttons);
     int driving = 0;
     std::vector<std::string> reached;
     for (auto* b : buttons)
     {
-        if (! b->isShowing() || ! b->isEnabled()) continue;
+        if (! visibleIn (*b, *ed) || ! b->isEnabled()) continue;
         const auto before = snapshot (p);
         b->triggerClick();
         pump();

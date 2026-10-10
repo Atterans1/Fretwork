@@ -37,7 +37,9 @@ public:
     void release (float releaseSec);
 
     // Returns the bridge signal for this sample.
-    float tick (float sympatheticIn);
+    // sympatheticIn is already scaled by coupling; the string's own
+    // recirculating signal is scaled by (1 - coupling) so the total stays passive.
+    float tick (float sympatheticIn, float coupling = 0.f);
 
     void setBendSemis (float semis);
     void setVibrato   (float cents01);

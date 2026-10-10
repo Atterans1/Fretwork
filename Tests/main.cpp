@@ -1387,6 +1387,9 @@ int renderDemo (const juce::File& dir)
 
 int main (int argc, char** argv)
 {
+    // Unbuffered so progress survives a crash or a killed run.
+    std::setvbuf (stdout, nullptr, _IONBF, 0);
+
     if (argc >= 3 && std::string (argv[1]) == "--demo")
         return renderDemo (juce::File (juce::String (argv[2])));
 

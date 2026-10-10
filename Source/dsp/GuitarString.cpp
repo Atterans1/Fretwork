@@ -338,7 +338,8 @@ void GuitarString::setBendSemis (float semis)
 
 void GuitarString::setVibrato (float cents01)
 {
-    vibTargetCents_ = clampf (cents01, 0.f, 1.f) * 100.f;
+    // Signed: the vibrato LFO swings both ways around the note.
+    vibTargetCents_ = clampf (cents01, -1.f, 1.f) * 100.f;
 }
 
 float GuitarString::fundamentalHz() const noexcept
@@ -354,7 +355,7 @@ float GuitarString::periodSamples() const noexcept
 }
 
 //==============================================================================
-float GuitarString::tick (float sympatheticIn)
+float GuitarString::tick (float sympatheticIn, float coupling)
 {
     if (! prepared_) return 0.f;
 
@@ -422,7 +423,7 @@ float GuitarString::tick (float sympatheticIn)
     }
     x *= releaseGain_;
 
-    float input = x + sympatheticIn;
+    float input = x * (1.f - coupling) + sympatheticIn;
 
     if (injectPos_ < injectLen_)
         input += excite_[injectPos_++] * injectScale_;

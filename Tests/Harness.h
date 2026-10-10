@@ -19,6 +19,7 @@
 #include "PluginProcessor.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -74,8 +75,10 @@ inline int runRegistered (const std::string& filter, bool listOnly)
         r.current = t.name;
         const int f0 = r.failures;
         std::printf ("%s\n", t.name.c_str());
+        const auto t0 = std::chrono::steady_clock::now();
         t.fn();
-        std::printf ("  %s\n", r.failures == f0 ? "ok" : "FAILED");
+        const double secs = std::chrono::duration<double> (std::chrono::steady_clock::now() - t0).count();
+        std::printf ("  %s (%.1f s)\n", r.failures == f0 ? "ok" : "FAILED", secs);
     }
     return r.failures - before;
 }

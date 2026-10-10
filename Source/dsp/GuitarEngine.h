@@ -120,7 +120,9 @@ private:
     float globalBend_ = 0.f;
     float modWheel_   = 0.f;
     double lfoPhase_  = 0.0;
-    float prevMix_    = 0.f;
+    // Previous sample's bridge output per string, for sympathetic coupling.
+    std::array<float, kNumStrings> prevBridge_ {};
+    float prevBridgeSum_ = 0.f;
 
     float electricLevel_ = 1.f;
     float acousticLevel_ = 1.f;

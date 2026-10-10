@@ -70,7 +70,9 @@ void FretworkAudioProcessor::buildPerfParams (fw::PerfParams& p)
     p.timeOffset = getScaled (fw::id::timeOffset);
     p.separation = getScaled (fw::id::separation) * 0.01f;
     p.velOffset  = getScaled (fw::id::velOffset);
-    p.strokeVol  = getScaled (fw::id::strokeVol) * 0.01f;
+    // strokeVol is already 0..1; scaling it by 0.01 made strum, arp and
+    // sequencer notes ~1% velocity, i.e. inaudible.
+    p.strokeVol  = getScaled (fw::id::strokeVol);
     p.humanize   = getScaled (fw::id::humanize) * 0.01f;
     p.release    = getScaled (fw::id::release);
 
@@ -79,6 +81,7 @@ void FretworkAudioProcessor::buildPerfParams (fw::PerfParams& p)
     p.bpm       = getScaled (fw::id::bpm);
 
     p.transpose = (int) std::lround (getScaled (fw::id::transpose));
+    p.wheelRange = (int) std::lround (getScaled (fw::id::wheelRange));
     p.hold      = getParam (fw::id::hold) > 0.5f;
     p.mode      = (fw::PlayMode) getChoiceParam (fw::id::mode);
 
@@ -284,6 +287,19 @@ void FretworkAudioProcessor::processBlock (juce::AudioBuffer<float>& audio,
         numChunkEvents = perf.process (chunkMidi, numChunkMidi, transport, chunk,
                                        chunkEvents, 64, chunkClicks, numChunkClicks);
 
+        // The performance engine parses pitch wheel and mod wheel; the DSP
+        // applies them. Nothing forwarded them before, so both were dead.
+        {
+            const fw::UiState u = perf.ui();
+            engine.setPitchBend (u.pitchBendSemis);
+            engine.setModWheel  (u.modWheel);
+
+            // The engine reports each keyswitch change in exactly one chunk's
+            // snapshot; collect it now, or a later chunk in the same host
+            // block overwrites the mask before the end-of-block publish.
+            ui.ksDirtyMask.fetch_or (u.ksDirtyMask);
+        }
+
         // Events arrive in time order; render up to each one, then apply it.
         int i = 0;
         int ev = 0, cl = 0;
@@ -309,8 +325,15 @@ void FretworkAudioProcessor::processBlock (juce::AudioBuffer<float>& audio,
                 continue;
             }
 
-            if (ev < numChunkEvents && chunkEvents[ev].sampleOffset == i)
-                engine.handle (chunkEvents[ev++]);
+            // Nothing to render first: whatever lowered next is due now. Consume
+            // every click and event at (or, if out of order, before) i. Handling
+            // only events here left a click landing exactly on i unconsumed, so
+            // the loop never advanced and the metronome hung the audio thread.
+            for (; cl < numChunkClicks && chunkClicks[cl].sampleOffset <= i; ++cl)
+                engine.clickAt (0, chunkClicks[cl].accent);
+
+            for (; ev < numChunkEvents && chunkEvents[ev].sampleOffset <= i; ++ev)
+                engine.handle (chunkEvents[ev]);
         }
 
         // Publish for the editor and for the host.

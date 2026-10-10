@@ -51,7 +51,8 @@ void OutputStage::setParams (const OutputParams& p)
     reverbParams_.damping  = 0.5f;
     reverbParams_.wetLevel = 0.60f * room;
     reverbParams_.dryLevel = 1.0f - 0.30f * room;
-    reverbParams_.width    = 1.0f;
+    // Width also narrows the room: a full-width reverb made "Width 0" stereo.
+    reverbParams_.width    = clampf (p_.width01, 0.f, 1.f);
 
     reverb_.setParameters (reverbParams_);
 }

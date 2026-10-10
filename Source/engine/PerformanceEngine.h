@@ -48,6 +48,7 @@ struct PerfParams
     float bpm        = 100.f;
 
     int   transpose  = 0;
+    int   wheelRange = 2;          // pitch-wheel span in semitones, each way
 
     bool  hold       = false;
     PlayMode mode    = PlayMode::Poly;

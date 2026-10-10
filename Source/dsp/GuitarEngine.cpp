@@ -59,7 +59,8 @@ void GuitarEngine::prepare (double sampleRate, int maxBlockSize)
     globalBend_ = 0.f;
     modWheel_ = 0.f;
     lfoPhase_ = 0.0;
-    prevMix_ = 0.f;
+    prevBridge_.fill (0.f);
+    prevBridgeSum_ = 0.f;
     debugCount_ = 0;
 
     prepared_ = true;
@@ -72,7 +73,8 @@ void GuitarEngine::reset()
     pickup_.reset();
     body_.reset();
     out_.reset();
-    prevMix_ = 0.f;
+    prevBridge_.fill (0.f);
+    prevBridgeSum_ = 0.f;
     debugCount_ = 0;
 }
 
@@ -81,7 +83,9 @@ void GuitarEngine::updatePan()
     const float w = clampf (sWidth_.value, 0.f, 1.f);
 
     for (int s = 0; s < kNumStrings; ++s)
-        equalPower (panBase_[s] * w, panL_[(std::size_t) s], panR_[(std::size_t) s]);
+        // Spread around the centre: width 0 is mono, width 1 is the full arc.
+        // Scaling the raw 0..1 position collapsed everything hard left at 0.
+        equalPower (0.5f + (panBase_[s] - 0.5f) * w, panL_[(std::size_t) s], panR_[(std::size_t) s]);
 }
 
 void GuitarEngine::refreshModel()
@@ -169,7 +173,8 @@ void GuitarEngine::handle (const StringEvent& e)
 
 void GuitarEngine::setPitchBend (float semis)
 {
-    globalBend_ = clampf (semis, -2.f, 2.f);
+    // Wheel Range goes up to 12 semitones each way.
+    globalBend_ = clampf (semis, -12.f, 12.f);
 }
 
 void GuitarEngine::setModWheel (float value01)
@@ -246,7 +251,15 @@ void GuitarEngine::render (float* left, float* right, int n)
 
         updatePan();
 
-        const float symDrive = sSympathetic_.value * 0.02f * prevMix_;
+        // Sympathetic coupling through the bridge, kept passive: each string's
+        // loop input becomes (1 - c) * own + c * mean(other strings). Every row
+        // of that mix sums to at most the loop gain (< 1), so no setting can
+        // self-oscillate. Adding c * mean(all) on top of the own signal did,
+        // and at full Sympathetic the output ran away to inf/NaN.
+        // The mix is applied once per loop period, so c drains c of the
+        // string's energy per period: 0.004 at full Sympathetic is ~-6 dB/s
+        // extra decay on E3, ~-2 dB/s at the default 30%.
+        const float couple = sSympathetic_.value * 0.004f;
 
         float el = 0.f, er = 0.f, bridgeSum = 0.f, mixSum = 0.f;
 
@@ -261,10 +274,13 @@ void GuitarEngine::render (float* left, float* right, int n)
             else if (bn > bt) { bn = std::max (bt, bn - st); }
 
             strings_[(std::size_t) s].setBendSemis (bn + globalBend_);
-            strings_[(std::size_t) s].setVibrato (vibCents01 > 0.f && vibCents != 0.f
-                                                ? vibCents01 : 0.f);
+            // The LFO-modulated offset, not the constant depth: passing the
+            // depth produced a fixed detune with no wobble at all.
+            strings_[(std::size_t) s].setVibrato (vibCents);
 
-            const float b = strings_[(std::size_t) s].tick (symDrive);
+            const float others = (prevBridgeSum_ - prevBridge_[(std::size_t) s]) / (float) (kNumStrings - 1);
+            const float b = strings_[(std::size_t) s].tick (couple * others, couple);
+            prevBridge_[(std::size_t) s] = b;
 
             mixSum += b;
             bridgeSum += b;
@@ -276,7 +292,7 @@ void GuitarEngine::render (float* left, float* right, int n)
             er += v * panR_[(std::size_t) s];
         }
 
-        prevMix_ = mixSum / (float) kNumStrings;
+        prevBridgeSum_ = mixSum;
 
         el_[(std::size_t) i] = el * electricLevel_;
         er_[(std::size_t) i] = er * electricLevel_;

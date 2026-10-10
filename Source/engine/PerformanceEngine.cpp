@@ -1,5 +1,6 @@
 #include "engine/PerformanceEngine.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 
@@ -379,7 +380,6 @@ void PerformanceEngine::handleMidi (const MidiMsg& m)
 {
     const int offset = m.offset;
     const int type   = m.status & 0xf0;
-    const int ch     = m.status & 0x0f;
     const int note   = (int) m.d1;
 
     if (type == 0x90 && m.d2 > 0)
@@ -429,9 +429,12 @@ void PerformanceEngine::handleMidi (const MidiMsg& m)
         return;
     }
 
-    if (type == 0xb0 && ch == 1) { modWheel_ = (double) m.d2 / 127.0; return; }
+    // Controllers dispatch on the controller number (d1), on any channel.
+    // Comparing the channel here meant CC64 never latched and every CC on
+    // channel 1 was taken for the mod wheel.
+    if (type == 0xb0 && note == 1) { modWheel_ = (double) m.d2 / 127.0; return; }
 
-    if (type == 0xb0 && ch == 64)
+    if (type == 0xb0 && note == 64)
     {
         pedalDown_ = m.d2 >= 64;
         if (pedalDown_) chord_.setLatched (true);
@@ -442,9 +445,9 @@ void PerformanceEngine::handleMidi (const MidiMsg& m)
 
     if (type == 0xe0)
     {
-        // 14-bit pitch bend centred at 8192, spanning +/- 2 semitones.
+        // 14-bit pitch bend centred at 8192, spanning +/- Wheel Range semitones.
         const int raw = (int) m.d1 | ((int) m.d2 << 7);
-        bendSemis_ = ((double) (raw - 8192) / 8192.0) * 2.0;
+        bendSemis_ = ((double) (raw - 8192) / 8192.0) * (double) p_.wheelRange;
     }
 }
 
@@ -459,12 +462,24 @@ void PerformanceEngine::emitArpAndSeq (double ppqStart, double ppqEnd)
     {
         arp_.rebuild (voicing_, p_.arpMask, p_.arpStrings);
 
+        // Velocity per voiced string. Held notes only carry a string index in
+        // Poly mode, so map through the voicing's pitches instead; reading
+        // ChordNote::string here left every arp note at velocity 0.
         float stringVel[kNumStrings] {};
-        for (int i = 0; i < chord_.size(); ++i)
+        for (int vi = 0; vi < voicing_.count; ++vi)
         {
-            const ChordNote& n = chord_.at (i);
-            if (n.string >= 0 && n.string < kNumStrings)
-                stringVel[n.string] = n.velocity;
+            const int s = voicing_.stringIndex[vi];
+            if (s < 0 || s >= kNumStrings) continue;
+
+            for (int i = 0; i < chord_.size(); ++i)
+            {
+                const ChordNote& n = chord_.at (i);
+                if (std::fabs ((float) n.pitch - voicing_.pitch[vi]) < 0.5f)
+                {
+                    stringVel[s] = n.velocity;
+                    break;
+                }
+            }
         }
 
         ArpEngine::Params ap {};
@@ -558,21 +573,29 @@ void PerformanceEngine::pollMetronome (int numSamples, ClickEvent* clicks, int& 
     const double spq = sampleRate_ * 60.0 / bpm;
     if (! (spq > 1.0)) return;
 
-    const double start = metAccum_;
-    metAccum_ += (double) numSamples;
+    // Beats sit at absolute sample positions k * spq (k >= 1) since the
+    // metronome started. This block covers [blockStart, blockEnd); each beat
+    // inside it becomes one click at its offset from blockStart. The old code
+    // compared a block-relative position with the absolute counter, so after
+    // the first beat it emitted kMaxClicks clicks at offset 0 every block.
+    const double blockStart = metAccum_;
+    const double blockEnd   = blockStart + (double) numSamples;
+    metAccum_ = blockEnd;
 
     const int sig = lastSignature_ >= 0 && lastSignature_ < Clock::kNumSignature
                   ? lastSignature_ : 0;
     const int beatsPerBar = Clock::kSignatureNum[sig];
 
-    for (double next = spq - start; next <= metAccum_ && numClicks < kMaxClicks; next += spq)
+    const double firstK = std::max (1.0, std::ceil (blockStart / spq));
+
+    for (double beat = firstK * spq; beat < blockEnd && numClicks < kMaxClicks; beat += spq)
     {
-        long long off = (long long) (next + 0.5);
+        int off = (int) (beat - blockStart);
         if (off < 0) off = 0;
         if (off > numSamples - 1) off = numSamples - 1;
 
         ClickEvent& c = clicks[numClicks++];
-        c.sampleOffset = (int) off;
+        c.sampleOffset = off;
         c.accent       = (metBeat_ % beatsPerBar) == 0;
         ++metBeat_;
     }
