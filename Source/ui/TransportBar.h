@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <functional>
 
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -12,8 +13,9 @@ namespace fw::ui
 {
 
 // JUCE 8 removed Button::onRightClick; this reproduces it by routing the
-// right-button case out of the clicked() modifier callback.
-class RightClickButton final : public FretButton
+// right-button case out of the clicked() modifier callback. Not final: the
+// transport derives its LCD transpose readout from it.
+class RightClickButton : public FretButton
 {
 public:
     explicit RightClickButton (const juce::String& text) : FretButton (text) {}
@@ -53,6 +55,7 @@ private:
     class IconButton;
     class BpmField;
     class StrumButton;
+    class TransposeField;
 
     int currentSlot() const noexcept;
     void nudgeTranspose (int delta);
@@ -86,6 +89,11 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> powerAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> playAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> metroAttachment;
+
+    // Paint-only layout from resized(): small-caps captions and the hairline
+    // dividers between the control clusters.
+    juce::Rectangle<float> transposeCaption, bpmCaption;
+    std::array<float, 3> dividers {};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TransportBar)
 };

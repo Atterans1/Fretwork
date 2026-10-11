@@ -29,6 +29,8 @@ public:
     void mouseDown (const juce::MouseEvent&) override;
     void mouseDrag (const juce::MouseEvent&) override;
     void mouseUp (const juce::MouseEvent&) override;
+    void mouseMove (const juce::MouseEvent&) override;
+    void mouseExit (const juce::MouseEvent&) override;
     void mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails&) override;
 
     int getStepsPerBar() const noexcept { return stepsPerBar; }
@@ -59,6 +61,13 @@ private:
     enum class DragMode { none, resize, erase };
     DragMode dragMode = DragMode::none;
     int dragRow = 0, dragStart = 0, dragLen = 1, dragVel = 100;
+
+    // Cell under the pointer, for hover feedback only (-1 = none).
+    int hoverRow = -1, hoverCol = -1;
+
+    // What the last paint() showed, so tick() repaints only on change.
+    int paintedStep = -1;
+    DragMode paintedDrag = DragMode::none;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SeqGrid)
 };

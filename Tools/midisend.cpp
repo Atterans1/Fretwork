@@ -1,5 +1,6 @@
 // Sends a timed note sequence to a MIDI output whose name contains argv[1].
-// usage: midisend <portSubstring> then lines on stdin: <ms> on|off <note> <vel>
+// usage: midisend <portSubstring> then lines on stdin: <ms> on|off|cc <a> <b>
+//   on/off: a = note, b = velocity; cc: a = controller number, b = value
 #include <windows.h>
 #include <mmsystem.h>
 #include <cstdio>
@@ -7,7 +8,7 @@
 #include <string>
 #include <vector>
 #pragma comment(lib, "winmm.lib")
-struct Ev { DWORD ms; bool on; int note; int vel; };
+struct Ev { DWORD ms; int kind; int note; int vel; };   // kind: 0 off, 1 on, 2 cc
 int main (int argc, char** argv)
 {
     const UINT n = midiOutGetNumDevs();
@@ -21,14 +22,19 @@ int main (int argc, char** argv)
     if (argc < 2) return 0;
     if (pick < 0) { std::printf ("NOPORT\n"); return 3; }
     std::vector<Ev> evs; char kind[8]; Ev e {};
-    while (std::scanf ("%lu %7s %d %d", &e.ms, kind, &e.note, &e.vel) == 4) { e.on = std::strcmp (kind, "on") == 0; evs.push_back (e); }
+    while (std::scanf ("%lu %7s %d %d", &e.ms, kind, &e.note, &e.vel) == 4)
+    {
+        e.kind = std::strcmp (kind, "on") == 0 ? 1 : (std::strcmp (kind, "cc") == 0 ? 2 : 0);
+        evs.push_back (e);
+    }
     HMIDIOUT h {}; if (midiOutOpen (&h, (UINT) pick, 0, 0, CALLBACK_NULL) != MMSYSERR_NOERROR) { std::printf ("OPENFAIL\n"); return 4; }
     timeBeginPeriod (1);
     const DWORD t0 = timeGetTime();
     for (const auto& ev : evs)
     {
         while (timeGetTime() - t0 < ev.ms) Sleep (1);
-        const DWORD msg = (ev.on ? 0x90u : 0x80u) | ((DWORD) ev.note << 8) | ((DWORD) (ev.on ? ev.vel : 0) << 16);
+        const DWORD status = ev.kind == 2 ? 0xB0u : (ev.kind == 1 ? 0x90u : 0x80u);
+        const DWORD msg = status | ((DWORD) ev.note << 8) | ((DWORD) (ev.kind == 0 ? 0 : ev.vel) << 16);
         midiOutShortMsg (h, msg);
     }
     timeEndPeriod (1);

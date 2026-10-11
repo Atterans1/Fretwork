@@ -1,5 +1,7 @@
 #include "Params.h"
 
+#include <cmath>
+
 namespace fw
 {
 namespace
@@ -18,6 +20,10 @@ namespace
         {
             const float magnitude = v < 0.f ? -v : v;
             const int decimals = magnitude >= 100.f ? 0 : (magnitude >= 10.f ? 1 : 2);
+
+            // Values that round to zero print as "0.00", not "-0.00".
+            if (magnitude < 0.5f * std::pow (10.f, (float) -decimals))
+                v = 0.f;
 
             juce::String s (v, decimals);
             if (unitString.isNotEmpty())

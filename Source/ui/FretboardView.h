@@ -9,8 +9,8 @@
 namespace fw::ui
 {
 
-/** Read-only 6-string fret diagram. Sounding frets come straight from the
-    audio thread's UiSnapshot; -1 on a string means it is idle. */
+/** Read-only 6-string fret diagram in a titled LCD well. Sounding frets come
+    straight from the audio thread's UiSnapshot; -1 on a string means it is idle. */
 class FretboardView final : public juce::Component
 {
 public:

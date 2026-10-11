@@ -23,8 +23,6 @@ juce::Image AssetCache::decode (const char* name, int size)
 
 AssetCache::AssetCache()
 {
-    knobChrome_   = decode (BinaryData::knobchrome_png,        BinaryData::knobchrome_pngSize);
-    knobDark_     = decode (BinaryData::knobdark_png,          BinaryData::knobdark_pngSize);
     dreadnought_  = decode (BinaryData::guitardreadnought_png, BinaryData::guitardreadnought_pngSize);
     semiHollow_   = decode (BinaryData::guitarsemihollow_png,  BinaryData::guitarsemihollow_pngSize);
     nylon_        = decode (BinaryData::guitarnylon_png,       BinaryData::guitarnylon_pngSize);

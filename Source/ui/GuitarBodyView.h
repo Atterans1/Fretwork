@@ -9,7 +9,8 @@
 namespace fw::ui
 {
 
-/** Body artwork for the selected guitar, drawn in the strip under region A.
+/** Body artwork for the selected guitar, drawn in an LCD display window in the
+    strip under region A.
 
     Only the bodies we actually have artwork for get a picture. Classical Nylon
     and Solid Electric have none, so rather than leave the panel blank - which

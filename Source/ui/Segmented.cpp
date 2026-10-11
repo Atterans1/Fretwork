@@ -1,5 +1,7 @@
 #include "Segmented.h"
 
+#include "WavesStyle.h"
+
 namespace fw::ui
 {
 
@@ -11,6 +13,23 @@ Segmented::Segmented()
 }
 
 Segmented::~Segmented() = default;
+
+// Waves Tune key-row button ("A B C D E F G"): black face, white semibold text,
+// violet when selected. Faces and every state come from FretLookAndFeel's
+// drawButtonBackground / drawButtonText (waves::buttonFace).
+void Segmented::styleSegment (FretButton& seg)
+{
+    seg.setFretFont (Palette::fontSemi (11.0f));
+    seg.setColour (juce::TextButton::buttonColourId,   Palette::blackKey);
+    seg.setColour (juce::TextButton::buttonOnColourId, Palette::accent);
+    seg.setColour (juce::TextButton::textColourOffId,  Palette::text);
+    seg.setColour (juce::TextButton::textColourOnId,   juce::Colours::white);
+}
+
+juce::Rectangle<int> Segmented::trayBounds() const
+{
+    return getLocalBounds().withTrimmedTop (kCaptionH);
+}
 
 void Segmented::setCaption (const juce::String& text)
 {
@@ -47,11 +66,7 @@ void Segmented::addChoices (juce::AudioProcessorValueTreeState& state, const cha
         auto* seg = segments[(std::size_t) i].get();
         seg->setButtonText (p->choices[i].toUpperCase());
         seg->setClickingTogglesState (false);
-        seg->setFretFont (Palette::font (11.0f));
-        seg->setColour (juce::TextButton::buttonColourId,      juce::Colours::transparentBlack);
-        seg->setColour (juce::TextButton::textColourOffId,     Palette::dim);
-        seg->setColour (juce::TextButton::buttonOnColourId,    Palette::accent);
-        seg->setColour (juce::TextButton::textColourOnId,      Palette::background);
+        styleSegment (*seg);
         seg->onClick = [this, i]
         {
             if (proxy.getSelectedId() != i + 1)
@@ -82,11 +97,7 @@ void Segmented::addFlag (juce::AudioProcessorValueTreeState& state, const char* 
     auto* seg = segments[0].get();
     seg->setButtonText (juce::String (paramId).toUpperCase());
     seg->setClickingTogglesState (true);
-    seg->setFretFont (Palette::font (11.0f));
-    seg->setColour (juce::TextButton::buttonColourId,   juce::Colours::transparentBlack);
-    seg->setColour (juce::TextButton::textColourOffId,  Palette::dim);
-    seg->setColour (juce::TextButton::buttonOnColourId, Palette::accent);
-    seg->setColour (juce::TextButton::textColourOnId,   Palette::background);
+    styleSegment (*seg);
 
     flagAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (state, paramId, *seg);
     seg->onClick = [this] { syncButtons(); };
@@ -131,21 +142,18 @@ void Segmented::syncButtons()
 
 void Segmented::paint (juce::Graphics& g)
 {
-    auto b = getLocalBounds().toFloat();
+    const auto b = getLocalBounds().toFloat();
+    const auto captionColour = isEnabled() ? Palette::caption : Palette::dim.withAlpha (0.6f);
 
-    g.setColour (Palette::dim);
-    g.setFont (Palette::font (11.0f));
-    g.drawText (caption, b.removeFromTop (18.0f).reduced (0, 3),
-                juce::Justification::centredLeft, true);
+    waves::caption (g, b.withHeight ((float) kCaptionH).withTrimmedLeft (2.0f),
+                    caption, juce::Justification::centredLeft, captionColour);
 
     if (segments.empty())
         return;
 
-    const auto pill = b.withTrimmedTop (18.0f);
-    g.setColour (Palette::panel);
-    g.fillRoundedRectangle (pill, 6.0f);
-    g.setColour (Palette::line);
-    g.drawRoundedRectangle (pill.reduced (0.5f), 6.0f, 1.0f);
+    // Black recessed tray; the segments sit inside it 1 px apart so the group
+    // reads as one joined row of buttons.
+    waves::lcd (g, trayBounds().toFloat(), 3.0f);
 }
 
 void Segmented::resized()
@@ -155,18 +163,21 @@ void Segmented::resized()
     if (segments.empty())
         return;
 
-    auto b = getLocalBounds();
-    b.removeFromTop (18);
+    const auto row = trayBounds().reduced (kTrayInset);
 
     const int n = (int) segments.size();
-    const auto w = (float) b.getWidth() / (float) n;
+    const auto w = (float) (row.getWidth() - kSegmentGap * (n - 1)) / (float) n;
 
     for (int i = 0; i < n; ++i)
-        segments[(std::size_t) i]->setBounds (
-            b.getX() + juce::roundToInt ((float) i * w),
-            b.getY(),
-            juce::roundToInt ((float) (i + 1) * w) - juce::roundToInt ((float) i * w),
-            b.getHeight());
+    {
+        const int x0 = juce::roundToInt ((float) i * w);
+        const int x1 = juce::roundToInt ((float) (i + 1) * w);
+
+        segments[(std::size_t) i]->setBounds (row.getX() + x0 + i * kSegmentGap,
+                                              row.getY(),
+                                              x1 - x0,
+                                              row.getHeight());
+    }
 }
 
 } // namespace fw::ui

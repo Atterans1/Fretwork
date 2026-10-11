@@ -1,14 +1,17 @@
 #include "PluginEditor.h"
-#include "ui/AssetCache.h"
+#include "ui/WavesStyle.h"
 
 namespace fw::ui
 {
 
 //==============================================================================
+/** A choice parameter as a Waves Tune readout: small-caps caption, the value
+    in an inset LCD box, and -/+ steppers underneath. */
 class ChoiceCell final : public juce::Component
 {
 public:
     ChoiceCell (juce::AudioProcessorValueTreeState& state, const char* paramId, const char* caption)
+        : captionText (caption)
     {
         auto* p = dynamic_cast<juce::AudioParameterChoice*> (state.getParameter (paramId));
 
@@ -25,31 +28,17 @@ public:
         proxy.setInterceptsMouseClicks (false, false);
         addChildComponent (proxy);
 
-        captionLabel.setText (juce::String (caption).toUpperCase(), juce::dontSendNotification);
-        captionLabel.setJustificationType (juce::Justification::centred);
-        captionLabel.setFont (Palette::font (11.0f));
-        captionLabel.setColour (juce::Label::textColourId, Palette::dim);
-        captionLabel.setInterceptsMouseClicks (false, false);
-        addAndMakeVisible (captionLabel);
-
         up.setButtonText ("+");
         down.setButtonText ("-");
 
         for (auto* b : { &up, &down })
         {
-            b->setFretFont (Palette::font (15.0f));
-            b->setColour (juce::TextButton::buttonColourId, Palette::panelHi);
+            b->setFretFont (Palette::fontNum (15.0f));
             addAndMakeVisible (b);
         }
 
         up.onClick = [this] { step (1); };
         down.onClick = [this] { step (-1); };
-
-        valueLabel.setJustificationType (juce::Justification::centred);
-        valueLabel.setFont (Palette::font (13.0f));
-        valueLabel.setColour (juce::Label::textColourId, Palette::text);
-        valueLabel.setInterceptsMouseClicks (false, false);
-        addAndMakeVisible (valueLabel);
 
         refresh();
     }
@@ -60,33 +49,39 @@ public:
             return;
 
         const int index = (int) param->getIndex();
-        valueLabel.setText (param->choices[juce::jlimit (0, param->choices.size() - 1, index)],
-                            juce::dontSendNotification);
+        const auto text = param->choices[juce::jlimit (0, param->choices.size() - 1, index)];
+
+        if (text != valueText)
+        {
+            valueText = text;
+            repaint (valueArea);
+        }
     }
 
     void resized() override
     {
         auto b = getLocalBounds();
-        captionLabel.setBounds (b.removeFromTop (15));
+        captionArea = b.removeFromTop (16);
 
-        // Both steppers share one bottom strip. Calling removeFromBottom twice
-        // stacked them 20px apart with the "-" above the "+", which is upside
-        // down for a stepper, so the strip is taken once and split.
-        const int arrowW = 22;
-        const auto strip = b.removeFromBottom (20);
+        // Waves Tune's Reference control: "-" and "+" flank the value in one
+        // row ("- 440.00 +"). Stacking them under the value left the two cells'
+        // steppers reading as one ambiguous "- + - +" row.
+        const int arrowW = 18, gap = 2;
+        auto row = b.withSizeKeepingCentre (b.getWidth(), juce::jmin (26, b.getHeight()));
 
-        // withX() only moves the rectangle - without withWidth() the buttons
-        // stayed cell-width and overlapped, which pushed the "-" glyph centre
-        // past the cell edge where it was clipped away entirely.
-        up.setBounds   (strip.withWidth (arrowW).withX (0));
-        down.setBounds (strip.withWidth (arrowW).withX (b.getWidth() - arrowW));
-        // The steppers live in their own bottom strip, so the label gets the
-        // full middle width; trimming arrowW here left 32px and ellipsised
-        // values like "1/16" and "12/8".
-        valueLabel.setBounds (b);
+        down.setBounds (row.removeFromLeft (arrowW));
+        up.setBounds   (row.removeFromRight (arrowW));
+        valueArea = row.reduced (gap, 0);
     }
 
-    void paint (juce::Graphics&) override {}
+    void paint (juce::Graphics& g) override
+    {
+        const bool enabled = isEnabled();
+
+        waves::caption (g, captionArea.toFloat(), captionText, juce::Justification::centred,
+                        enabled ? Palette::caption : Palette::dim.withAlpha (0.6f));
+        waves::valueBox (g, valueArea.toFloat(), valueText, 14.0f, enabled);
+    }
 
 private:
     void step (int delta)
@@ -100,11 +95,14 @@ private:
     juce::AudioParameterChoice* param = nullptr;
     juce::ComboBox proxy;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> attachment;
-    juce::Label captionLabel, valueLabel;
+    juce::String captionText, valueText;
+    juce::Rectangle<int> captionArea, valueArea;
     FretButton up, down;
 };
 
 //==============================================================================
+/** One of the eight sequence-slot selectors: a black Waves Tune push button
+    with a Bahnschrift numeral, lit violet when it is the selected slot. */
 class SlotButton final : public FretButton
 {
 public:
@@ -116,18 +114,19 @@ public:
         onClick = [this] { slotProxy.setValue ((double) slotNumber); };
     }
 
-    void paint (juce::Graphics& g) override
+    void paintButton (juce::Graphics& g, bool, bool) override
     {
-        const auto r = getLocalBounds().toFloat().reduced (0.5f);
+        const auto r = getLocalBounds().toFloat().reduced (1.5f);
         const bool on = (int) param.get() == slotNumber;
+        const bool enabled = isEnabled();
 
-        g.setColour (on ? Palette::accent : Palette::panelHi);
-        g.fillEllipse (r);
-        g.setColour (Palette::line);
-        g.drawEllipse (r, 1.0f);
-        g.setColour (on ? Palette::background : Palette::dim);
-        g.setFont (Palette::font (11.0f, juce::Font::bold));
-        g.drawText (getButtonText(), r, juce::Justification::centred, false);
+        waves::buttonFace (g, r, on, isOver(), isDown(), enabled, 3.0f);
+
+        g.setColour (on ? Palette::background
+                        : (enabled ? Palette::text : Palette::dim.withAlpha (0.6f)));
+        g.setFont (Palette::fontNum (14.0f));
+        g.drawText (getButtonText(), r.translated (0.0f, isDown() ? 1.0f : 0.0f),
+                    juce::Justification::centred, false);
     }
 
 private:
@@ -202,8 +201,10 @@ PluginEditor::PluginEditor (FretworkAudioProcessor& p)
     }
 
     slotLabel.setText ("SEQ #1", juce::dontSendNotification);
-    slotLabel.setFont (fw::ui::Palette::font (13.0f));
-    slotLabel.setColour (juce::Label::textColourId, fw::ui::Palette::accent);
+    // Glowing LCD text; paint() puts the black LCD strip behind it.
+    slotLabel.setFont (fw::ui::Palette::fontNum (13.0f));
+    slotLabel.setColour (juce::Label::textColourId, fw::ui::Palette::lcdText);
+    slotLabel.setJustificationType (juce::Justification::centredLeft);
     slotLabel.setInterceptsMouseClicks (false, false);
     addAndMakeVisible (slotLabel);
 
@@ -255,30 +256,18 @@ PluginEditor::~PluginEditor()
 //==============================================================================
 void PluginEditor::paint (juce::Graphics& g)
 {
-    g.fillAll (fw::ui::Palette::background);
+    namespace waves = fw::ui::waves;
 
-    // Brushed-metal wash under everything. Deliberately low contrast: it takes
-    // the edge off the flat fill without competing with the panels on top.
-    if (const auto& tex = fw::ui::AssetCache::get().panelTexture(); tex.isValid())
-    {
-        g.setOpacity (0.45f);
-        const auto tw = tex.getWidth(), th = tex.getHeight();
-        for (int y = 0; y < getHeight(); y += th)
-            for (int x = 0; x < getWidth(); x += tw)
-                g.drawImage (tex, x, y, tw, th, 0, 0, tw, th);
-        g.setOpacity (1.0f);
-    }
+    // Bevelled charcoal chassis behind everything, then the Waves Tune group
+    // frames for the regions the editor lays out itself. The fretboard, guitar
+    // view, tabs, sequencer, transport and keyboard draw their own wells.
+    waves::chassis (g, getLocalBounds().toFloat());
 
-    const auto panel = [&g] (juce::Rectangle<float> r)
-    {
-        g.setColour (fw::ui::Palette::panel);
-        g.fillRoundedRectangle (r, 6.0f);
-        g.setColour (fw::ui::Palette::line);
-        g.drawRoundedRectangle (r.reduced (0.5f), 6.0f, 1.0f);
-    };
+    waves::group (g, { 12.0f, 12.0f, 340.0f, 250.0f }, "Strummer");      // A
+    waves::group (g, { 706.0f, 258.0f, 402.0f, 114.0f }, "Sequence");    // E
 
-    panel ({ 12.0f, 12.0f, 340.0f, 250.0f });      // A
-    panel ({ 706.0f, 258.0f, 402.0f, 114.0f });    // E
+    // The "SEQ #n" readout sits on its own LCD strip.
+    waves::lcd (g, slotLabel.getBounds().toFloat(), 2.0f);
 }
 
 //==============================================================================
@@ -294,23 +283,26 @@ void PluginEditor::resized()
     // 50 white keys at 22px = 1100; 1096 clipped the top C by 4px.
     keyboard.setBounds (12, 508, 1100, 180);
 
-    // A: six 113 x 125 cells, 2 rows of 3
+    // A: six 113 x 114 cells, 2 rows of 3. They start 16px below the region
+    // top so the "STRUMMER" caption on the group's top rule stays clear of
+    // the middle knob's caption, and end at 256, inside the frame's bottom rule.
     for (int i = 0; i < 6; ++i)
-        strummerKnobs[(std::size_t) i]->setBounds (12 + 113 * (i % 3), 12 + 125 * (i / 3), 113, 125);
+        strummerKnobs[(std::size_t) i]->setBounds (12 + 113 * (i % 3), 28 + 114 * (i / 3), 113, 114);
 
-    // E
-    slotLabel.setBounds (714, 262, 90, 16);
+    // E: everything starts below the "SEQUENCE" caption on the top rule.
+    slotLabel.setBounds (716, 278, 132, 18);
     slotLabel.setText ("SEQ #" + juce::String (slotParam != nullptr ? (int) slotParam->get() : 1),
                        juce::dontSendNotification);
 
     for (int i = 0; i < 8; ++i)
-        slotButtons[(std::size_t) i]->setBounds (714 + 38 * (i % 4), 282 + 32 * (i / 4), 30, 30);
+        slotButtons[(std::size_t) i]->setBounds (716 + 34 * (i % 4), 300 + 34 * (i / 4), 30, 30);
 
     // Region E spans x 706..1108. These three need ~6px gaps between them and
-    // a right margin: at 76 wide they end at 936 / 1018 / 1100.
-    humanizeCell->setBounds (860, 262, 76, 100);
-    choiceCells[0]->setBounds (942, 262, 76, 100);
-    choiceCells[1]->setBounds (1024, 262, 76, 100);
+    // a right margin: at 76 wide they end at 934 / 1016 / 1098, and at 92
+    // tall they end at 368, inside the frame's bottom rule at 372.
+    humanizeCell->setBounds (858, 276, 76, 92);
+    choiceCells[0]->setBounds (940, 276, 76, 92);
+    choiceCells[1]->setBounds (1022, 276, 76, 92);
 
     layoutArticulationBar();
 }

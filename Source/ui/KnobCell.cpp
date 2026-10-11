@@ -1,5 +1,7 @@
 #include "KnobCell.h"
 
+#include "WavesStyle.h"
+
 namespace fw::ui
 {
 
@@ -18,18 +20,6 @@ KnobCell::KnobCell()
     slider.setColour (juce::Slider::rotarySliderOutlineColourId, Palette::line);
     slider.setColour (juce::Slider::rotarySliderFillColourId,    Palette::accent);
     addAndMakeVisible (slider);
-
-    captionLabel.setJustificationType (juce::Justification::centred);
-    captionLabel.setFont (Palette::font (11.0f));
-    captionLabel.setColour (juce::Label::textColourId, Palette::dim);
-    captionLabel.setInterceptsMouseClicks (false, false);
-    addAndMakeVisible (captionLabel);
-
-    valueLabel.setJustificationType (juce::Justification::centred);
-    valueLabel.setFont (Palette::font (13.0f));
-    valueLabel.setColour (juce::Label::textColourId, Palette::text);
-    valueLabel.setInterceptsMouseClicks (false, false);
-    addAndMakeVisible (valueLabel);
 }
 
 KnobCell::~KnobCell()
@@ -54,17 +44,20 @@ void KnobCell::attach (juce::AudioProcessorValueTreeState& apvts,
     attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, id, slider);
     slider.onValueChange = [this] { refreshValueText(); };
 
-    captionLabel.setText (caption.toUpperCase(), juce::dontSendNotification);
-    captionLabel.setFont (Palette::font (micro ? 9.0f : 11.0f));
-    valueLabel.setVisible (! micro);
+    captionText = caption;
 
     refreshValueText();
     resized();
+    repaint();
 }
 
 void KnobCell::parameterChanged (const juce::String& parameterID, float)
 {
-    if (parameterID == paramId)
+    // Host automation can call this on the audio thread, where writing
+    // valueText and repainting would race paint(). The SliderAttachment already
+    // carries those changes to the slider on the message thread, and its
+    // onValueChange refreshes the text, so only act here on the message thread.
+    if (parameterID == paramId && juce::MessageManager::existsAndIsCurrentThread())
         refreshValueText();
 }
 
@@ -75,7 +68,26 @@ void KnobCell::refreshValueText()
 
     // JUCE 8 removed RangedAudioParameter::get(); getCurrentValueAsText() is the
     // supported accessor for the parameter's formatted value.
-    valueLabel.setText (param->getCurrentValueAsText(), juce::dontSendNotification);
+    const auto text = param->getCurrentValueAsText();
+
+    if (text != valueText)
+    {
+        valueText = text;
+        if (! micro)
+            repaint (valueArea);
+    }
+}
+
+void KnobCell::paint (juce::Graphics& g)
+{
+    const bool enabled = isEnabled();
+    const auto captionColour = enabled ? Palette::caption : Palette::dim.withAlpha (0.6f);
+
+    waves::caption (g, captionArea.toFloat(), captionText, juce::Justification::centred, captionColour);
+
+    if (! micro && ! valueArea.isEmpty())
+        waves::valueBox (g, valueArea.toFloat(), valueText,
+                         (float) valueArea.getHeight() * 0.72f, enabled);
 }
 
 void KnobCell::resized()
@@ -84,15 +96,27 @@ void KnobCell::resized()
 
     if (micro)
     {
-        valueLabel.setVisible (false);
-        captionLabel.setBounds (b.removeFromTop (11));
-        slider.setBounds (b.reduced (3, 1));
+        // Compact strip cell (string fine-tunes): caption only, knob fills the rest.
+        captionArea = b.removeFromTop (12);
+        valueArea = {};
+        slider.setBounds (b.reduced (3, 0));
         return;
     }
 
-    captionLabel.setBounds (b.removeFromTop (15));
-    valueLabel.setBounds (b.removeFromBottom (16));
-    slider.setBounds (b.reduced (6, 0));
+    // Large cells (strummer, humanize) get a taller caption and readout; the
+    // 56 x 64 setup-tab cells use the compact proportions.
+    const bool large = getHeight() >= 90;
+    const int captionH = large ? 16 : 13;
+    const int valueH   = large ? 19 : 15;
+
+    captionArea = b.removeFromTop (captionH);
+
+    auto valueRow = b.removeFromBottom (valueH);
+    const int boxW = juce::jmin (valueRow.getWidth() - 2, large ? 76 : 52);
+    valueArea = valueRow.withSizeKeepingCentre (boxW, valueH);
+
+    b.removeFromBottom (large ? 3 : 1);
+    slider.setBounds (b.reduced (large ? 6 : 2, 0));
 }
 
 } // namespace fw::ui

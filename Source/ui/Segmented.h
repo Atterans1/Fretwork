@@ -10,7 +10,8 @@
 namespace fw::ui
 {
 
-/** Joined rounded pill of segment buttons under an 11px caption.
+/** Joined Waves Tune button row (black buttons 1 px apart in a recessed tray,
+    the selected one violet) under a small-caps caption.
     Option groups are written through a hidden ComboBox + ComboBoxAttachment
     bound to the choice parameter; two-state groups use a ButtonAttachment. */
 class Segmented final : public juce::Component
@@ -32,15 +33,21 @@ public:
 
     void paint (juce::Graphics&) override;
     void resized() override;
+    void enablementChanged() override { repaint(); }
 
 private:
-    // Held by pointer: FretButton is non-copyable, so it cannot live by value
-    // in a std::vector that gets resized.
     void syncButtons();
+
+    static void styleSegment (FretButton& seg);
+    juce::Rectangle<int> trayBounds() const;
+
+    static constexpr int kCaptionH = 18, kTrayInset = 2, kSegmentGap = 1;
 
     juce::String caption;
     juce::ComboBox proxy;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> choiceAttachment;
+    // Held by pointer: FretButton is non-copyable, so it cannot live by value
+    // in a std::vector that gets resized.
     std::vector<std::unique_ptr<FretButton>> segments;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> flagAttachment;
     juce::AudioParameterChoice* choiceParam = nullptr;

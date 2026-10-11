@@ -30,8 +30,6 @@ juce_add_binary_data(FretworkData
         Assets/guitar-semi-hollow.png
         Assets/guitar-nylon.png
         Assets/guitar-solid.png
-        Assets/knob-chrome.png
-        Assets/knob-dark.png
         Assets/panel-texture.png)
 
 # The DSP and performance cores are slice-developed, so glob them with

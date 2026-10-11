@@ -1,16 +1,19 @@
 #include "TransportBar.h"
 
 #include "Params.h"
+#include "WavesStyle.h"
 
 namespace fw::ui
 {
 
 //==============================================================================
-//==============================================================================
+// Square Waves Tune button carrying a vector glyph instead of text. The face
+// is waves::buttonFace (default / hover / down / on = violet / disabled); the
+// glyph ink follows the same states as the LookAndFeel's button text.
 class TransportBar::IconButton final : public FretButton
 {
 public:
-    using Glyph = std::function<void (juce::Graphics&, const juce::Rectangle<float>&)>;
+    using Glyph = std::function<void (juce::Graphics&, const juce::Rectangle<float>&, juce::Colour)>;
 
     IconButton (const juce::String& name, Glyph g) : glyph (std::move (g))
     {
@@ -19,17 +22,21 @@ public:
         setFretFont (Palette::font (11.0f));
     }
 
-    void paint (juce::Graphics& g) override
+    void paintButton (juce::Graphics& g, bool over, bool down) override
     {
         const auto r = getLocalBounds().toFloat().reduced (0.5f);
+        const bool on = getToggleState();
+        const bool enabled = isEnabled();
 
-        g.setColour (getToggleState() ? Palette::accent : Palette::panelHi);
-        g.fillRoundedRectangle (r, 4.0f);
-        g.setColour (Palette::line);
-        g.drawRoundedRectangle (r, 4.0f, 1.0f);
+        waves::buttonFace (g, r, on, over, down, enabled);
+
+        auto ink = on ? juce::Colours::white
+                      : Palette::text.withMultipliedAlpha (over ? 1.0f : 0.82f);
+        if (! enabled)
+            ink = ink.withMultipliedAlpha (0.4f);
 
         if (glyph != nullptr)
-            glyph (g, r.reduced (6.0f));
+            glyph (g, r.reduced (6.0f), ink);
     }
 
 private:
@@ -37,6 +44,31 @@ private:
 };
 
 //==============================================================================
+// Inset LCD value box for the transpose stepper (click +1, right-click -1).
+class TransportBar::TransposeField final : public RightClickButton
+{
+public:
+    using RightClickButton::RightClickButton;
+
+    void paintButton (juce::Graphics& g, bool over, bool down) override
+    {
+        const auto r = getLocalBounds().toFloat().reduced (0.5f);
+        const bool enabled = isEnabled();
+
+        waves::valueBox (g, r, getButtonText(), 14.0f, enabled,
+                         down ? Palette::lcdText.brighter (0.35f) : Palette::lcdText);
+
+        if (enabled && (over || down))
+        {
+            g.setColour (Palette::accent.withAlpha (down ? 0.9f : 0.45f));
+            g.drawRoundedRectangle (r.reduced (0.5f), 3.0f, 1.0f);
+        }
+    }
+};
+
+//==============================================================================
+// Horizontal-drag BPM readout drawn as an inset LCD value box; the accent
+// outline marks hover (faint) and an active drag (full).
 class TransportBar::BpmField final : public juce::Component
 {
 public:
@@ -48,22 +80,26 @@ public:
     void paint (juce::Graphics& g) override
     {
         const auto r = getLocalBounds().toFloat().reduced (0.5f);
-        g.setColour (Palette::panelHi);
-        g.fillRoundedRectangle (r, 4.0f);
-        g.setColour (Palette::line);
-        g.drawRoundedRectangle (r, 4.0f, 1.0f);
+        const bool enabled = isEnabled();
 
-        g.setFont (Palette::font (13.0f));
-        g.setColour (Palette::text);
-        g.drawText (juce::String (param.get(), 1), r.reduced (4.0f, 0.0f),
-                    juce::Justification::centred, false);
+        waves::valueBox (g, r, juce::String (param.get(), 1), 14.0f, enabled, Palette::lcdText);
+
+        if (enabled && (dragging || isMouseOver()))
+        {
+            g.setColour (Palette::accent.withAlpha (dragging ? 0.9f : 0.45f));
+            g.drawRoundedRectangle (r.reduced (0.5f), 3.0f, 1.0f);
+        }
     }
+
+    void mouseEnter (const juce::MouseEvent&) override { repaint(); }
+    void mouseExit (const juce::MouseEvent&) override { repaint(); }
 
     void mouseDown (const juce::MouseEvent& e) override
     {
         anchor = param.get();
         anchorX = e.position.x;
         dragging = true;
+        repaint();
     }
 
     void mouseDrag (const juce::MouseEvent& e) override
@@ -82,7 +118,11 @@ public:
         }
     }
 
-    void mouseUp (const juce::MouseEvent&) override { dragging = false; }
+    void mouseUp (const juce::MouseEvent&) override
+    {
+        dragging = false;
+        repaint();
+    }
 
     void mouseDoubleClick (const juce::MouseEvent&) override
     {
@@ -131,7 +171,12 @@ private:
 
 namespace
 {
-    void drawPowerGlyph (juce::Graphics& g, const juce::Rectangle<float>& r)
+    juce::PathStrokeType roundStroke (float w)
+    {
+        return juce::PathStrokeType (w, juce::PathStrokeType::curved, juce::PathStrokeType::rounded);
+    }
+
+    void drawPowerGlyph (juce::Graphics& g, const juce::Rectangle<float>& r, juce::Colour ink)
     {
         const auto c = r.getCentre();
         const auto rad = juce::jmin (r.getWidth(), r.getHeight()) * 0.5f;
@@ -144,30 +189,34 @@ namespace
         stem.startNewSubPath (c.x, c.y - rad - 2.0f);
         stem.lineTo (juce::Point<float> (c.x, c.y - rad * 0.15f));
 
-        g.setColour (Palette::background);
-        g.strokePath (ring, juce::PathStrokeType (1.7f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-        g.strokePath (stem, juce::PathStrokeType (1.7f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        g.setColour (ink);
+        g.strokePath (ring, roundStroke (1.7f));
+        g.strokePath (stem, roundStroke (1.7f));
     }
 
-    void drawMetronomeGlyph (juce::Graphics& g, const juce::Rectangle<float>& r)
+    // Pyramid metronome: trapezoid body with the pendulum arm leaning right.
+    void drawMetronomeGlyph (juce::Graphics& g, const juce::Rectangle<float>& r, juce::Colour ink)
     {
-        const auto cx = r.getCentreX();
-        const auto bottom = r.getBottom() - 4.0f;
-        const auto top = r.getY() + 5.0f;
-        const auto rad = (bottom - top) * 0.6f;
+        const float h = juce::jmin (r.getWidth(), r.getHeight());
+        const auto box = juce::Rectangle<float> (h * 0.8f, h).withCentre (r.getCentre());
+        const float cx = box.getCentreX();
 
-        juce::Path swing;
-        swing.addCentredArc (cx, bottom, rad, rad, 0.0f,
-                             juce::degreesToRadians (252.0f), juce::degreesToRadians (288.0f), true);
+        juce::Path body;
+        body.startNewSubPath (box.getX(), box.getBottom());
+        body.lineTo (box.getRight(), box.getBottom());
+        body.lineTo (cx + h * 0.14f, box.getY());
+        body.lineTo (cx - h * 0.14f, box.getY());
+        body.closeSubPath();
 
+        const juce::Point<float> pivot (cx, box.getBottom() - h * 0.24f);
         juce::Path arm;
-        arm.startNewSubPath (cx, bottom);
-        arm.lineTo (juce::Point<float> (cx + rad * 0.30f, bottom - rad * 0.86f));
+        arm.startNewSubPath (pivot);
+        arm.lineTo (juce::Point<float> (cx + h * 0.42f, box.getY() + h * 0.02f));
 
-        g.setColour (Palette::background);
-        g.strokePath (swing, juce::PathStrokeType (1.4f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-        g.strokePath (arm, juce::PathStrokeType (1.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-        g.fillEllipse (cx - 1.8f, bottom - 1.8f, 3.6f, 3.6f);
+        g.setColour (ink);
+        g.strokePath (body, roundStroke (1.3f));
+        g.strokePath (arm, roundStroke (1.5f));
+        g.fillEllipse (juce::Rectangle<float> (3.4f, 3.4f).withCentre (pivot));
     }
 }
 
@@ -212,7 +261,7 @@ TransportBar::TransportBar (FretworkAudioProcessor& p, juce::AudioProcessorValue
         powerAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (state, fw::id::power, *powerButton);
 
     // ---- transpose stepper
-    transposeButton = new RightClickButton ("+0");
+    transposeButton = new TransposeField ("+0");
     transposeButton->setFretFont (Palette::font (13.0f));
     addAndMakeVisible (transposeButton);
 
@@ -267,21 +316,34 @@ TransportBar::TransportBar (FretworkAudioProcessor& p, juce::AudioProcessorValue
     pasteButton->onClick = [this] { processor.getSeqStore().pasteFromClipboard (currentSlot()); };
 
     // ---- strum triggers
-    // Down/up triangles are written as escaped UTF-8 so the source stays pure ASCII.
+    // Plain ASCII arrows keep the source pure ASCII; the LookAndFeel paints
+    // them as black Waves Tune buttons.
     strumDownButton = new StrumButton ("STRUM v", processor.getKeyboardState(), 28);
     strumUpButton = new StrumButton ("STRUM ^", processor.getKeyboardState(), 29);
 
     for (auto* b : { strumDownButton, strumUpButton })
     {
         b->setFretFont (Palette::font (11.0f));
-        b->setColour (juce::TextButton::buttonColourId, Palette::panelHi);
         addAndMakeVisible (b);
     }
 
     tick();
 }
 
-TransportBar::~TransportBar() = default;
+TransportBar::~TransportBar()
+{
+    // The child buttons are created with new and owned here. The button
+    // attachments detach from their buttons when destroyed, so drop them first.
+    powerAttachment.reset();
+    playAttachment.reset();
+    metroAttachment.reset();
+
+    for (juce::Component* c : std::initializer_list<juce::Component*> {
+             powerButton, transposeButton, slotPrevButton, playButton, slotNextButton,
+             metroButton, bpmField, clearButton, copyButton, pasteButton,
+             strumDownButton, strumUpButton })
+        delete c;
+}
 
 void TransportBar::nudgeTranspose (int delta)
 {
@@ -327,47 +389,73 @@ void TransportBar::tick()
 void TransportBar::paint (juce::Graphics& g)
 {
     const auto full = getLocalBounds().toFloat();
-    g.setColour (Palette::panel);
-    g.fillRoundedRectangle (full, 6.0f);
+
+    // Waves Tune bottom strip: an untitled group frame filling the bar
+    // (group() starts its rule 7 px below the rectangle's top, hence the lift).
+    waves::group (g, full.withTop (full.getY() - 7.0f));
+
+    waves::caption (g, transposeCaption, "Transpose", juce::Justification::centredRight);
+    waves::caption (g, bpmCaption, "BPM", juce::Justification::centredLeft);
+
     g.setColour (Palette::line);
-    g.drawRoundedRectangle (full.reduced (0.5f), 6.0f, 1.0f);
+    for (const float x : dividers)
+        if (x > 0.0f)
+            g.fillRect (juce::Rectangle<float> (x, full.getY() + 9.0f, 1.0f, full.getHeight() - 18.0f));
 }
 
 void TransportBar::resized()
 {
-    constexpr int h = 28, gap = 8;
+    constexpr int h = 26, gap = 4, clusterGap = 14;
     const int y = (getHeight() - h) / 2;
     const int strumW = 84;
 
-    int x = 8;
+    int x = 10;
 
-    const auto place = [this, &x, y, h, gap] (juce::Component* c, int w)
+    const auto place = [&x, y, h] (juce::Component* c, int w, int after)
     {
-        if (c == nullptr)
-            return;
+        if (c != nullptr)
+            c->setBounds (x, y, w, h);
 
-        c->setBounds (x, y, w, h);
-        x += w + gap;
+        x += w + after;
     };
 
-    place (powerButton, 36);
-    place (transposeButton, 58);
-    place (slotPrevButton, 30);
-    place (playButton, 62);
-    place (slotNextButton, 30);
-    place (metroButton, 36);
-    place (bpmField, 66);
-    place (clearButton, 56);
-    place (copyButton, 52);
-    place (pasteButton, 54);
+    const auto divider = [&x, clusterGap] (float& slot)
+    {
+        slot = (float) x - 0.5f * (float) clusterGap - 0.5f;
+    };
+
+    // power | TRANSPOSE [+0]
+    place (powerButton, 36, 12);
+    transposeCaption = { (float) x, (float) y, 80.0f, (float) h };
+    x += 80 + 6;
+    place (transposeButton, 52, clusterGap);
+    divider (dividers[0]);
+
+    // < PLAY >
+    place (slotPrevButton, 28, gap);
+    place (playButton, 62, gap);
+    place (slotNextButton, 28, clusterGap);
+    divider (dividers[1]);
+
+    // metronome [100.0] BPM
+    place (metroButton, 36, 8);
+    place (bpmField, 66, 6);
+    bpmCaption = { (float) x, (float) y, 30.0f, (float) h };
+    x += 30 + clusterGap;
+    divider (dividers[2]);
+
+    // CLEAR COPY PASTE
+    place (clearButton, 56, gap);
+    place (copyButton, 52, gap);
+    place (pasteButton, 54, gap);
 
     // flexible spacer, then the two strum triggers right-aligned
-    int rx = getWidth() - 8 - strumW;
+    int rx = getWidth() - 10 - strumW;
 
     if (strumUpButton != nullptr)
         strumUpButton->setBounds (rx, y, strumW, h);
 
-    rx -= gap + strumW;
+    rx -= 8 + strumW;
 
     if (strumDownButton != nullptr)
         strumDownButton->setBounds (rx, y, strumW, h);

@@ -1,5 +1,7 @@
 #include "SeqGrid.h"
 
+#include "WavesStyle.h"
+
 #include <cmath>
 
 namespace fw::ui
@@ -96,6 +98,11 @@ void SeqGrid::recomputeLayout()
 void SeqGrid::tick()
 {
     recomputeLayout();
+
+    // Paint-only: refresh when the playhead step or the edited-note highlight
+    // differs from what is on screen.
+    if (processor.getUi().seqStep.load() != paintedStep || dragMode != paintedDrag)
+        repaint();
 }
 
 int SeqGrid::currentSlot() const noexcept
@@ -138,40 +145,52 @@ int SeqGrid::rowAt (float y) const noexcept
 void SeqGrid::paint (juce::Graphics& g)
 {
     const auto full = getLocalBounds().toFloat();
+    const bool enabled = isEnabled();
 
-    g.setColour (Palette::panel);
-    g.fillRoundedRectangle (full, 6.0f);
+    // Disabled: the whole display sits back at 40% (DESIGN.md widget states).
+    if (! enabled)
+        g.beginTransparencyLayer (0.4f);
+
+    // ---- Atlas EQ display: one black LCD well for header, glyph gutter and grid
+    waves::lcd (g, full, 6.0f);
 
     juce::Path clip;
-    clip.addRoundedRectangle (full, 6.0f);
+    clip.addRoundedRectangle (full.reduced (1.0f), 5.0f);
 
     g.saveState();
     g.reduceClipRegion (clip);
 
-    // ---- header: playhead position and slot number
     const auto& store = processor.getSeqStore();
     const int slot = currentSlot();
+    const int step = processor.getUi().seqStep.load();
+    const bool playheadOn = step >= 0 && step < stepsPerBar;
+    paintedStep = step;
+    paintedDrag = dragMode;
 
-    g.setFont (Palette::font (9.0f));
-    g.setColour (Palette::dim);
-    g.drawText ("SEQUENCER", 6.0f, 5.0f, 90.0f, 12.0f, juce::Justification::centredLeft, false);
-    g.setColour (Palette::accent);
+    const float gridX = (float) kIconCol;
+    const float gridY = (float) kGridTop;
+    const float gridW = (float) (stepsPerBar * (cellW + kGap) - kGap);
+    const float gridH = (float) (kNumRows * (rowH + kGap) - kGap);
+
+    // ---- header: section caption and slot number
+    waves::caption (g, { 8.0f, 4.0f, 120.0f, 14.0f }, "Sequencer", juce::Justification::centredLeft);
+
+    g.setFont (Palette::fontNum (11.5f));
+    g.setColour (Palette::lcdText);
     g.drawText ("SLOT " + juce::String (slot + 1),
-                (float) (kIconCol - 8), 5.0f, (float) (getWidth() - kIconCol + 8), 12.0f,
+                (float) (kIconCol - 8), 4.0f, (float) (getWidth() - kIconCol), 14.0f,
                 juce::Justification::centredRight, false);
 
-    // ---- playhead column
-    const int step = processor.getUi().seqStep.load();
+    // ---- unlit LED cells, hairline grid
+    for (int row = 0; row < kNumRows; ++row)
+        for (int c = 0; c < stepsPerBar; ++c)
+        {
+            const bool hovered = enabled && row == hoverRow && c == hoverCol;
+            g.setColour (hovered ? Palette::accent.withAlpha (0.22f) : Palette::unlit.withAlpha (0.32f));
+            g.fillRoundedRectangle (cellRect (row, c).reduced (0.5f), 1.5f);
+        }
 
-    if (step >= 0 && step < stepsPerBar)
-    {
-        const auto col = cellRect (0, step);
-        g.setColour (Palette::accent.withAlpha (0.25f));
-        g.fillRect (col.getX(), (float) kGridTop, (float) cellW,
-                    (float) (kGridTop + kNumRows * (rowH + kGap)));
-    }
-
-    // ---- beat and bar lines
+    // beat lines in the hairline grey, bar lines a step brighter
     for (int c = 0; c < stepsPerBar; ++c)
     {
         const bool downbeat = (c % stepsPerQuarter_) == 0;
@@ -181,12 +200,32 @@ void SeqGrid::paint (juce::Graphics& g)
             continue;
 
         const auto x = cellRect (0, c).getX() - 0.5f;
-        g.setColour (barLine ? Palette::dim.withAlpha (0.65f) : Palette::line);
-        g.fillRect (juce::Rectangle<float> (x, (float) kGridTop, 1.0f,
-                                            (float) (kNumRows * (rowH + kGap) - kGap)));
+        g.setColour (barLine ? Palette::dim.withAlpha (0.55f) : Palette::line);
+        g.fillRect (juce::Rectangle<float> (x, gridY, 1.0f, gridH));
     }
 
-    // ---- notes, read live from the store
+    // stroke rows (D..PU) and string rows (1..6) separated by a hairline
+    {
+        const float y = cellRect (6, 0).getY() - 0.5f * (float) kGap - 0.5f;
+        g.setColour (Palette::line);
+        g.fillRect (juce::Rectangle<float> (4.0f, y, gridX + gridW - 4.0f, 1.0f));
+    }
+
+    // ---- playhead column: amber wash plus a marker on the header rule
+    if (playheadOn)
+    {
+        const auto col = cellRect (0, step);
+        g.setColour (Palette::amber.withAlpha (0.10f));
+        g.fillRect (juce::Rectangle<float> (col.getX(), gridY, (float) cellW, gridH));
+
+        g.setColour (Palette::amber.withAlpha (0.35f));
+        g.fillRoundedRectangle (juce::Rectangle<float> (col.getX() - 1.0f, gridY - 5.0f, (float) cellW + 2.0f, 4.0f), 1.5f);
+        g.setColour (Palette::amber.brighter (0.3f));
+        g.fillRoundedRectangle (juce::Rectangle<float> (col.getX(), gridY - 4.0f, (float) cellW, 2.0f), 1.0f);
+    }
+
+    // ---- notes as violet LED cells, read live from the store. Brightness
+    // follows velocity; a note under the playhead lights up further.
     const auto& pattern = store.getSlot (slot);
 
     for (int i = 0; i < pattern.count; ++i)
@@ -201,44 +240,61 @@ void SeqGrid::paint (juce::Graphics& g)
 
         const int visibleLen = juce::jmin (len, stepsPerBar - start);
         const auto r = cellRect (row, start);
-        const auto box = r.withWidth ((float) (visibleLen * cellW + (visibleLen - 1) * kGap));
+        const auto box = r.withWidth ((float) (visibleLen * cellW + (visibleLen - 1) * kGap)).reduced (0.5f);
+        const float corner = juce::jmin (2.5f, box.getHeight() * 0.3f);
 
-        juce::Colour base = row <= 3 ? (row % 2 == 0 ? Palette::accent2 : Palette::accent3)
-                                     : (row == 4 || row == 5 ? (row == 4 ? Palette::accent2 : Palette::accent3)
-                                                            : Palette::amber);
-
-        if (row < 6)
-            base = base.withAlpha (0.55f);
+        const bool playing = playheadOn && step >= start && step < start + visibleLen;
+        const bool active = dragMode != DragMode::none && row == dragRow && start == dragStart;
+        const bool hovered = enabled && row == hoverRow && hoverCol >= start && hoverCol < start + visibleLen;
 
         const float bright = (juce::jlimit (1, 127, (int) note.vel) - 1) / 126.0f;
-        g.setColour (base.interpolatedWith (juce::Colours::white, bright * 0.45f));
-        g.fillRoundedRectangle (box, juce::jmin (2.5f, box.getHeight() * 0.3f));
+        const float lift = (playing ? 0.45f : 0.0f) + (hovered || active ? 0.15f : 0.0f);
+        const auto led = Palette::accent.withMultipliedBrightness (0.55f + 0.45f * bright).brighter (lift);
+
+        // soft glow halo
+        g.setColour (led.withAlpha (playing ? 0.30f : 0.16f));
+        g.fillRoundedRectangle (box.expanded (2.5f), corner + 2.5f);
+        g.setColour (led.withAlpha (playing ? 0.40f : 0.24f));
+        g.fillRoundedRectangle (box.expanded (1.2f), corner + 1.2f);
+
+        // LED body with a lighter top half
+        g.setGradientFill (juce::ColourGradient (led.brighter (0.25f), 0.0f, box.getY(),
+                                                 led.darker (0.15f), 0.0f, box.getBottom(), false));
+        g.fillRoundedRectangle (box, corner);
+        g.setColour (juce::Colours::white.withAlpha (playing ? 0.35f : 0.18f));
+        g.drawHorizontalLine ((int) box.getY() + 1, box.getX() + corner, box.getRight() - corner);
+
+        // being edited: crisp white rim
+        if (active)
+        {
+            g.setColour (juce::Colours::white.withAlpha (0.8f));
+            g.drawRoundedRectangle (box, corner, 1.0f);
+        }
     }
 
-    g.restoreState();
-
-    // ---- row glyph column
-    g.setColour (Palette::panel);
-    g.fillRect (juce::Rectangle<float> (1.0f, 1.0f, (float) (kIconCol - 1), (float) (getHeight() - 2)));
+    // ---- row glyph gutter, divided from the grid by a hairline
     g.setColour (Palette::line);
-    g.fillRect (juce::Rectangle<float> ((float) (kIconCol - 1), 1.0f, 1.0f, (float) (getHeight() - 2)));
-    g.setColour (Palette::line);
-    g.drawRoundedRectangle (full.reduced (0.5f), 6.0f, 1.0f);
+    g.fillRect (juce::Rectangle<float> ((float) (kIconCol - 2), gridY, 1.0f, gridH));
 
     static const char* const kStrokeGlyphs[6] = { "D", "U", "xD", "xU", "PD", "PU" };
 
-    g.setFont (juce::Font (juce::FontOptions ("Segoe UI", 9.0f, juce::Font::bold)));
-    g.setColour (Palette::dim);
+    // Small-caps style captions, kept mixed-case: "xD" / "xU" carry meaning.
+    g.setFont (Palette::fontSemi (9.5f).withExtraKerningFactor (0.06f));
 
     for (int row = 0; row < kNumRows; ++row)
     {
         const auto r = cellRect (row, 0);
-        const juce::Rectangle<float> area (2.0f, r.getY(),
-                                           (float) (kIconCol - 4), r.getHeight());
+        const juce::Rectangle<float> area (4.0f, r.getY(), (float) (kIconCol - 8), r.getHeight());
         const juce::String text = row < 6 ? juce::String (kStrokeGlyphs[row])
                                           : juce::String (row - 5);
+        g.setColour (enabled && row == hoverRow ? Palette::text : Palette::caption);
         g.drawText (text, area, juce::Justification::centred, false);
     }
+
+    g.restoreState();
+
+    if (! enabled)
+        g.endTransparencyLayer();
 }
 
 //==============================================================================
@@ -335,6 +391,30 @@ void SeqGrid::mouseWheelMove (const juce::MouseEvent& e, const juce::MouseWheelD
 
     store.setNote (slot, row, col, note);
     repaint();
+}
+
+void SeqGrid::mouseMove (const juce::MouseEvent& e)
+{
+    // Hover is paint-only feedback: it never edits the pattern.
+    const int col = colAt (e.position.x);
+    const int row = col < 0 ? -1 : rowAt (e.position.y);
+    const int c = row < 0 ? -1 : col;
+
+    if (row != hoverRow || c != hoverCol)
+    {
+        hoverRow = row;
+        hoverCol = c;
+        repaint();
+    }
+}
+
+void SeqGrid::mouseExit (const juce::MouseEvent&)
+{
+    if (hoverRow >= 0 || hoverCol >= 0)
+    {
+        hoverRow = hoverCol = -1;
+        repaint();
+    }
 }
 
 void SeqGrid::resetDrag() noexcept

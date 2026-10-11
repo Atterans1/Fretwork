@@ -7,6 +7,8 @@
 #include "PluginProcessor.h"
 #include "Params.h"
 #include "Harness.h"
+
+namespace juce::detail { bool dispatchNextMessageOnSystemQueue (bool returnIfNoPendingMessages); }
 #include "SeqStore.h"
 #include "dsp/GuitarEngine.h"
 #include "dsp/GuitarString.h"
@@ -1383,10 +1385,117 @@ int renderDemo (const juce::File& dir)
     write ("chord_Emaj", chord, 4.5);
     return 0;
 }
+
+// --snapshot <dir>: renders the editor at 1x and 2x scale to PNGs, plus a
+// strip of widget states (hover/down/on/disabled) for visual review.
+int renderSnapshots (const juce::File& dir)
+{
+    juce::ScopedJuceInitialiser_GUI gui;
+    dir.createDirectory();
+
+    auto procPtr = std::make_unique<FretworkAudioProcessor>();
+    procPtr->prepareToPlay (48000.0, 480);
+    std::unique_ptr<juce::AudioProcessorEditor> ed (procPtr->createEditor());
+    if (ed == nullptr) { std::printf ("no editor\n"); return 1; }
+
+    // Let timers and async updaters settle so values are painted.
+    for (int i = 0; i < 50; ++i)
+        if (! juce::detail::dispatchNextMessageOnSystemQueue (true)) break;
+
+    for (float scale : { 1.0f, 2.0f })
+    {
+        const auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, scale);
+        const auto f = dir.getChildFile (scale == 1.0f ? "editor_1x.png" : "editor_2x.png");
+        f.deleteFile();
+        juce::FileOutputStream os (f);
+        juce::PNGImageFormat png;
+        const bool ok = os.openedOk() && png.writeImageToStream (img, os);
+        std::printf ("%s %s (%dx%d)\n", ok ? "wrote" : "FAILED", f.getFullPathName().toRawUTF8(), img.getWidth(), img.getHeight());
+    }
+
+    // Widget states: one of each control type in default/hover/down/on/disabled.
+    {
+        auto& lf = ed->getLookAndFeel();
+        const int cellW = 120, cellH = 90, cols = 5;
+        // Software image: Direct2D-backed images only flush when their Graphics
+        // is destroyed, which would leave the PNG blank.
+        juce::Image strip (juce::Image::ARGB, cellW * cols, cellH * 4, true, juce::SoftwareImageType());
+        {
+        juce::Graphics g (strip);
+        g.fillAll (juce::Colour (0xff1a1b1f));
+        const char* const states[cols] = { "default", "hover", "down", "on", "disabled" };
+
+        for (int c = 0; c < cols; ++c)
+        {
+            // row 0: text button
+            juce::TextButton b (states[c]);
+            b.setLookAndFeel (&lf);
+            b.setBounds (0, 0, cellW - 20, 28);
+            b.setToggleState (c == 3, juce::dontSendNotification);
+            b.setEnabled (c != 4);
+            {
+                juce::Graphics::ScopedSaveState s (g);
+                g.setOrigin (c * cellW + 10, 20);
+                lf.drawButtonBackground (g, b, b.findColour (juce::TextButton::buttonColourId), c == 1, c == 2);
+                lf.drawButtonText (g, b, c == 1, c == 2);
+            }
+            // row 1: rotary
+            juce::Slider k (juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::NoTextBox);
+            k.setLookAndFeel (&lf);
+            k.setRange (0.0, 1.0);
+            k.setValue (0.25 * c, juce::dontSendNotification);
+            k.setEnabled (c != 4);
+            k.setBounds (0, 0, 70, 70);
+            {
+                juce::Graphics::ScopedSaveState s (g);
+                g.setOrigin (c * cellW + 25, cellH + 10);
+                const auto rp = k.getRotaryParameters();
+                lf.drawRotarySlider (g, 0, 0, 70, 70, (float) k.valueToProportionOfLength (k.getValue()),
+                                     rp.startAngleRadians, rp.endAngleRadians, k);
+            }
+            // row 2: combo box
+            juce::ComboBox cb;
+            cb.setLookAndFeel (&lf);
+            cb.addItem ("Dreadnought", 1);
+            cb.setSelectedId (1, juce::dontSendNotification);
+            cb.setEnabled (c != 4);
+            {
+                juce::Graphics::ScopedSaveState s (g);
+                g.setOrigin (c * cellW + 10, cellH * 2 + 25);
+                lf.drawComboBox (g, cellW - 20, 26, c == 2, 0, 0, cellW - 40, 26, cb);
+            }
+            // row 3: linear slider
+            juce::Slider ls (juce::Slider::LinearHorizontal, juce::Slider::NoTextBox);
+            ls.setLookAndFeel (&lf);
+            ls.setRange (0.0, 1.0);
+            ls.setValue (0.25 * c, juce::dontSendNotification);
+            ls.setEnabled (c != 4);
+            {
+                juce::Graphics::ScopedSaveState s (g);
+                g.setOrigin (c * cellW + 10, cellH * 3 + 25);
+                lf.drawLinearSlider (g, 0, 0, cellW - 20, 24, (float) (5 + 0.25 * c * (cellW - 30)), 0.f, 0.f,
+                                     juce::Slider::LinearHorizontal, ls);
+            }
+            b.setLookAndFeel (nullptr); k.setLookAndFeel (nullptr); cb.setLookAndFeel (nullptr); ls.setLookAndFeel (nullptr);
+        }
+        }   // Graphics destroyed: image complete
+        const auto f = dir.getChildFile ("widget_states.png");
+        f.deleteFile();
+        juce::FileOutputStream os (f);
+        juce::PNGImageFormat png;
+        std::printf ("%s %s\n", os.openedOk() && png.writeImageToStream (strip, os) ? "wrote" : "FAILED", f.getFullPathName().toRawUTF8());
+    }
+
+    ed.reset();
+    return 0;
+}
 } // namespace
 
 int main (int argc, char** argv)
 {
+    if (argc >= 3 && std::string (argv[1]) == "--snapshot")
+        return renderSnapshots (juce::File (juce::String (argv[2])));
+
     // Unbuffered so progress survives a crash or a killed run.
     std::setvbuf (stdout, nullptr, _IONBF, 0);
 

@@ -16,8 +16,6 @@ class AssetCache final
 public:
     static const AssetCache& get();
 
-    const juce::Image& knobChrome()    const noexcept { return knobChrome_; }
-    const juce::Image& knobDark()      const noexcept { return knobDark_; }
     const juce::Image& dreadnought()   const noexcept { return dreadnought_; }
     const juce::Image& semiHollow()    const noexcept { return semiHollow_; }
     const juce::Image& nylon()         const noexcept { return nylon_; }
@@ -29,7 +27,7 @@ private:
 
     static juce::Image decode (const char* name, int size);
 
-    juce::Image knobChrome_, knobDark_, dreadnought_, semiHollow_, nylon_, solid_, panelTexture_;
+    juce::Image dreadnought_, semiHollow_, nylon_, solid_, panelTexture_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AssetCache)
 };

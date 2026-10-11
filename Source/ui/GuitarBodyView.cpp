@@ -1,5 +1,6 @@
 #include "GuitarBodyView.h"
 #include "AssetCache.h"
+#include "WavesStyle.h"
 
 namespace fw::ui
 {
@@ -31,10 +32,14 @@ void GuitarBodyView::paint (juce::Graphics& g)
 {
     const auto area = getLocalBounds().toFloat();
 
-    g.setColour (Palette::panel);
-    g.fillRoundedRectangle (area, 6.0f);
-    g.setColour (Palette::line);
-    g.drawRoundedRectangle (area.reduced (0.5f), 6.0f, 1.0f);
+    // A black LCD display window, with a faint spotlight behind the art so the
+    // guitar reads as lit inside the well rather than pasted onto it.
+    waves::lcd (g, area, 4.0f);
+
+    g.setGradientFill (juce::ColourGradient (Palette::accent.withAlpha (0.10f), area.getCentreX(), area.getCentreY(),
+                                             juce::Colours::transparentBlack, area.getCentreX(), area.getY() - area.getHeight() * 0.35f,
+                                             true));
+    g.fillRoundedRectangle (area.reduced (1.0f), 4.0f);
 
     const auto* choice = dynamic_cast<const juce::AudioParameterChoice*> (state.getParameter (fw::id::body));
 
@@ -58,16 +63,16 @@ void GuitarBodyView::paint (juce::Graphics& g)
     {
         // No artwork for this body. Say which one is selected rather than
         // leaving the panel blank, which reads as a loading failure.
-        g.setColour (Palette::dim);
-        g.setFont (Palette::font (13.0f));
-        g.drawText (choice->choices[index], area.reduced (10.0f, 0.0f),
+        g.setColour (Palette::lcdText);
+        g.setFont (Palette::fontSemi (14.0f).withExtraKerningFactor (0.06f));
+        g.drawText (choice->choices[index].toUpperCase(), area.reduced (10.0f, 0.0f),
                     juce::Justification::centred, true);
         return;
     }
 
     // Letterbox on whichever axis runs out first, so the whole guitar is always
     // visible rather than cropped to fill.
-    const auto inner = area.reduced (8.0f);
+    const auto inner = area.reduced (10.0f, 8.0f);
     const auto scale = juce::jmin (inner.getWidth()  / (float) art->getWidth(),
                                    inner.getHeight() / (float) art->getHeight());
     const auto size = juce::Point<float> ((float) art->getWidth(), (float) art->getHeight()) * scale;

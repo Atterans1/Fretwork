@@ -2,6 +2,7 @@
 
 #include "KnobCell.h"
 #include "Params.h"
+#include "WavesStyle.h"
 
 namespace fw::ui
 {
@@ -22,12 +23,7 @@ public:
 
         attachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (state, paramId, combo);
 
-        captionLabel.setText (juce::String (caption).toUpperCase(), juce::dontSendNotification);
-        captionLabel.setJustificationType (juce::Justification::centred);
-        captionLabel.setFont (Palette::font (11.0f));
-        captionLabel.setColour (juce::Label::textColourId, Palette::dim);
-        captionLabel.setInterceptsMouseClicks (false, false);
-        addAndMakeVisible (captionLabel);
+        captionText = caption;
         addAndMakeVisible (combo);
     }
 
@@ -35,15 +31,26 @@ public:
 
     void resized() override
     {
+        // Caption on the same 13 px top band as the KnobCell captions beside it;
+        // the LCD combo is centred in the rest so it shares the knobs' centre line.
         auto b = getLocalBounds();
-        captionLabel.setBounds (b.removeFromTop (14));
-        combo.setBounds (b);
+        captionArea = b.removeFromTop (kCaptionH);
+        combo.setBounds (b.withSizeKeepingCentre (b.getWidth(), juce::jmin (b.getHeight(), kComboH)));
     }
 
-    void paint (juce::Graphics&) override {}
+    void paint (juce::Graphics& g) override
+    {
+        waves::caption (g, captionArea.toFloat(), captionText, juce::Justification::centred,
+                        isEnabled() ? Palette::caption : Palette::dim.withAlpha (0.6f));
+    }
+
+    void enablementChanged() override { repaint(); }
 
 private:
-    juce::Label captionLabel;
+    static constexpr int kCaptionH = 13, kComboH = 30;
+
+    juce::String captionText;
+    juce::Rectangle<int> captionArea;
     juce::ComboBox combo;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> attachment;
 };
@@ -55,11 +62,13 @@ public:
     MaskCell (juce::AudioProcessorValueTreeState& state, const char* paramId, int number)
     {
         button.setButtonText (juce::String (number));
-        button.setFretFont (Palette::font (13.0f, juce::Font::bold));
-        button.setColour (juce::TextButton::buttonColourId,   Palette::panelHi);
-        button.setColour (juce::TextButton::textColourOffId,  Palette::dim);
+        // Black Waves Tune key button, violet when the step is enabled; every
+        // state is drawn by FretLookAndFeel (waves::buttonFace).
+        button.setFretFont (Palette::fontSemi (13.0f));
+        button.setColour (juce::TextButton::buttonColourId,   Palette::blackKey);
+        button.setColour (juce::TextButton::textColourOffId,  Palette::text);
         button.setColour (juce::TextButton::buttonOnColourId, Palette::accent);
-        button.setColour (juce::TextButton::textColourOnId,   Palette::background);
+        button.setColour (juce::TextButton::textColourOnId,   juce::Colours::white);
         addAndMakeVisible (button);
 
         if (auto* p = dynamic_cast<juce::AudioParameterBool*> (state.getParameter (paramId)))
@@ -157,11 +166,12 @@ void SetupTabs::resized()
 
 void SetupTabs::paint (juce::Graphics& g)
 {
+    // Atlas layout: the tab strip sits above a Waves group frame that holds the
+    // pages. waves::group draws its rule 7 px below the rect top, so starting
+    // the rect 8 px above the strip's bottom lays that rule on the strip's own
+    // baseline instead of doubling it.
     const auto full = getLocalBounds().toFloat();
-    g.setColour (Palette::panel);
-    g.fillRoundedRectangle (full, 6.0f);
-    g.setColour (Palette::line);
-    g.drawRoundedRectangle (full.reduced (0.5f), 6.0f, 1.0f);
+    waves::group (g, full.withTrimmedTop ((float) (kTabStrip - 8)));
 }
 
 //==============================================================================

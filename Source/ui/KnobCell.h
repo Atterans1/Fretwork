@@ -8,9 +8,10 @@
 namespace fw::ui
 {
 
-/** One rotary control: 11px uppercase caption, rotary knob, 13px value readout.
-    The value text is derived from the parameter itself, so it stays correct
-    whatever range the SliderAttachment applies to the underlying slider.
+/** One rotary control: small-caps caption above, rotary knob, and the value in
+    a black Waves Tune inset box below. Caption and value box are painted, not
+    child labels. The value text is derived from the parameter itself, so it
+    stays correct whatever range the SliderAttachment applies to the slider.
 
     JUCE 8 removed RangedAudioParameterListener, so the readout is driven by an
     AudioProcessorValueTreeState::Listener registered for this cell's parameter. */
@@ -22,14 +23,15 @@ public:
     ~KnobCell() override;
 
     /** Binds the knob to a parameter and sets the caption.
-        micro == true gives a 9px caption and hides the value readout. */
+        micro == true gives a compact caption-only cell with no value box. */
     void attach (juce::AudioProcessorValueTreeState& state,
                  const juce::String& paramId,
                  const juce::String& caption,
                  bool micro = false);
 
-    void paint (juce::Graphics&) override {}
+    void paint (juce::Graphics&) override;
     void resized() override;
+    void enablementChanged() override { repaint(); }
 
     void parameterChanged (const juce::String& parameterID, float newValue) override;
 
@@ -39,8 +41,9 @@ private:
     void refreshValueText();
 
     juce::Slider slider { juce::Slider::Rotary, juce::Slider::NoTextBox };
-    juce::Label  captionLabel;
-    juce::Label  valueLabel;
+    juce::String captionText;
+    juce::String valueText;
+    juce::Rectangle<int> captionArea, valueArea;
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attachment;
     juce::AudioProcessorValueTreeState* state = nullptr;

@@ -11,8 +11,9 @@
 namespace fw::ui
 {
 
-/** BODY / STRINGS / PICKUP / TONE / ARP tab stack. Every control is built once
-    in the constructor; switching tabs only flips visibility. */
+/** BODY / STRINGS / PICKUP / TONE / ARP tab stack: Atlas tab strip above a
+    Waves group frame holding the pages. Every control is built once in the
+    constructor; switching tabs only flips visibility. */
 class SetupTabs final : public juce::Component,
                          private juce::ChangeListener
 {
