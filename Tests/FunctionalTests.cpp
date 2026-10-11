@@ -5,6 +5,7 @@
 #include "PluginEditor.h"
 #include "WavesStyle.h"
 #include "SeqGrid.h"
+#include "GuitarBodyView.h"
 
 // juce_events/messages/juce_MessageManager.cpp
 namespace juce::detail { bool dispatchNextMessageOnSystemQueue (bool returnIfNoPendingMessages); }
@@ -649,6 +650,52 @@ juce::MouseEvent mouseEventAt (juce::Component& c, juce::Point<float> position, 
              juce::MouseInputSource::defaultTiltX,
              juce::MouseInputSource::defaultTiltY,
              &c, &c, now, position, now, 1, false };
+}
+
+FW_TEST ("editor: body display draws a distinct guitar for every body")
+{
+    juce::ScopedJuceInitialiser_GUI gui;
+    fwtest::Plugin p;
+    auto& state = p.processor().getState();
+    auto* body = dynamic_cast<juce::AudioParameterChoice*> (state.getParameter ("body"));
+    EXPECT_MSG (body != nullptr, "body is a choice parameter");
+    if (body == nullptr)
+        return;
+
+    fw::ui::GuitarBodyView view (state);
+    view.setSize (300, 160);
+
+    // Pixels well above the LCD well and its accent glow are the guitar.
+    const auto litPixels = [] (const juce::Image& img)
+    {
+        int lit = 0;
+        for (int y = 0; y < img.getHeight(); ++y)
+            for (int x = 0; x < img.getWidth(); ++x)
+                if (img.getPixelAt (x, y).getPerceivedBrightness() > 0.35f)
+                    ++lit;
+        return lit;
+    };
+
+    std::vector<juce::Image> shots;
+    for (int i = 0; i < body->choices.size(); ++i)
+    {
+        body->setValueNotifyingHost (body->convertTo0to1 ((float) i));
+        const auto shot = view.createComponentSnapshot (view.getLocalBounds(), true, 1.0f);
+        EXPECT_MSG (litPixels (shot) > 1500, ("body " + body->choices[i] + " draws its guitar").toRawUTF8());
+        shots.push_back (shot);
+    }
+
+    // A wrong or missing asset would draw the same picture (or none) twice.
+    for (size_t a = 0; a < shots.size(); ++a)
+        for (size_t b = a + 1; b < shots.size(); ++b)
+        {
+            int differing = 0;
+            for (int y = 0; y < shots[a].getHeight(); ++y)
+                for (int x = 0; x < shots[a].getWidth(); ++x)
+                    if (shots[a].getPixelAt (x, y) != shots[b].getPixelAt (x, y))
+                        ++differing;
+            EXPECT_MSG (differing > 1000, (body->choices[(int) a] + " and " + body->choices[(int) b] + " look different").toRawUTF8());
+        }
 }
 
 FW_TEST ("editor: seq grid: clicking edits the pattern, dragging erases or resizes, wheel changes velocity")

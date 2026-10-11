@@ -38,7 +38,7 @@ protected:
 
 
 /** Transport row: power, transpose stepper, slot paging, play, metronome,
-    BPM drag field, sequencer clear/copy/paste and the two strum triggers. */
+    BPM drag field, and sequencer clear/copy/paste. */
 class TransportBar final : public juce::Component
 {
 public:
@@ -54,7 +54,6 @@ public:
 private:
     class IconButton;
     class BpmField;
-    class StrumButton;
     class TransposeField;
 
     int currentSlot() const noexcept;
@@ -83,8 +82,6 @@ private:
     FretButton* clearButton = nullptr;
     FretButton* copyButton = nullptr;
     FretButton* pasteButton = nullptr;
-    StrumButton* strumDownButton = nullptr;
-    StrumButton* strumUpButton = nullptr;
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> powerAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> playAttachment;

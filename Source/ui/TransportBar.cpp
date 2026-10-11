@@ -136,39 +136,6 @@ private:
     bool dragging = false;
 };
 
-//==============================================================================
-class TransportBar::StrumButton final : public FretButton
-{
-public:
-    StrumButton (const juce::String& caption, juce::MidiKeyboardState& k, int note)
-        : FretButton (caption), state (k), midiNote (note)
-    {
-    }
-
-    void mouseDown (const juce::MouseEvent& e) override
-    {
-        FretButton::mouseDown (e);
-        state.noteOn (1, midiNote, 0.8f);
-        held = true;
-    }
-
-    void mouseUp (const juce::MouseEvent& e) override
-    {
-        FretButton::mouseUp (e);
-
-        if (held)
-        {
-            state.noteOff (1, midiNote, 0.8f);
-            held = false;
-        }
-    }
-
-private:
-    juce::MidiKeyboardState& state;
-    int midiNote;
-    bool held = false;
-};
-
 namespace
 {
     juce::PathStrokeType roundStroke (float w)
@@ -315,18 +282,6 @@ TransportBar::TransportBar (FretworkAudioProcessor& p, juce::AudioProcessorValue
     copyButton->onClick  = [this] { processor.getSeqStore().copyToClipboard (currentSlot()); };
     pasteButton->onClick = [this] { processor.getSeqStore().pasteFromClipboard (currentSlot()); };
 
-    // ---- strum triggers
-    // Plain ASCII arrows keep the source pure ASCII; the LookAndFeel paints
-    // them as black Waves Tune buttons.
-    strumDownButton = new StrumButton ("STRUM v", processor.getKeyboardState(), 28);
-    strumUpButton = new StrumButton ("STRUM ^", processor.getKeyboardState(), 29);
-
-    for (auto* b : { strumDownButton, strumUpButton })
-    {
-        b->setFretFont (Palette::font (11.0f));
-        addAndMakeVisible (b);
-    }
-
     tick();
 }
 
@@ -340,8 +295,7 @@ TransportBar::~TransportBar()
 
     for (juce::Component* c : std::initializer_list<juce::Component*> {
              powerButton, transposeButton, slotPrevButton, playButton, slotNextButton,
-             metroButton, bpmField, clearButton, copyButton, pasteButton,
-             strumDownButton, strumUpButton })
+             metroButton, bpmField, clearButton, copyButton, pasteButton })
         delete c;
 }
 
@@ -407,7 +361,6 @@ void TransportBar::resized()
 {
     constexpr int h = 26, gap = 4, clusterGap = 14;
     const int y = (getHeight() - h) / 2;
-    const int strumW = 84;
 
     int x = 10;
 
@@ -448,17 +401,6 @@ void TransportBar::resized()
     place (clearButton, 56, gap);
     place (copyButton, 52, gap);
     place (pasteButton, 54, gap);
-
-    // flexible spacer, then the two strum triggers right-aligned
-    int rx = getWidth() - 10 - strumW;
-
-    if (strumUpButton != nullptr)
-        strumUpButton->setBounds (rx, y, strumW, h);
-
-    rx -= 8 + strumW;
-
-    if (strumDownButton != nullptr)
-        strumDownButton->setBounds (rx, y, strumW, h);
 }
 
 } // namespace fw::ui

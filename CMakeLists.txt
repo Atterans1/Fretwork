@@ -21,8 +21,13 @@ juce_add_plugin(Fretwork
     VST3_CATEGORIES          "Instrument Synth"
     COPY_PLUGIN_AFTER_BUILD  TRUE)
 
-# No BinaryData assets: the guitar art and the panel texture are drawn
-# (Source/ui/GuitarArt.cpp, WavesStyle::chassis), so nothing to ship.
+# Guitar body art (AI-generated, cut out on black; see Source/ui/GuitarArt.h).
+# The panel texture is still drawn (WavesStyle::chassis).
+juce_add_binary_data(FretworkAssets SOURCES
+    Assets/guitars/dreadnought.png
+    Assets/guitars/classical.png
+    Assets/guitars/electric.png
+    Assets/guitars/semihollow.png)
 
 # The DSP and performance cores are slice-developed, so glob them with
 # CONFIGURE_DEPENDS: newly added .cpp files are picked up on the next build.
@@ -75,6 +80,7 @@ target_sources(Fretwork PRIVATE
 target_link_libraries(Fretwork
     PRIVATE
         FretworkCore
+        FretworkAssets
         juce::juce_recommended_config_flags
         juce::juce_recommended_warning_flags)
 
@@ -101,6 +107,7 @@ target_sources(FretworkTests PRIVATE
 target_link_libraries(FretworkTests
     PRIVATE
         FretworkCore
+        FretworkAssets
         juce::juce_recommended_config_flags)
 
 add_test(NAME FretworkTests COMMAND FretworkTests)

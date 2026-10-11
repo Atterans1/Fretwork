@@ -5,14 +5,14 @@
 namespace fw::ui
 {
 
-/** Vector guitar artwork, drawn in a 0..1 x 0..1 space and letterboxed by the
-    caller.
+/** Guitar artwork for the body display: one AI-generated photo per body,
+    shipped as BinaryData (Assets/guitars).
 
-    The bodies used to be keyed PNGs. Every one of them kept its grey drop
-    shadow and ate parts of the fretboard in the alpha channel, which showed
-    up as grey fringes and holes wherever they were drawn. Vector paths have no
-    alpha channel to get wrong, render sharp at any scale, and cost a few
-    hundred bytes instead of a quarter-megabyte of BinaryData. */
+    Each image was generated on pure black and cut out with alpha taken from
+    brightness, so every partly transparent edge pixel blends towards black -
+    the colour of the LCD well behind it - and cannot leave the grey fringe the
+    old keyed PNGs had. Dark parts inside the outline (soundholes, pickguards)
+    are forced opaque. */
 class GuitarArt final
 {
 public:
@@ -24,6 +24,7 @@ public:
         SemiHollow
     };
 
+    /** Draws the body's image centred in area, scaled to fit. */
     static void paint (juce::Graphics& g, const juce::Rectangle<float>& area, Body body);
 };
 
