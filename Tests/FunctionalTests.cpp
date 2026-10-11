@@ -797,6 +797,18 @@ FW_TEST ("editor: seq grid: clicking edits the pattern, dragging erases or resiz
         EXPECT_MSG (! store.hasNote (slot, heldRow, heldCol),
                     "releasing after dragging the body erases the note");
 
+        // A drag that comes back and releases on the note cancels the erase;
+        // this is also what a click with stray pointer movement looks like.
+        store.clearSlot (slot);
+        grid.mouseDown (mouseEventAt (grid, second, {}));
+        grid.mouseUp (mouseEventAt (grid, second, {}));
+        grid.mouseDown (mouseEventAt (grid, second, {}));
+        grid.mouseDrag (mouseEventAt (grid, { second.x, second.y + 40.0f }, {}));
+        grid.mouseDrag (mouseEventAt (grid, second, {}));
+        grid.mouseUp (mouseEventAt (grid, second, {}));
+        EXPECT_MSG (store.hasNote (slot, heldRow, heldCol),
+                    "dragging off a note and back onto it keeps the note");
+
         // The right-hand edge resizes instead. Length follows the column
         // under the pointer, so growing a note means dragging right past the
         // next cell's leading edge - not just moving within this cell.

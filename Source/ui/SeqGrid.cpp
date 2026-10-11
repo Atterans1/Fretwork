@@ -369,13 +369,17 @@ void SeqGrid::mouseDrag (const juce::MouseEvent& e)
     repaint();
 }
 
-void SeqGrid::mouseUp (const juce::MouseEvent&)
+void SeqGrid::mouseUp (const juce::MouseEvent& e)
 {
-    // Dragging a note's body away from it erases it; a press and release
-    // without movement is a no-op, so clicking a note never deletes it by
-    // accident. A press that added a new note leaves dragMode none, so that
-    // click is untouched either way.
-    if (dragMode == DragMode::erase && dragMoved)
+    // Dragging a note's body off it erases it. The release has to land outside
+    // the note's own cell: judging by movement alone, a click with a few
+    // pixels of jitter - or a pointer position the OS reports late, between
+    // press and release - would delete the note it was meant to touch, and
+    // dragging back onto the note is the natural way to cancel. A press that
+    // added a new note leaves dragMode none, so that click is untouched.
+    const bool releasedOnNote = rowAt (e.position.y) == dragRow && colAt (e.position.x) == dragStart;
+
+    if (dragMode == DragMode::erase && dragMoved && ! releasedOnNote)
     {
         const int slot = currentSlot();
         processor.getSeqStore().removeNote (slot, dragRow, dragStart);
