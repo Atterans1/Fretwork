@@ -8,7 +8,10 @@ namespace
 {
 // The art is laid out in a fixed 800 x 320 design space and mapped into the
 // target rectangle by hand, because juce::Graphics has no transform stack.
-constexpr float kDesignW = 800.0f;
+// Only the guitar is drawn, so the design box is trimmed to its real
+// extent: a wide empty box would letterbox the instrument down to a third of
+// the panel.
+constexpr float kDesignW = 400.0f + 82.0f;
 constexpr float kDesignH = 320.0f;
 
 const juce::Colour maple { static_cast<juce::uint32> (0xffd6b083) };
@@ -67,15 +70,16 @@ juce::Path neckPath (float w, float x0, float y0, float h)
 
 juce::Path headstockPath (float neckW)
 {
-    // A Fender-style paddle: narrow at the nut, widening to the tip.
+    // A Fender-style paddle: narrow at the nut, flaring to the tip, with a
+    // shallow waist so it does not read as a rectangle.
     const float hw = neckW * 0.5f;
     juce::Path p;
     p.startNewSubPath (400.0f - hw, 40.0f);
-    p.lineTo (400.0f - hw * 1.5f, 16.0f);
-    p.cubicTo (400.0f - hw * 1.9f, 2.0f, 400.0f - hw * 1.4f, 0.0f, 400.0f - hw * 0.8f, 0.0f);
-    p.lineTo (400.0f + hw * 0.8f, 0.0f);
-    p.cubicTo (400.0f + hw * 1.4f, 0.0f, 400.0f + hw * 1.9f, 2.0f, 400.0f + hw * 1.5f, 16.0f);
-    p.lineTo (400.0f + hw, 40.0f);
+    p.cubicTo (400.0f - hw * 1.15f, 30.0f, 400.0f - hw * 1.35f, 24.0f, 400.0f - hw * 1.45f, 14.0f);
+    p.cubicTo (400.0f - hw * 1.6f, 4.0f, 400.0f - hw * 1.35f, 0.0f, 400.0f - hw * 0.85f, 0.0f);
+    p.lineTo (400.0f + hw * 0.85f, 0.0f);
+    p.cubicTo (400.0f + hw * 1.35f, 0.0f, 400.0f + hw * 1.6f, 4.0f, 400.0f + hw * 1.45f, 14.0f);
+    p.cubicTo (400.0f + hw * 1.35f, 24.0f, 400.0f + hw * 1.15f, 30.0f, 400.0f + hw, 40.0f);
     p.closeSubPath();
     return p;
 }
@@ -140,20 +144,24 @@ void drawHeadstock (juce::Graphics& g, const Map& m, float neckW, juce::Colour w
 {
     juce::Path hs;
     mapped (g, m, headstockPath (neckW), hs);
-    const auto hb = m.designBounds (400.0f - neckW * 1.9f, 0.0f, neckW * 3.8f, 40.0f);
+    const auto hb = m.designBounds (400.0f - neckW * 1.7f, 0.0f, neckW * 3.4f, 40.0f);
     fillGradient (g, hs, hb, wood.brighter (0.2f), wood.darker (0.15f));
+    outline (g, hs, juce::Colour (0xff101010).withAlpha (0.5f), m.L (1.0f));
 
-    const float r = juce::jmax (2.0f, neckW * 0.3f);
+    // Tuner plates down each side, with a post on every plate.
+    const float hw = neckW * 0.5f;
+    const float plateW = neckW * 0.30f, plateH = 2.6f;
+    const float pitch = 30.0f / juce::jmax (1, tuners - 1);
     for (int i = 0; i < tuners; ++i)
     {
-        const float y = 8.0f + (float) i * (26.0f / juce::jmax (1, tuners - 1));
+        const float y = 6.0f + (float) i * pitch;
         for (int side = -1; side <= 1; side += 2)
         {
-            const auto outer = m.R (400.0f + side * neckW * 1.55f - r, y - r, r * 2.0f, r * 2.0f);
-            g.setColour (chrome);
-            g.fillEllipse (outer);
+            const float px = 400.0f + side * (hw * 1.30f) - plateW * 0.5f;
+            g.setColour (juce::Colour (chrome).withAlpha (0.85f));
+            g.fillRoundedRectangle (m.R (px, y, plateW, plateH), m.L (0.8f));
             g.setColour (juce::Colour (0xff8b8f93));
-            g.fillEllipse (outer.reduced (r * 0.4f));
+            g.fillEllipse (m.R (400.0f + side * (hw * 1.30f) - 1.3f, y + plateH * 0.5f - 1.3f, 2.6f, 2.6f));
         }
     }
 }
@@ -211,17 +219,17 @@ void drawKnobs (juce::Graphics& g, const Map& m, float x0, float y0, float dx, f
 
 void drawStrings (juce::Graphics& g, const Map& m, float neckW, float nutY, float bridgeY, int count)
 {
-    for (int s = 0; s < count; ++s)
+    for (int i = 0; i < count; ++i)
     {
-        const float t = (float) s / (float) (count - 1);
-        const float x = 400.0f + (t - 0.5f) * neckW * 1.5f;
-        const float lw = juce::jmax (0.8f, neckW * 0.055f * (0.6f + t));
-        g.setColour (juce::Colour (0xffc9ccd0).withAlpha (0.85f));
+        const float t = (float) i / (float) (count - 1);
+        const float x = 400.0f + (t - 0.5f) * neckW * 1.45f;
+        // Wound strings at the bass end are visibly thicker than the trebles.
+        const float lw = neckW * (0.035f + t * 0.030f);
+        g.setColour (juce::Colour (0xffd8dce0).withAlpha (0.75f));
         juce::Path line;
         line.startNewSubPath (m.P (x, nutY));
-        line.lineTo (m.P (x, 6.0f));
         line.lineTo (m.P (x, bridgeY));
-        g.strokePath (line, juce::PathStrokeType (m.L (lw), juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        g.strokePath (line, juce::PathStrokeType (m.L (lw)));
     }
 }
 
@@ -271,25 +279,28 @@ void GuitarArt::paint (juce::Graphics& g, const juce::Rectangle<float>& area, Bo
     const float bridgePad = 24.0f;   // vertical gap kept clear between pickguard and bridge
 
     // --- body ---------------------------------------------------------------
-    // Figure eight: upper bout, waist, lower bout, mirrored about x = 400.
-    const float upper  = nylon ? 44.0f : 50.0f;
-    const float waist  = nylon ? 24.0f : solid ? 34.0f : 28.0f;
-    const float lower  = nylon ? 56.0f : solid ? 52.0f : semi ? 58.0f : 62.0f;
-    const float corner = (botY - waistY) * 0.35f;
+    // Figure eight. upper < lower so the lower bout is the widest part, which
+    // is what makes the shape read as a guitar rather than a balloon.
+    const float upper  = nylon ? 46.0f : solid ? 58.0f : 54.0f;
+    const float waist  = nylon ? 30.0f : solid ? 34.0f : 32.0f;
+    const float lower  = nylon ? 66.0f : solid ? 62.0f : semi ? 70.0f : 72.0f;
+    const float corner = (botY - waistY) * 0.30f;
 
     const float topR = 400.0f - upper, waistR = 400.0f - waist, botR = 400.0f - lower;
     const float topL = 400.0f + upper, waistL = 400.0f + waist, botL = 400.0f + lower;
 
     juce::Path design;
     design.startNewSubPath (400.0f, bodyTopY);
-    design.cubicTo (topR + upper * 0.45f, bodyTopY, topR, bodyTopY + upper * 0.2f, topR, bodyTopY + upper);
-    design.cubicTo (topR, waistY - (waistY - bodyTopY) * 0.45f, waistR + (topR - waistR) * 0.5f, waistY - 18.0f, waistR, waistY);
-    design.cubicTo (waistR + (botR - waistR) * 0.4f, waistY + 22.0f, botR, waistY + 40.0f, botR, botY - corner);
-    design.cubicTo (botR, botY - corner * 0.35f, botR - corner * 0.8f, botY, 400.0f, botY);
-    design.cubicTo (400.0f + corner * 0.8f, botY, botL, botY - corner * 0.35f, botL, botY - corner);
-    design.cubicTo (botL, waistY + 40.0f, waistL - (botL - waistL) * 0.4f, waistY + 22.0f, waistL, waistY);
-    design.cubicTo (waistL, waistY - 18.0f, topL, waistY - (waistY - bodyTopY) * 0.45f, topL, bodyTopY + upper);
-    design.cubicTo (topL, bodyTopY + upper * 0.2f, topL - upper * 0.45f, bodyTopY, 400.0f, bodyTopY);
+    // upper bout: shoulders out to topR, then curve in to the waist
+    design.cubicTo (topR + upper * 0.30f, bodyTopY, topR, bodyTopY + upper * 0.30f, topR, bodyTopY + upper);
+    design.cubicTo (topR, waistY - (waistY - bodyTopY) * 0.55f, waistR + (topR - waistR) * 0.55f, waistY - 20.0f, waistR, waistY);
+    // lower bout: swell out to botR, round the bottom
+    design.cubicTo (waistR + (botR - waistR) * 0.55f, waistY + 26.0f, botR, waistY + 44.0f, botR, waistY + (botY - waistY) * 0.62f);
+    design.cubicTo (botR, botY - corner, botR - corner, botY, 400.0f, botY);
+    design.cubicTo (400.0f + corner, botY, botL, botY - corner, botL, waistY + (botY - waistY) * 0.62f);
+    design.cubicTo (botL, waistY + 44.0f, waistL - (botL - waistL) * 0.55f, waistY + 26.0f, waistL, waistY);
+    design.cubicTo (waistL, waistY - 20.0f, topL, waistY - (waistY - bodyTopY) * 0.55f, topL, bodyTopY + upper);
+    design.cubicTo (topL, bodyTopY + upper * 0.30f, topL - upper * 0.30f, bodyTopY, 400.0f, bodyTopY);
     design.closeSubPath();
 
     juce::Path p;
@@ -315,13 +326,17 @@ void GuitarArt::paint (juce::Graphics& g, const juce::Rectangle<float>& area, Bo
         g.setColour (nylon ? mapleDark : rosewood);
         g.drawEllipse (m.R (400.0f - holeR * 1.45f, hy - holeR * 1.45f, holeR * 2.9f, holeR * 2.9f), m.L (3.0f));
 
-        // Pickguard hugs the bass side of the sound hole, inside the upper bout's
-        // left edge at its widest point (topR), so it never spills past the body.
-        const float pgR = 400.0f - holeR - 3.0f;
-        const float pgW = juce::jmax (10.0f, pgR - topR + 4.0f);
-        const float pgH = (botY - bridgePad - hy - holeR) * 0.9f;
-        g.setColour (pickguardW.withAlpha (0.9f));
-        g.fillRoundedRectangle (m.R (pgR - pgW, hy + holeR * 0.5f, pgW, pgH), m.L (pgW * 0.45f));
+        // Pickguard wraps the bass side of the soundhole, its outer edge kept
+        // inside the widest point of the upper bout so it cannot spill.
+        const float pgR = 400.0f - holeR - 4.0f;
+        const float pgW = juce::jmax (14.0f, pgR - topR + 6.0f);
+        const float pgH = (botY - bridgePad - hy) * 0.92f;
+        g.setColour (pickguardW.withAlpha (0.88f));
+        g.fillRoundedRectangle (m.R (pgR - pgW, hy + holeR * 0.35f, pgW, pgH), m.L (pgW * 0.5f));
+        juce::Path pgEdge;
+        pgEdge.addRoundedRectangle (m.R (pgR - pgW, hy + holeR * 0.35f, pgW, pgH), m.L (pgW * 0.5f));
+        outline (g, pgEdge, juce::Colour (0xff000000).withAlpha (0.22f), m.L (0.8f));
+
     }
     else if (solid)
     {
