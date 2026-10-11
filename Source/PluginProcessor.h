@@ -81,7 +81,6 @@ private:
 
     // Preallocated, because processBlock runs on the audio thread.
     juce::MidiBuffer combinedMidi { 128 };
-    juce::MidiBuffer keyboardMidi { 128 };
     std::vector<fw::MidiMsg> midiIn;
     std::array<fw::StringEvent, 64> events { };
     std::array<fw::ClickEvent, 32> clicks { };

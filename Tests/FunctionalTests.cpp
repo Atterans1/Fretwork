@@ -652,6 +652,21 @@ juce::MouseEvent mouseEventAt (juce::Component& c, juce::Point<float> position, 
              &c, &c, now, position, now, 1, false };
 }
 
+FW_TEST ("midi: notes from the host light the on-screen piano")
+{
+    fwtest::Plugin p;
+    auto& keys = p.processor().getKeyboardState();
+    constexpr int note = 57;
+
+    EXPECT_MSG (! keys.isNoteOnForChannels (0xffff, note), "the key starts unlit");
+    p.noteOn (0.01, note, 0.8f);
+    p.render (0.1);
+    EXPECT_MSG (keys.isNoteOnForChannels (0xffff, note), "a host note-on lights its key");
+    p.noteOff (0.15, note);                     // event times are absolute
+    p.render (0.1);
+    EXPECT_MSG (! keys.isNoteOnForChannels (0xffff, note), "the host note-off clears it");
+}
+
 FW_TEST ("editor: body display draws a distinct guitar for every body")
 {
     juce::ScopedJuceInitialiser_GUI gui;

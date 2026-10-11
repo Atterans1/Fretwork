@@ -185,18 +185,15 @@ void FretworkAudioProcessor::processBlock (juce::AudioBuffer<float>& audio,
     if (numSamples <= 0) return;
 
     // ---- merge host MIDI with the on-screen keyboard ---------------------
-    // injectIndirectEvents must be true: it is the flag that actually drains
-    // the notes queued by MidiKeyboardState::noteOn into the buffer. With it
-    // false this call only reads events back out of the buffer, so a click on
-    // the on-screen keyboard was silently discarded and no note ever sounded.
-    // keyboardMidi is a reused member: clear it first, or every on-screen key
-    // event from earlier blocks is replayed and re-plucks the string forever.
-    keyboardMidi.clear();
-    keyboardState.processNextMidiBuffer (keyboardMidi, 0, numSamples, true);
-
+    // One pass over a copy of the host's MIDI does both jobs. Every host event
+    // is recorded in keyboardState, so notes arriving from the DAW or a MIDI
+    // port light their keys on the on-screen piano. With injectIndirectEvents
+    // true, the notes queued by on-screen key clicks are drained into the same
+    // buffer; without that flag a click was silently discarded. Host events
+    // are only recorded, never queued, so nothing is played twice.
     combinedMidi.clear();
     combinedMidi.addEvents (midi, 0, numSamples, 0);
-    combinedMidi.addEvents (keyboardMidi, 0, numSamples, 0);
+    keyboardState.processNextMidiBuffer (combinedMidi, 0, numSamples, true);
     midi.clear();
 
     midiIn.clear();
