@@ -31,4 +31,15 @@ References (product hero renders, saved here):
 
 ## JUCE mapping
 
+## Artwork
+
+The guitar bodies and the panel texture are drawn, not bitmaps. They were keyed
+PNGs and every one was broken the same way: the key kept the grey drop shadow
+around the guitar and erased the fretboard, frets and strings inside the alpha
+channel, which showed as a grey shelf under the neck and black blocks across
+the fingerboard. `Source/ui/GuitarArt.cpp` builds each body from paths in a
+fixed design space mapped into the LCD well, so there is no alpha channel to
+get wrong and the art stays sharp at any scale. `waves::chassis` replaces the
+panel texture.
+
 `FretLookAndFeel`: drawRotarySlider, drawLinearSlider, drawComboBox, drawPopupMenuBackground, drawPopupMenuItem, drawButtonBackground, drawButtonText, drawToggleButton, drawTabButton, drawTabbedButtonBarBackground, drawScrollbar, fillTextEditorBackground, drawTextEditorOutline, drawLabel. Panel/section/meter drawing lives in `ui/WavesStyle.h` helpers used by each widget's paint().
