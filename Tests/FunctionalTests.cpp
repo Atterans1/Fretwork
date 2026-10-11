@@ -224,6 +224,93 @@ FW_TEST ("state: save/load restores every parameter")
     EXPECT (t.finite());
 }
 
+// A truncated or bit-flipped state is what a damaged preset file looks
+// like. The plugin has to keep playing rather than refuse the data or crash,
+// and has to end up with usable values rather than whatever half a number was
+// in the middle of the stream.
+FW_TEST ("state: a corrupted state still loads to sane values")
+{
+    fwtest::Plugin p;
+    // Every parameter off its default, except Power, which nonDefault turns off
+    // and which would silence the plugin rather than test the state loader.
+    for (const auto& g : kGolden)
+        if (! std::strcmp (g.id, "power"))
+            p.set (g.id, nonDefault (g));
+
+    juce::MemoryBlock good;
+    p.processor().getStateInformation (good);
+    EXPECT_MSG (good.getSize() > 64, "the plugin wrote a state block");
+
+    const auto paramsInRange = [&p] (const char* what)
+    {
+        for (const auto& g : kGolden)
+        {
+            const auto v = p.get (g.id);
+            if (! (std::isfinite (v) && v >= g.lo - tol (g) && v <= g.hi + tol (g)))
+            {
+                char msg[220];
+                std::snprintf (msg, sizeof msg, "%s: %s left its range (%.6f not in [%g, %g])",
+                               what, g.id, v, g.lo, g.hi);
+                EXPECT_MSG (false, msg);
+                return false;
+            }
+        }
+        return true;
+    };
+
+    // Truncation at a spread of lengths, including inside the header and one
+    // byte short of the whole thing.
+    for (int keep : { 8, 32, 64, 128, 256, 512, 1024, (int) good.getSize() / 2, (int) good.getSize() - 1 })
+    {
+        if (keep <= 0 || (size_t) keep >= good.getSize())
+            continue;
+
+        char msg[220];
+        std::snprintf (msg, sizeof msg, "a state truncated to %d bytes still loads", keep);
+        p.processor().setStateInformation (good.getData(), keep);
+        EXPECT_MSG (paramsInRange (msg), msg);
+        EXPECT_MSG (pluck (p).finite(), msg);
+    }
+
+    // Single bit flips scattered through the stream. A checksum or magic
+    // number should reject these outright; if none is checked, every value
+    // still has to land in range.
+    for (int offset : { 0, 1, 5, 17, 40, 64, 100, 300, 700, (int) good.getSize() / 2, (int) good.getSize() - 1 })
+    {
+        if (offset < 0 || (size_t) offset >= good.getSize())
+            continue;
+
+        auto bit = good;
+        auto* bytes = static_cast<char*> (bit.getData());
+        bytes[offset] = (char) (bytes[offset] ^ 0x40);
+
+        char msg[220];
+        std::snprintf (msg, sizeof msg, "a state with bit 6 flipped at byte %d still loads", offset);
+        p.processor().setStateInformation (bit.getData(), (int) bit.getSize());
+        EXPECT_MSG (paramsInRange (msg), msg);
+        EXPECT_MSG (pluck (p).finite(), msg);
+    }
+
+    // A good state must still round-trip afterwards, so a rejected block did
+    // not leave the processor wedged.
+    std::vector<float> before;
+    for (const auto& g : kGolden)
+        before.push_back (p.get (g.id));
+
+    p.processor().setStateInformation (good.getData(), (int) good.getSize());
+
+    int moved = 0;
+    for (size_t i = 0; i < before.size(); ++i)
+        if (std::fabs (before[i] - p.get (kGolden[i].id)) > tol (kGolden[i]))
+            ++moved;
+
+    char msg[200];
+    std::snprintf (msg, sizeof msg, "a good state loads after a corrupted one (%d of %zu moved)",
+                   moved, before.size());
+    EXPECT_MSG (moved == 0, msg);
+    EXPECT_MSG (pluck (p).finite(), "a good state loads after a corrupted one");
+}
+
 FW_TEST ("state: loading garbage or empty data is harmless")
 {
     fwtest::Plugin p;
