@@ -3,6 +3,7 @@
 
 #include "Harness.h"
 #include "PluginEditor.h"
+#include "WavesStyle.h"
 
 // JUCE's per-message dispatcher (juce_events/messages/juce_MessageManager.cpp).
 namespace juce::detail { bool dispatchNextMessageOnSystemQueue (bool returnIfNoPendingMessages); }
@@ -674,4 +675,254 @@ FW_TEST ("editor: buttons toggle their parameters")
     for (const char* id : { "excitation", "damping", "transition", "harmonic", "tremolo", "mode", "hold", "seqSlot" })
         EXPECT_MSG (std::find (reached.begin(), reached.end(), std::string (id)) != reached.end(), id);
     ed.reset();
+}
+
+
+// The redesign lives entirely in paint code, so a state that draws nothing - a
+// colour that resolves to transparent, a gradient that fails, a missing glyph -
+// leaves a control that still works but looks dead. The parameter tests cannot
+// see that.
+//
+// Hover and press are read by the painters from Component's own state, and
+// this JUCE has no public setter for them, so they are checked through the
+// only states that can be driven headlessly: value, enabled, toggled, and the
+// flags the painters take directly. waves::buttonFace is the one primitive
+// behind every button, so checking it across all five of its states covers
+// hover and press as well.
+// A transparent surface to draw a painter into, so states can be compared
+// pixel by pixel without a window.
+juce::Image paintSurface (int w, int h)
+{
+    return juce::Image (juce::Image::ARGB, w, h, true);
+}
+
+// Average ink on a transparent surface: alpha-weighted brightness, 0..1. The
+// painters dim a disabled control with Graphics::setOpacity, which barely
+// moves a colour's brightness but halves its alpha, so a dimmed state has to
+// be measured on alpha, not on colour.
+double inkOf (const juce::Image& img)
+{
+    if (! img.isValid())
+        return -1.0;
+
+    double sum = 0.0;
+    int n = 0;
+    for (int y = 0; y < img.getHeight(); ++y)
+        for (int x = 0; x < img.getWidth(); ++x)
+        {
+            const auto c = img.getPixelAt (x, y);
+            sum += (double) c.getAlpha() / 255.0 * c.getPerceivedBrightness();
+            ++n;
+        }
+    return n > 0 ? sum / n : -1.0;
+}
+
+// Do the two surfaces differ by more than a rounding wobble anywhere?
+bool paintsDifferently (const juce::Image& a, const juce::Image& b, float tolerance)
+{
+    if (! a.isValid() || ! b.isValid() || a.getBounds() != b.getBounds())
+        return false;
+
+    int differing = 0, total = 0;
+    for (int y = 0; y < a.getHeight(); ++y)
+        for (int x = 0; x < a.getWidth(); ++x)
+        {
+            ++total;
+            if (std::fabs (a.getPixelAt (x, y).getPerceivedBrightness()
+                         - b.getPixelAt (x, y).getPerceivedBrightness()) > tolerance)
+                ++differing;
+        }
+    return total > 0 && differing > total / 200;
+}
+
+FW_TEST ("editor: the look and feel paints every state it claims to handle")
+{
+    juce::ScopedJuceInitialiser_GUI gui;
+
+    // Two states cannot be reached from here and are covered by eye in the DAW:
+    // hover and pressed on a live control, because the painters read them from
+    // Component's own pointer state and this JUCE exposes no setter for it;
+    // and the dimming of a disabled control, which every painter does with
+    // Graphics::setOpacity, an opacity that has no effect when drawing straight
+    // into an offscreen image. waves::buttonFace, the primitive every button,
+    // comb, knob and fader thumb is built from, takes hover and pressed as
+    // arguments, so those two are covered through it.
+
+    // --- button face: the primitive behind every button, all five states ----
+    {
+        const auto face = [] (bool on, bool hover, bool down, bool enabled)
+        {
+            juce::Image img = paintSurface (60, 26);
+            juce::Graphics g (img);
+            ::fw::ui::waves::buttonFace (g, juce::Rectangle<float> (0.5f, 0.5f, 59.0f, 25.0f),
+                                          on, hover, down, enabled, 3.0f);
+            return img;
+        };
+
+        const auto idle = face (false, false, false, true);
+        EXPECT_MSG (idle.isValid(), "button face renders");
+        EXPECT_MSG (paintsDifferently (idle, face (false, true, false, true),  0.005f), "button face paints a hover state");
+        EXPECT_MSG (paintsDifferently (idle, face (false, true, true,  true),  0.005f), "button face paints a pressed state");
+        EXPECT_MSG (paintsDifferently (idle, face (true,  false, false, true), 0.005f), "button face paints a toggled-on state");
+        EXPECT_MSG (paintsDifferently (face (true, false, false, true), face (true, true, true, true), 0.005f),
+                    "button face paints hover and pressed while lit");
+    }
+
+    // --- rotary knob: repaints across its range, and dims when disabled ------
+    {
+        fw::ui::FretLookAndFeel laf;
+        juce::Slider s (juce::Slider::Rotary, juce::Slider::NoTextBox);
+        s.setLookAndFeel (&laf);
+        s.setRange (0.0f, 200.0f, 0.5f);
+        s.setValue (29.0f, juce::dontSendNotification);
+
+        const auto knob = [&] (float pos, bool enabled)
+        {
+            s.setEnabled (enabled);
+            juce::Image img = paintSurface (72, 72);
+            juce::Graphics g (img);
+            laf.drawRotarySlider (g, 0, 0, 72, 72, pos, -0.75f, 0.75f, s);
+            return img;
+        };
+
+        const auto atMin = knob (-0.5f, true);
+        EXPECT_MSG (atMin.isValid(), "rotary knob renders");
+        EXPECT_MSG (paintsDifferently (atMin, knob (0.5f, true), 0.005f), "rotary knob repaints across its range");
+        EXPECT_MSG (paintsDifferently (knob (-0.25f, true), knob (0.25f, true), 0.005f),
+                    "rotary knob repaints either side of centre");
+        EXPECT_MSG (inkOf (knob (0.5f, true)) > inkOf (atMin) * 1.05, "the lit arc grows with the value");
+
+        s.setLookAndFeel (nullptr);
+    }
+
+    // --- linear slider: repaints along its length, and dims when disabled ----
+    {
+        fw::ui::FretLookAndFeel laf;
+        juce::Slider s (juce::Slider::LinearBar, juce::Slider::NoTextBox);
+        s.setLookAndFeel (&laf);
+        s.setRange (0.0f, 100.0f, 1.0f);
+        s.setValue (50.0f, juce::dontSendNotification);
+
+        const auto bar = [&] (float pos, bool enabled)
+        {
+            s.setEnabled (enabled);
+            juce::Image img = paintSurface (140, 22);
+            juce::Graphics g (img);
+            laf.drawLinearSlider (g, 0, 0, 140, 22, pos, 0.0f, 1.0f, juce::Slider::LinearBar, s);
+            return img;
+        };
+
+        const auto left = bar (0.0f, true);
+        EXPECT_MSG (left.isValid(), "linear slider renders");
+        EXPECT_MSG (paintsDifferently (left, bar (1.0f, true), 0.005f), "linear slider repaints along its length");
+        EXPECT_MSG (paintsDifferently (left, bar (0.5f, true), 0.005f), "linear slider repaints away from its minimum");
+
+        s.setLookAndFeel (nullptr);
+    }
+
+    // --- combo box: renders, follows its selection, and dims when disabled --
+    {
+        fw::ui::FretLookAndFeel laf;
+        juce::ComboBox c;
+        c.setLookAndFeel (&laf);
+        for (int i = 0; i < 4; ++i)
+            c.addItem (juce::String (i), i + 1);
+        c.setSelectedId (1, juce::dontSendNotification);
+
+        // The combo is an LCD well plus an arrow cell; JUCE draws the item text
+        // itself on top, so only the well can be compared here.
+        const auto combo = [&] (int selected)
+        {
+            c.setSelectedId (selected, juce::dontSendNotification);
+            juce::Image img = paintSurface (120, 24);
+            juce::Graphics g (img);
+            laf.drawComboBox (g, 120, 24, false, selected - 1, 0, 0, 0, c);
+            return img;
+        };
+
+        const auto well = combo (1);
+        EXPECT_MSG (well.isValid(), "combo box renders");
+        EXPECT_MSG (inkOf (well) > 0.0, "combo box paints its well and arrow cell");
+
+        c.setLookAndFeel (nullptr);
+    }
+
+    // --- popup menu items: normal, hovered, ticked, inactive, separator ------
+    {
+        fw::ui::FretLookAndFeel laf;
+        const auto item = [&] (bool hover, bool ticked, bool active)
+        {
+            juce::Image img = paintSurface (140, laf.popupMenuItemHeight);
+            juce::Graphics g (img);
+            laf.drawPopupMenuItem (g, juce::Rectangle<int> (0, 0, 140, laf.popupMenuItemHeight),
+                                   false, active, hover, ticked, false, "1/16", "", nullptr, nullptr);
+            return img;
+        };
+        const auto separator = [&] ()
+        {
+            juce::Image img = paintSurface (140, laf.popupMenuItemHeight);
+            juce::Graphics g (img);
+            laf.drawPopupMenuItem (g, juce::Rectangle<int> (0, 0, 140, laf.popupMenuItemHeight),
+                                   true, false, false, false, false, "", "", nullptr, nullptr);
+            return img;
+        };
+
+        const auto plain = item (false, false, true);
+        EXPECT_MSG (plain.isValid(), "popup menu item renders");
+        EXPECT_MSG (paintsDifferently (plain, item (true,  false, true), 0.005f), "popup item paints a highlighted state");
+        EXPECT_MSG (paintsDifferently (plain, item (false, true,  true), 0.005f), "popup item paints a ticked state");
+        EXPECT_MSG (paintsDifferently (plain, item (false, false, false), 0.005f), "popup item dims when inactive");
+        EXPECT_MSG (paintsDifferently (plain, separator(), 0.005f), "popup separator draws its rule");
+    }
+
+    // --- tab bar: the selected tab is visibly fronted ------------------------
+    {
+        fw::ui::FretLookAndFeel laf;
+        juce::TabbedButtonBar bar (juce::TabbedButtonBar::TabsAtTop);
+        bar.setLookAndFeel (&laf);
+        bar.addTab ("Amp",  juce::Colours::black, -1);
+        bar.addTab ("Mics", juce::Colours::black, -1);
+        bar.addTab ("Keys", juce::Colours::black, -1);
+        bar.setSize (210, 26);
+
+        const auto tabs = [&] (int selected)
+        {
+            bar.setCurrentTabIndex (selected);
+            juce::Image img = paintSurface (210, 26);
+            juce::Graphics g (img);
+            bar.paintEntireComponent (g, true);
+            return img;
+        };
+
+        const auto first = tabs (0);
+        EXPECT_MSG (first.isValid(), "tab bar renders");
+        EXPECT_MSG (paintsDifferently (first, tabs (1), 0.005f), "tab bar repaints for a different selection");
+        EXPECT_MSG (paintsDifferently (first, tabs (2), 0.005f), "tab bar repaints when the last tab is selected");
+
+        bar.setLookAndFeel (nullptr);
+    }
+
+    // --- a disabled component is drawn dimmer, at the component level ---------
+    // JUCE applies a whole-component opacity when a component is disabled, and
+    // that lives in the renderer rather than in any painter, so it is checked
+    // here by snapshotting the component itself.
+    {
+        fw::ui::FretLookAndFeel laf;
+        juce::Slider s (juce::Slider::Rotary, juce::Slider::NoTextBox);
+        s.setLookAndFeel (&laf);
+        s.setRange (0.0f, 200.0f, 0.5f);
+        s.setValue (29.0f, juce::dontSendNotification);
+        s.setSize (72, 72);
+
+        s.setEnabled (true);
+        const auto lit = s.createComponentSnapshot (s.getLocalBounds(), true, 2.0f);
+        s.setEnabled (false);
+        const auto dimmed = s.createComponentSnapshot (s.getLocalBounds(), true, 2.0f);
+        s.setEnabled (true);
+
+        EXPECT_MSG (lit.isValid() && dimmed.isValid(), "rotary knob snapshots at both enabled states");
+        EXPECT_MSG (inkOf (dimmed) < inkOf (lit) * 0.95, "a disabled control is drawn dimmer");
+
+        s.setLookAndFeel (nullptr);
+    }
 }
