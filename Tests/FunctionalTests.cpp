@@ -4,6 +4,10 @@
 #include "Harness.h"
 #include "PluginEditor.h"
 #include "WavesStyle.h"
+#include "SeqGrid.h"
+
+// juce_events/messages/juce_MessageManager.cpp
+namespace juce::detail { bool dispatchNextMessageOnSystemQueue (bool returnIfNoPendingMessages); }
 
 // JUCE's per-message dispatcher (juce_events/messages/juce_MessageManager.cpp).
 namespace juce::detail { bool dispatchNextMessageOnSystemQueue (bool returnIfNoPendingMessages); }
@@ -624,6 +628,196 @@ void pump()
         if (! juce::detail::dispatchNextMessageOnSystemQueue (true))
             break;
 }
+}
+
+
+// Everything the suite does to the editor goes through setValue or
+// triggerClick, so the sequencer's own mouse editing - the one part of the UI
+// that is pure interaction code - was never exercised. A MouseEvent is
+// constructible directly, and the real Desktop mouse source is a valid
+// MouseInputSource even with no window open, so the grid can be driven with
+// synthetic clicks at chosen cell coordinates.
+juce::MouseEvent mouseEventAt (juce::Component& c, juce::Point<float> position, juce::ModifierKeys mods)
+{
+    const juce::MouseInputSource source = juce::Desktop::getInstance().getMainMouseSource();
+    const juce::Time now = juce::Time::getCurrentTime();
+
+    return { source, position, mods,
+             juce::MouseInputSource::defaultPressure,
+             juce::MouseInputSource::defaultOrientation,
+             juce::MouseInputSource::defaultRotation,
+             juce::MouseInputSource::defaultTiltX,
+             juce::MouseInputSource::defaultTiltY,
+             &c, &c, now, position, now, 1, false };
+}
+
+FW_TEST ("editor: seq grid: clicking edits the pattern, dragging erases or resizes, wheel changes velocity")
+{
+    juce::ScopedJuceInitialiser_GUI gui;
+    fwtest::Plugin p;
+
+    fw::ui::SeqGrid grid (p.processor(), p.processor().getState());
+    grid.setSize (400, 300);
+    grid.resized();
+    grid.tick();
+
+    auto& store = p.processor().getSeqStore();
+    auto& slotParam = *dynamic_cast<juce::AudioParameterInt*> (p.processor().getState().getParameter ("seqSlot"));
+    slotParam.setValueNotifyingHost (0.0f);
+
+    constexpr int slot = 0, row = 0;
+    store.clearSlot (slot);
+    EXPECT_MSG (! store.hasNote (slot, row, 3), "the slot starts empty");
+
+    // The grid draws an icon column and a label gutter before the step cells, so
+    // find a real cell by probing for the one that adds a note.
+    const auto cellCentre = [&] (int step) -> juce::Point<float>
+    {
+        for (int x = 40; x < grid.getWidth() - 4; x += 2)
+            for (int y = 6; y < grid.getHeight() - 6; y += 2)
+            {
+                store.clearSlot (slot);
+                grid.mouseDown (mouseEventAt (grid, { (float) x, (float) y }, {}));
+                grid.mouseUp (mouseEventAt (grid, { (float) x, (float) y }, {}));
+                if (store.hasNote (slot, row, step))
+                {
+                    // Undo the probe's own click with the grid's own right-click.
+                    store.clearSlot (slot);
+                    grid.mouseDown (mouseEventAt (grid, { (float) x, (float) y }, juce::ModifierKeys::rightButtonModifier));
+                    grid.mouseUp (mouseEventAt (grid, { (float) x, (float) y }, juce::ModifierKeys::rightButtonModifier));
+                    store.clearSlot (slot);
+                    return { (float) x, (float) y };
+                }
+            }
+        return { -1.0f, -1.0f };
+    };
+
+    const auto first = cellCentre (0);
+    EXPECT_MSG (first.x >= 0.0f, "found the first step cell");
+
+    if (first.x >= 0.0f)
+    {
+        // left click adds
+        grid.mouseDown (mouseEventAt (grid, first, {}));
+        grid.mouseUp (mouseEventAt (grid, first, {}));
+        EXPECT_MSG (store.hasNote (slot, row, 0), "a left click adds a note");
+
+        // right click removes
+        grid.mouseDown (mouseEventAt (grid, first, juce::ModifierKeys::rightButtonModifier));
+        grid.mouseUp (mouseEventAt (grid, first, juce::ModifierKeys::rightButtonModifier));
+        EXPECT_MSG (! store.hasNote (slot, row, 0), "a right click removes the note");
+
+        // click a second cell, then drag its right-hand 40% to resize
+        const auto second = cellCentre (4);
+        EXPECT_MSG (second.x > first.x, "found a later step cell");
+        grid.mouseDown (mouseEventAt (grid, second, {}));
+        EXPECT_MSG (store.hasNote (slot, row, 4), "a left click adds a note at step 4");
+
+        const auto& pattern = store.getSlot (slot);
+        const auto vel0 = pattern.notes[0].vel;
+        const auto len0 = pattern.notes[0].len;
+        EXPECT_MSG (len0 == 1, "a new note is one step long");
+
+        // the wheel over a held note changes its velocity
+        grid.mouseWheelMove (mouseEventAt (grid, second, {}),
+                             juce::MouseWheelDetails { 0.0f, -1.0f, false, true, false });
+        EXPECT_MSG (store.getSlot (slot).notes[0].vel == (std::uint8_t) juce::jmin (127, (int) vel0 + 8),
+                    "scrolling up raises the velocity");
+        grid.mouseWheelMove (mouseEventAt (grid, second, {}),
+                             juce::MouseWheelDetails { 0.0f, 1.0f, false, true, false });
+        EXPECT_MSG (store.getSlot (slot).notes[0].vel == vel0, "scrolling down lowers it back");
+
+        // mouseDown picks the mode from where the press landed: the right-hand
+        // 40% of a cell resizes, the rest is a delete target. So dragging the
+        // body off the note erases it, and a press and release without real
+        // movement must not.
+        constexpr int heldRow = row, heldCol = 4;
+
+        grid.mouseDown (mouseEventAt (grid, second, {}));
+        grid.mouseDrag (mouseEventAt (grid, { second.x + 1.5f, second.y }, {}));
+        grid.mouseUp (mouseEventAt (grid, { second.x + 1.5f, second.y }, {}));
+        EXPECT_MSG (store.hasNote (slot, heldRow, heldCol),
+                    "a press and release without movement keeps the note");
+
+        // Drag downwards rather than rightwards: a horizontal drag of this
+        // length would cross a step boundary and land the release in the
+        // next column, which is a different edit.
+        grid.mouseDown (mouseEventAt (grid, second, {}));
+        grid.mouseDrag (mouseEventAt (grid, { second.x, second.y + 40.0f }, {}));
+        EXPECT_MSG (store.hasNote (slot, heldRow, heldCol),
+                    "dragging the body keeps the note until it is released");
+        grid.mouseUp (mouseEventAt (grid, { second.x, second.y + 40.0f }, {}));
+        EXPECT_MSG (! store.hasNote (slot, heldRow, heldCol),
+                    "releasing after dragging the body erases the note");
+
+        // The right-hand edge resizes instead. Length follows the column
+        // under the pointer, so growing a note means dragging right past the
+        // next cell's leading edge - not just moving within this cell.
+        // The grid lays cells out from its own icon column; this pitch is
+        // close enough to walk the cell with, and the walk below finds the
+        // exact resize handle rather than assuming a fraction of the cell.
+        // Mirror the grid's own layout: it lays cells out from a 44 px icon
+        // column with a 1 px gap, so a cell's left edge is not a fraction of
+        // the component width. Deriving pitch from the component alone lands
+        // between cells.
+        constexpr int iconCol = 44, gap = 1, gridTop = 22;
+        const auto pitch = (float) (grid.getWidth() - iconCol) / (float) grid.getStepsPerBar() + (float) gap;
+
+        store.clearSlot (slot);
+        grid.mouseDown (mouseEventAt (grid, second, {}));
+        grid.mouseUp (mouseEventAt (grid, second, {}));
+
+        // The right-hand 40% of a cell resizes; the rest of the body is a
+        // delete target. With the note's left edge at second.x and a cell of
+        // about 0.6*pitch before the resize zone, the handle starts around
+        // second.x + 0.6*cellW - so press there, drag right past the next
+        // cell's leading edge, and the note's length has to grow.
+        const auto cellW = pitch - (float) gap;
+        const auto handleX = second.x + cellW * 0.7f;
+
+        store.clearSlot (slot);
+        grid.mouseDown (mouseEventAt (grid, second, {}));
+        grid.mouseUp (mouseEventAt (grid, second, {}));
+        EXPECT_MSG (store.hasNote (slot, heldRow, heldCol), "re-seeded the note for the resize test");
+
+        grid.mouseDown (mouseEventAt (grid, { handleX, second.y }, {}));
+        grid.mouseDrag (mouseEventAt (grid, { handleX + cellW + 2.0f, second.y }, {}));
+        const auto resizedPattern = store.getSlot (slot);
+        EXPECT_MSG (resizedPattern.count == 1 && resizedPattern.notes[0].len >= 2,
+                    "dragging the right-hand edge past the next cell grows the note");
+        grid.mouseUp (mouseEventAt (grid, { handleX + cellW + 2.0f, second.y }, {}));
+        store.clearSlot (slot);
+
+        // a drag that started on empty space edits nothing
+        const auto countBeforeDrag = store.getSlot (slot).count;
+        grid.mouseDown (mouseEventAt (grid, { first.x, first.y - 6.0f }, {}));
+        grid.mouseDrag (mouseEventAt (grid, { first.x + 10.0f, first.y - 6.0f }, {}));
+        grid.mouseUp (mouseEventAt (grid, { first.x + 10.0f, first.y - 6.0f }, {}));
+        EXPECT_MSG (store.getSlot (slot).count == countBeforeDrag,
+                    "a drag that started on empty space edits nothing");
+
+        // clicking an empty far cell adds a separate note; the wheel over nothing does nothing
+        const auto countBefore = store.getSlot (slot).count;
+        grid.mouseWheelMove (mouseEventAt (grid, { 4.0f, 4.0f }, {}),
+                             juce::MouseWheelDetails { 0.0f, -1.0f, false, true, false });
+        EXPECT_MSG (store.getSlot (slot).count == countBefore, "the wheel over empty space does nothing");
+
+        // Switching slot switches which pattern is edited. seqSlot runs 1..8 on
+        // the wire (currentSlot subtracts one), so 4 is store slot 3 - and
+        // setValueNotifyingHost takes the normalised 0..1, not the plain value.
+        store.clearSlot (3);
+        const auto range = slotParam.getRange();
+        slotParam.setValueNotifyingHost ((float) (4 - range.getStart()) / (float) range.getLength());
+        pump();
+        grid.mouseDown (mouseEventAt (grid, first, {}));
+        grid.mouseUp (mouseEventAt (grid, first, {}));
+        EXPECT_MSG ((int) slotParam.get() == 4, "the slot parameter is 1-based");
+        EXPECT_MSG (store.hasNote (3, row, 0), "the click landed in the selected slot");
+        EXPECT_MSG (! store.hasNote (0, row, 0), "the other slot was untouched");
+
+        // and a pattern edited by hand is what the audio thread plays
+        EXPECT_MSG (pluck (p).finite(), "the edited pattern still renders");
+    }
 }
 
 FW_TEST ("editor: opens at 1120x700, paints, and closes repeatedly")

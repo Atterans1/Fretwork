@@ -61,6 +61,8 @@ private:
     enum class DragMode { none, resize, erase };
     DragMode dragMode = DragMode::none;
     int dragRow = 0, dragStart = 0, dragLen = 1, dragVel = 100;
+    juce::Point<float> pressPos;
+    bool dragMoved = false;
 
     // Cell under the pointer, for hover feedback only (-1 = none).
     int hoverRow = -1, hoverCol = -1;

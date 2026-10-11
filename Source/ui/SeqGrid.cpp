@@ -340,10 +340,15 @@ void SeqGrid::mouseDown (const juce::MouseEvent& e)
     dragMode = (e.position.x >= cellRect (row, col).getX() + 0.6f * (float) cellW)
                  ? DragMode::resize
                  : DragMode::erase;
+    pressPos = e.position;
+    dragMoved = false;
 }
 
 void SeqGrid::mouseDrag (const juce::MouseEvent& e)
 {
+    if (dragMoved == false && e.position.getDistanceFrom (pressPos) >= 3.0f)
+        dragMoved = true;
+
     if (dragMode != DragMode::resize)
         return;
 
@@ -366,6 +371,17 @@ void SeqGrid::mouseDrag (const juce::MouseEvent& e)
 
 void SeqGrid::mouseUp (const juce::MouseEvent&)
 {
+    // Dragging a note's body away from it erases it; a press and release
+    // without movement is a no-op, so clicking a note never deletes it by
+    // accident. A press that added a new note leaves dragMode none, so that
+    // click is untouched either way.
+    if (dragMode == DragMode::erase && dragMoved)
+    {
+        const int slot = currentSlot();
+        processor.getSeqStore().removeNote (slot, dragRow, dragStart);
+        repaint();
+    }
+
     resetDrag();
 }
 
@@ -423,6 +439,8 @@ void SeqGrid::resetDrag() noexcept
     dragRow = dragStart = 0;
     dragLen = 1;
     dragVel = 100;
+    pressPos = {};
+    dragMoved = false;
 }
 
 } // namespace fw::ui
