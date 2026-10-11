@@ -6,7 +6,8 @@ namespace fw::ui
 {
 
 /** Guitar artwork for the body display: one AI-generated photo per body,
-    shipped as BinaryData (Assets/guitars).
+    shipped as BinaryData (Assets/guitars). The images lie on their side,
+    headstock left, so the guitar fills the wide display well.
 
     Each image was generated on pure black and cut out with alpha taken from
     brightness, so every partly transparent edge pixel blends towards black -
