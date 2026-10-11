@@ -1,5 +1,5 @@
 #include "GuitarBodyView.h"
-#include "AssetCache.h"
+#include "GuitarArt.h"
 #include "WavesStyle.h"
 
 namespace fw::ui
@@ -48,36 +48,17 @@ void GuitarBodyView::paint (juce::Graphics& g)
 
     const int index = juce::jlimit (0, (int) choice->choices.size() - 1, choice->getIndex());
 
-    const auto& assets = AssetCache::get();
-    const juce::Image* art = nullptr;
-    switch (index)
-    {
-        case 0:  art = &assets.dreadnought(); break;   // Dreadnought Steel
-        case 1:  art = &assets.nylon();      break;   // Classical Nylon
-        case 2:  art = &assets.solid();      break;   // Solid Electric
-        case 3:  art = &assets.semiHollow(); break;   // Semi-Hollow
-        default: break;
-    }
+    static constexpr GuitarArt::Body bodies[] { GuitarArt::Body::DreadnoughtSteel,   // Dreadnought Steel
+                                                GuitarArt::Body::ClassicalNylon,    // Classical Nylon
+                                                GuitarArt::Body::SolidElectric,     // Solid Electric
+                                                GuitarArt::Body::SemiHollow };      // Semi-Hollow
+    GuitarArt::paint (g, area.reduced (8.0f, 4.0f), bodies[index]);
 
-    if (art == nullptr || ! art->isValid())
-    {
-        // No artwork for this body. Say which one is selected rather than
-        // leaving the panel blank, which reads as a loading failure.
-        g.setColour (Palette::lcdText);
-        g.setFont (Palette::fontSemi (14.0f).withExtraKerningFactor (0.06f));
-        g.drawText (choice->choices[index].toUpperCase(), area.reduced (10.0f, 0.0f),
-                    juce::Justification::centred, true);
-        return;
-    }
-
-    // Letterbox on whichever axis runs out first, so the whole guitar is always
-    // visible rather than cropped to fill.
-    const auto inner = area.reduced (10.0f, 8.0f);
-    const auto scale = juce::jmin (inner.getWidth()  / (float) art->getWidth(),
-                                   inner.getHeight() / (float) art->getHeight());
-    const auto size = juce::Point<float> ((float) art->getWidth(), (float) art->getHeight()) * scale;
-
-    g.drawImage (*art, inner.withSizeKeepingCentre (size.x, size.y));
+    // Name caption along the bottom of the well, as a display label.
+    g.setColour (Palette::caption.withAlpha (0.9f));
+    g.setFont (Palette::fontSemi (9.0f).withExtraKerningFactor (0.1f));
+    g.drawText (choice->choices[index].toUpperCase(), area.reduced (8.0f, area.getHeight() - 14.0f),
+                juce::Justification::centred, true);
 }
 
 } // namespace fw::ui

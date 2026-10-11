@@ -9,12 +9,8 @@
 namespace fw::ui
 {
 
-/** Body artwork for the selected guitar, drawn in an LCD display window in the
-    strip under region A.
-
-    Only the bodies we actually have artwork for get a picture. Classical Nylon
-    and Solid Electric have none, so rather than leave the panel blank - which
-    reads as a loading failure - the selected body's name is drawn in its place. */
+/** Vector artwork of the selected guitar, drawn in an LCD display window in
+    the strip under region A, with its name as a caption. */
 class GuitarBodyView final : public juce::Component,
                              private juce::AudioProcessorValueTreeState::Listener
 {

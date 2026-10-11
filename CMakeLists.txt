@@ -21,16 +21,8 @@ juce_add_plugin(Fretwork
     VST3_CATEGORIES          "Instrument Synth"
     COPY_PLUGIN_AFTER_BUILD  TRUE)
 
-# Art ships inside the binary. A loose PNG beside the .vst3 is not found on any
-# machine but this build tree, and a plugin that renders no artwork on someone
-# else's DAW is broken rather than plain.
-juce_add_binary_data(FretworkData
-    SOURCES
-        Assets/guitar-dreadnought.png
-        Assets/guitar-semi-hollow.png
-        Assets/guitar-nylon.png
-        Assets/guitar-solid.png
-        Assets/panel-texture.png)
+# No BinaryData assets: the guitar art and the panel texture are drawn
+# (Source/ui/GuitarArt.cpp, WavesStyle::chassis), so nothing to ship.
 
 # The DSP and performance cores are slice-developed, so glob them with
 # CONFIGURE_DEPENDS: newly added .cpp files are picked up on the next build.
@@ -83,7 +75,6 @@ target_sources(Fretwork PRIVATE
 target_link_libraries(Fretwork
     PRIVATE
         FretworkCore
-        FretworkData
         juce::juce_recommended_config_flags
         juce::juce_recommended_warning_flags)
 
@@ -110,7 +101,20 @@ target_sources(FretworkTests PRIVATE
 target_link_libraries(FretworkTests
     PRIVATE
         FretworkCore
-        FretworkData
         juce::juce_recommended_config_flags)
 
 add_test(NAME FretworkTests COMMAND FretworkTests)
+
+# HostCheck loads the deployed Fretwork.vst3 through JUCE's VST3 host (the
+# route a DAW takes) and checks automation, presets, editor scaling and MIDI.
+juce_add_console_app(HostCheck PRODUCT_NAME "HostCheck")
+target_sources(HostCheck PRIVATE Tools/HostCheck.cpp)
+target_compile_definitions(HostCheck PRIVATE
+    JUCE_PLUGINHOST_VST3=1
+    JUCE_MODAL_LOOPS_PERMITTED=1
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0)
+target_link_libraries(HostCheck PRIVATE
+    juce::juce_audio_processors
+    juce::juce_gui_basics
+    juce::juce_recommended_config_flags)
