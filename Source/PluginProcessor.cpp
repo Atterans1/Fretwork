@@ -109,6 +109,7 @@ void FretworkAudioProcessor::buildPerfParams (fw::PerfParams& p)
 
     p.transpose = (int) std::lround (getScaled (fw::id::transpose));
     p.wheelRange = (int) std::lround (getScaled (fw::id::wheelRange));
+    p.atBendRange = getScaled (fw::id::bendAmount);
     p.hold      = getParam (fw::id::hold) > 0.5f;
     p.mode      = (fw::PlayMode) getChoiceParam (fw::id::mode);
 
@@ -231,14 +232,19 @@ void FretworkAudioProcessor::processBlock (juce::AudioBuffer<float>& audio,
         const juce::uint8* d = meta.data;
         const int size = meta.numBytes;
 
-        if (size < 3 || d[0] < 0x80 || d[0] >= 0xf0) continue;
+        // Channel messages only. Program change and channel pressure are two
+        // bytes long, so a 3-byte minimum silently dropped aftertouch.
+        if (size < 2 || d[0] < 0x80 || d[0] >= 0xf0) continue;
+        const int kind = d[0] & 0xf0;
+        const bool twoByte = kind == 0xc0 || kind == 0xd0;
+        if (! twoByte && size < 3) continue;
         if (midiIn.size() >= midiIn.capacity()) break;
 
         fw::MidiMsg msg {};
         msg.offset = meta.samplePosition;
         msg.status = d[0];
         msg.d1     = d[1];
-        msg.d2     = d[2];
+        msg.d2     = twoByte ? 0 : d[2];
         midiIn.push_back (msg);
     }
 

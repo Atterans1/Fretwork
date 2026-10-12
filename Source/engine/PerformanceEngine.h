@@ -49,6 +49,7 @@ struct PerfParams
 
     int   transpose  = 0;
     int   wheelRange = 2;          // pitch-wheel span in semitones, each way
+    float atBendRange = 2.f;       // full aftertouch bends up this many semitones (Bend Amount)
 
     bool  hold       = false;
     PlayMode mode    = PlayMode::Poly;
@@ -155,6 +156,7 @@ private:
 
     double   modWheel_  = 0.f;
     double   bendSemis_ = 0.f;
+    double   aftertouchSemis_ = 0.0;   // upward bend from channel / poly pressure
     double   tremAccum_ = 0.0;
     double   metAccum_  = 0.0;
     long long metBeat_  = 0;

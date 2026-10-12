@@ -409,6 +409,28 @@ FW_TEST ("midi: sustain pedal holds notes past note-off")
     EXPECT (tail (true) > tail (false) * 10.0 + 1e-6);
 }
 
+FW_TEST ("midi: aftertouch bends the held note up by Bend Amount")
+{
+    // The pitch estimate searches near a hint, so each case is hinted at the
+    // pitch it should reach; a wrong hint biases the reading.
+    const auto pitchWith = [] (int pressure, double expectSemis)
+    {
+        fwtest::Plugin p;
+        p.set ("bendAmount", 2.f);
+        p.noteOn (0.01, 52, 0.9f);
+        if (pressure >= 0)
+            p.midi (0.2, juce::MidiMessage::channelPressureChange (1, pressure));
+        const auto t = p.render (1.0);
+        return t.pitch (0.5, 0.9, fwtest::midiToHz (52.0 + expectSemis));
+    };
+    const double base = fwtest::midiToHz (52);
+    const double none = pitchWith (-1, 0.0), light = pitchWith (10, 0.0), full = pitchWith (127, 2.0);
+    std::printf ("    aftertouch: none %.1f Hz, light %.1f Hz, full %.1f Hz\n", none, light, full);
+    EXPECT_MSG (std::fabs (fwtest::Take::cents (none, base)) < 5.0, "without aftertouch the note is in tune");
+    EXPECT_MSG (std::fabs (fwtest::Take::cents (light, base)) < 5.0, "a resting finger's light pressure does not detune");
+    EXPECT_MSG (std::fabs (fwtest::Take::cents (full, base) - 200.0) < 15.0, "full pressure bends up by the Bend Amount (2 semitones)");
+}
+
 FW_TEST ("midi: Transpose shifts the sounding pitch")
 {
     fwtest::Plugin p;

@@ -224,6 +224,7 @@ public:
     Plugin& noteOff (double t, int note)                   { return add (t, juce::MidiMessage::noteOff (1, note)); }
     Plugin& cc      (double t, int number, int value)      { return add (t, juce::MidiMessage::controllerEvent (1, number, value)); }
     Plugin& bend    (double t, int value14)                { return add (t, juce::MidiMessage::pitchWheel (1, value14)); }
+    Plugin& midi    (double t, const juce::MidiMessage& m)  { return add (t, m); }   // any other message, e.g. aftertouch
     Plugin& chord   (double t, std::initializer_list<int> notes, float vel = 0.8f, double spreadSec = 0.0)
     {
         int k = 0;

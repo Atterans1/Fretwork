@@ -148,7 +148,7 @@ void PerformanceEngine::refreshUi()
     ui_.ksNotes       = ksNotes_;
     ui_.ksDirtyMask   = ksDirty_;
     ui_.modWheel      = (float) modWheel_;
-    ui_.pitchBendSemis = (float) bendSemis_;
+    ui_.pitchBendSemis = (float) (bendSemis_ + aftertouchSemis_);
 
     ksDirty_ = 0;   // every change is reported exactly once
 }
@@ -455,6 +455,19 @@ void PerformanceEngine::handleMidi (const MidiMsg& m)
         // 14-bit pitch bend centred at 8192, spanning +/- Wheel Range semitones.
         const int raw = (int) m.d1 | ((int) m.d2 << 7);
         bendSemis_ = ((double) (raw - 8192) / 8192.0) * (double) p_.wheelRange;
+        return;
+    }
+
+    // Aftertouch bends up, like pressing a string sideways. Channel pressure
+    // carries its value in d1, polyphonic pressure in d2 (the highest key
+    // wins). Below a small threshold nothing happens, so the weight of a
+    // resting finger never detunes a held chord.
+    if (type == 0xd0 || type == 0xa0)
+    {
+        const int pressure = type == 0xd0 ? (int) m.d1 : (int) m.d2;
+        constexpr int kThreshold = 24;
+        const double frac = pressure <= kThreshold ? 0.0 : (double) (pressure - kThreshold) / (127.0 - kThreshold);
+        aftertouchSemis_ = frac * (double) p_.atBendRange;
     }
 }
 
