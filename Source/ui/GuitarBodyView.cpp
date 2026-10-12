@@ -52,13 +52,15 @@ void GuitarBodyView::paint (juce::Graphics& g)
                                                 GuitarArt::Body::ClassicalNylon,    // Classical Nylon
                                                 GuitarArt::Body::SolidElectric,     // Solid Electric
                                                 GuitarArt::Body::SemiHollow };      // Semi-Hollow
-    GuitarArt::paint (g, area.reduced (8.0f, 4.0f), bodies[index]);
+    // Name caption along the bottom of the well, as a display label; the art
+    // fills the rest so the two never overlap.
+    auto inner = area.reduced (8.0f, 4.0f);
+    const auto captionArea = inner.removeFromBottom (14.0f);
+    GuitarArt::paint (g, inner, bodies[index]);
 
-    // Name caption along the bottom of the well, as a display label.
     g.setColour (Palette::caption.withAlpha (0.9f));
     g.setFont (Palette::fontSemi (9.0f).withExtraKerningFactor (0.1f));
-    g.drawText (choice->choices[index].toUpperCase(), area.reduced (8.0f, area.getHeight() - 14.0f),
-                juce::Justification::centred, true);
+    g.drawText (choice->choices[index].toUpperCase(), captionArea, juce::Justification::centred, true);
 }
 
 } // namespace fw::ui

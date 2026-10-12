@@ -88,6 +88,15 @@ int StrumEngine::stroke (bool up,
     const int limit = n < cap ? n : cap;
     int written = 0;
 
+    // Humanized timing, the way a hand is late or early: the whole stroke
+    // shifts by one shared offset, and each string adds a small jitter capped
+    // at a fraction of its gap to the next string. Independent per-string
+    // jitter could land a later string before an earlier one, reversing the
+    // sweep, which no strum does.
+    const double strokeShiftMs = (double) rng.range (-8.f * h, 8.f * h);
+    constexpr double kJitterOfGap = 0.35;
+    double prevMs = -1.0e9;
+
     for (int k = 0; k < limit; ++k)
     {
         // Order index k runs in sweep order: ascending strings for a down
@@ -97,10 +106,15 @@ int StrumEngine::stroke (bool up,
         const int fret = v.fret[vi];
 
         const float x = (n == 1) ? 0.f : (float) k / (float) (n - 1);
+        const float xNext = (n == 1) ? 0.f : (float) (k + 1) / (float) (n - 1);
+        const double sweepMs = (double) stepTimeMs (p.strumTimeMs, p.separation01, x);
+        const double gapMs   = k + 1 < n ? (double) stepTimeMs (p.strumTimeMs, p.separation01, xNext) - sweepMs : 0.0;
+        const double jitter  = std::fmin (8.0 * (double) h, kJitterOfGap * gapMs);
 
-        const double tMs = (double) stepTimeMs (p.strumTimeMs, p.separation01, x)
-                         + (double) p.timeOffsetMs
-                         + (double) rng.range (-8.f * h, 8.f * h);
+        double tMs = sweepMs + (double) p.timeOffsetMs + strokeShiftMs
+                   + (double) rng.range ((float) -jitter, (float) jitter);
+        if (tMs < prevMs) tMs = prevMs;     // never reverse the sweep
+        prevMs = tMs;
 
         const float gain = up ? upGain (s) : downGain (s);
         const float vel  = bnorm * p.strokeVol * gain

@@ -652,6 +652,61 @@ juce::MouseEvent mouseEventAt (juce::Component& c, juce::Point<float> position, 
              &c, &c, now, position, now, 1, false };
 }
 
+FW_TEST ("body: a solid electric sustains longer than a dreadnought")
+{
+    // Level two seconds into a held low E, relative to its own early level.
+    const auto ringRatio = [] (float body)
+    {
+        fwtest::Plugin p;
+        p.set ("body", body);
+        p.noteOn (0.01, 40, 0.8f);
+        const auto t = p.render (2.6);
+        return t.rms (2.2, 2.5) / t.rms (0.1, 0.4);
+    };
+    const double dread = ringRatio (0.f), solid = ringRatio (2.f), semi = ringRatio (3.f);
+    EXPECT_MSG (solid > dread * 1.25, "the solid body is still clearly louder late in the note");
+    EXPECT_MSG (semi > dread && semi < solid, "the semi-hollow sustains between the two");
+}
+
+FW_TEST ("strum: humanized strokes keep their sweep order")
+{
+    fw::StrumEngine engine;
+    engine.prepare (48000.0);
+
+    fw::Voicing v;
+    v.count = 6;
+    for (int i = 0; i < 6; ++i) { v.stringIndex[i] = i; v.fret[i] = 0; v.pitch[i] = 40.f + 5.f * (float) i; }
+
+    // A fast strum with full humanize is where per-string jitter used to swap
+    // neighbours: 8 ms of jitter against about 2 ms between strings.
+    fw::StrumEngine::StrokeParams p;
+    p.strumTimeMs = 10.f;
+    p.humanize01  = 1.f;
+
+    fw::Rng rng;
+    fw::StrumHit hits[6];
+    int reversed = 0, spreadOk = 0;
+    constexpr int strokes = 400;
+    for (int i = 0; i < strokes; ++i)
+    {
+        const bool up = (i & 1) != 0;
+        const int n = engine.stroke (up, fw::StrokeKind::Normal, 100, p, v, nullptr, {}, rng, hits, 6);
+        for (int k = 1; k < n; ++k)
+            if (hits[k].delaySamples < hits[k - 1].delaySamples)
+                ++reversed;
+        // order: down strokes run low string to high, up strokes high to low
+        bool ordered = true;
+        for (int k = 1; k < n; ++k)
+            ordered = ordered && (up ? hits[k].stringIndex < hits[k - 1].stringIndex
+                                     : hits[k].stringIndex > hits[k - 1].stringIndex);
+        // the humanized stroke stays within the sweep plus the 8 ms shift each side
+        const double span = (hits[n - 1].delaySamples - hits[0].delaySamples) / 48.0;
+        if (ordered && span <= 10.0 + 16.0) ++spreadOk;
+    }
+    EXPECT_MSG (reversed == 0, "no string ever sounds before the string swept ahead of it");
+    EXPECT_MSG (spreadOk == strokes, "every stroke sweeps in string order within its time bound");
+}
+
 FW_TEST ("midi: notes from the host light the on-screen piano")
 {
     fwtest::Plugin p;

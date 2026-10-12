@@ -65,8 +65,11 @@ inline constexpr BodyTable kBodyTables[4] =
     { kSemiHollowModes,    4,  -8.0f }    // Semi-Hollow
 };
 
-// Loop-loss multiplier applied to every string for the selected body.
-inline constexpr float kBodyLossScale[4] = { 1.0f, 0.9f, 1.15f, 0.95f };
+// Sustain multiplier applied to every string for the selected body
+// (Dreadnought, Classical, Solid Electric, Semi-Hollow). A resonant acoustic
+// top drains the string fastest; a solid body barely couples, so its notes ring
+// clearly longer, and a semi-hollow's centre block puts it between the two.
+inline constexpr float kBodyLossScale[4] = { 1.0f, 0.9f, 1.5f, 1.2f };
 
 // Highest fret reachable for each body.
 inline constexpr int kBodyMaxFret[4] = { 20, 19, 22, 21 };

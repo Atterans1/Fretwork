@@ -395,12 +395,15 @@ void TransportBar::resized()
     place (bpmField, 66, 6);
     bpmCaption = { (float) x, (float) y, 30.0f, (float) h };
     x += 30 + clusterGap;
-    divider (dividers[2]);
 
-    // CLEAR COPY PASTE
+    // CLEAR COPY PASTE edit the sequencer pattern, not the transport, so they
+    // sit at the right edge with their divider, balancing the bar.
+    constexpr int editW = 56 + gap + 52 + gap + 54;
+    x = juce::jmax (x, getWidth() - 10 - editW);
+    divider (dividers[2]);
     place (clearButton, 56, gap);
     place (copyButton, 52, gap);
-    place (pasteButton, 54, gap);
+    place (pasteButton, 54, 0);
 }
 
 } // namespace fw::ui
