@@ -6,3 +6,4 @@ Demo/ref/
 .vs/
 # JUCE is its own git checkout (see JUCE/.git); not vendored here.
 JUCE/
+.omp/
