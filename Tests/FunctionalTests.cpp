@@ -484,10 +484,15 @@ FW_TEST ("modes: Strum strokes sound the held chord, Strum Time spreads it")
         p.chord (0.01, { 52, 56, 59, 64 }, 0.9f);
         p.noteOn (0.5, 28, 0.9f).noteOff (0.6, 28);           // Strum Down keyswitch
         const auto t = p.render (1.2);
-        double pk = 0; for (size_t i = t.at (0.5); i < t.at (1.0); ++i) pk = std::max (pk, (double) std::fabs (t.left[i]));
-        size_t i = t.at (0.5);
-        while (i < t.at (1.0) && std::fabs (t.left[i]) < 0.6 * pk) ++i;
-        return std::make_pair ((double) (i - t.at (0.5)) / t.fs, t.rms (0.5, 0.9));
+        // When half of the stroke's energy has arrived. Spreading the strings
+        // moves it later whatever the waveforms do; peak-based rise times do
+        // not, because each string's own attack is nearly as loud as the sum.
+        double total = 0;
+        for (size_t k = t.at (0.5); k < t.at (0.9); ++k) total += (double) t.left[k] * t.left[k];
+        double acc = 0;
+        size_t k = t.at (0.5);
+        for (; k < t.at (0.9) && acc < 0.5 * total; ++k) acc += (double) t.left[k] * t.left[k];
+        return std::make_pair ((double) (k - t.at (0.5)) / t.fs, t.rms (0.5, 0.9));
     };
     const auto fast = riseTime (0.f), slow = riseTime (200.f);
     std::printf ("    stroke rise: strum 0 ms %.3f s, strum 200 ms %.3f s\n", fast.first, slow.first);
@@ -666,6 +671,29 @@ FW_TEST ("body: a solid electric sustains longer than a dreadnought")
     const double dread = ringRatio (0.f), solid = ringRatio (2.f), semi = ringRatio (3.f);
     EXPECT_MSG (solid > dread * 1.25, "the solid body is still clearly louder late in the note");
     EXPECT_MSG (semi > dread && semi < solid, "the semi-hollow sustains between the two");
+}
+
+FW_TEST ("strum: harder strokes sweep the strings faster")
+{
+    fw::StrumEngine engine;
+    engine.prepare (48000.0);
+    fw::Voicing v;
+    v.count = 6;
+    for (int i = 0; i < 6; ++i) { v.stringIndex[i] = i; v.pitch[i] = 40.f + 5.f * (float) i; }
+
+    fw::StrumEngine::StrokeParams p;
+    p.strumTimeMs = 40.f;
+    const auto sweepMs = [&] (int vel)
+    {
+        fw::Rng rng;
+        fw::StrumHit hits[6];
+        const int n = engine.stroke (false, fw::StrokeKind::Normal, vel, p, v, nullptr, {}, rng, hits, 6);
+        return (hits[n - 1].delaySamples - hits[0].delaySamples) / 48.0;
+    };
+    const double soft = sweepMs (30), typical = sweepMs (100), hard = sweepMs (127);
+    std::printf ("    sweep ms: vel 30 %.1f, 100 %.1f, 127 %.1f\n", soft, typical, hard);
+    EXPECT_MSG (hard < typical && typical < soft, "sweep time shortens as the stroke gets harder");
+    EXPECT_MSG (std::fabs (typical - 40.0) < 1.0, "a typical-velocity stroke sweeps in the set Strum Time");
 }
 
 FW_TEST ("strum: humanized strokes keep their sweep order")

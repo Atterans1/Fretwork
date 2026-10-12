@@ -88,6 +88,13 @@ int StrumEngine::stroke (bool up,
     const int limit = n < cap ? n : cap;
     int written = 0;
 
+    // A harder stroke is a faster wrist, so the pick crosses the strings in
+    // less time. Centred on a typical playing velocity of 100, where the sweep
+    // takes exactly the set Strum Time: full force is about 0.89x, a
+    // feather-light stroke up to about 1.39x.
+    constexpr float kTypicalVel01 = 100.0f / 127.0f;
+    const float sweepMs = p.strumTimeMs * (1.0f + 0.5f * (kTypicalVel01 - bnorm));
+
     // Humanized timing, the way a hand is late or early: the whole stroke
     // shifts by one shared offset, and each string adds a small jitter capped
     // at a fraction of its gap to the next string. Independent per-string
@@ -107,11 +114,11 @@ int StrumEngine::stroke (bool up,
 
         const float x = (n == 1) ? 0.f : (float) k / (float) (n - 1);
         const float xNext = (n == 1) ? 0.f : (float) (k + 1) / (float) (n - 1);
-        const double sweepMs = (double) stepTimeMs (p.strumTimeMs, p.separation01, x);
-        const double gapMs   = k + 1 < n ? (double) stepTimeMs (p.strumTimeMs, p.separation01, xNext) - sweepMs : 0.0;
+        const double sweepAt = (double) stepTimeMs (sweepMs, p.separation01, x);
+        const double gapMs   = k + 1 < n ? (double) stepTimeMs (sweepMs, p.separation01, xNext) - sweepAt : 0.0;
         const double jitter  = std::fmin (8.0 * (double) h, kJitterOfGap * gapMs);
 
-        double tMs = sweepMs + (double) p.timeOffsetMs + strokeShiftMs
+        double tMs = sweepAt + (double) p.timeOffsetMs + strokeShiftMs
                    + (double) rng.range ((float) -jitter, (float) jitter);
         if (tMs < prevMs) tMs = prevMs;     // never reverse the sweep
         prevMs = tMs;
