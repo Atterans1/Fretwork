@@ -359,6 +359,7 @@ void PerformanceEngine::strokeKey (ks::Stroke stroke, float velocity, int offset
     sp.velOffset    = p_.velOffset;
     sp.strokeVol    = p_.strokeVol;
     sp.humanize01   = p_.humanize;
+    sp.skipLowest   = bassHeld_;
 
     const int n = (stroke == ks::Stroke::PickLowest || stroke == ks::Stroke::PickHighest)
         ? StrumEngine::pluckExtreme (stroke == ks::Stroke::PickHighest,
@@ -409,6 +410,7 @@ void PerformanceEngine::handleMidi (const MidiMsg& m)
             }
             else
             {
+                if (ks::stroke (note) == ks::Stroke::PickLowest) bassHeld_ = true;
                 strokeKey (ks::stroke (note), (float) m.d2 / 127.f, offset);
             }
             return;
@@ -422,9 +424,14 @@ void PerformanceEngine::handleMidi (const MidiMsg& m)
 
     if (type == 0x80 || (type == 0x90 && m.d2 == 0))
     {
-        // Stroke keys are momentary, so their note-off is a no-op; latch
-        // groups toggle on note-on and deliberately ignore note-off.
-        if (ks::isKeyswitch (note)) return;
+        // Stroke keys are momentary, so their note-off only ends a held bass
+        // note for bass-and-strum; latch groups toggle on note-on and
+        // deliberately ignore note-off.
+        if (ks::isKeyswitch (note))
+        {
+            if (ks::stroke (note) == ks::Stroke::PickLowest) bassHeld_ = false;
+            return;
+        }
         if (note >= kLowestPlayable) noteOff (note + p_.transpose, offset);
         return;
     }

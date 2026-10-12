@@ -66,6 +66,7 @@ public:
         float velOffset    = 0.f;
         float strokeVol    = 1.f;
         float humanize01   = 0.f;
+        bool  skipLowest   = false;   // bass-and-strum: leave the lowest voiced string out
     };
 
     void prepare (double sampleRate) noexcept { sampleRate_ = sampleRate > 0.0 ? sampleRate : 44100.0; }
@@ -76,9 +77,15 @@ public:
     static float downGain (int s) noexcept { return 1.f - 0.3f * (float) s / 5.f; }
     static float upGain   (int s) noexcept { return (0.75f + 0.25f * (float) s / 5.f) * 0.85f; }
 
-    // Schedules every voiced string. Down sweeps low to high (ascending string
-    // index); up sweeps high to low. Returns the number of hits written, which
-    // is capped at cap.
+    // How many of n candidate strings a stroke of normalised velocity v01
+    // reaches: all of them from about velocity 102 up, falling to half (never
+    // fewer than two) for the lightest stroke.
+    static int struckCount (int n, float v01) noexcept;
+
+    // Schedules the struck strings. Down sweeps low to high (ascending string
+    // index); up sweeps high to low. A soft stroke runs out before the far side
+    // of the chord, so it strikes only the strings nearest where it starts.
+    // Returns the number of hits written, which is capped at cap.
     int stroke (bool up,
                 StrokeKind kind,
                 int vel127,

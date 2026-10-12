@@ -62,6 +62,15 @@ namespace {
 
 } // namespace
 
+int StrumEngine::struckCount (int n, float v01) noexcept
+{
+    if (n <= 2) return n;
+    const float v = v01 < 0.f ? 0.f : (v01 > 1.f ? 1.f : v01);
+    const float frac = std::fmin (1.f, 0.5f + 0.625f * v);
+    const int count = (int) std::ceil ((float) n * frac - 1.0e-4f);
+    return count < 2 ? 2 : (count > n ? n : count);
+}
+
 int StrumEngine::stroke (bool up,
                          StrokeKind kind,
                          int vel127,
@@ -85,7 +94,19 @@ int StrumEngine::stroke (bool up,
     const float base = (float) (((float) vel127 + p.velOffset) / 127.0f);
     const float bnorm = base < 0.f ? 0.f : (base > 1.f ? 1.f : base);
 
-    const int limit = n < cap ? n : cap;
+    // Candidate strings in sweep order. Bass-and-strum leaves out the lowest
+    // voiced string, which the player is holding for the bass note.
+    int order[kNumStrings];
+    int m = 0;
+    for (int k = 0; k < n; ++k)
+    {
+        const int vi = up ? (n - 1 - k) : k;
+        if (p.skipLowest && vi == 0 && n > 1) continue;
+        order[m++] = vi;
+    }
+
+    const int struck = struckCount (m, bnorm);
+    const int limit = struck < cap ? struck : cap;
     int written = 0;
 
     // A harder stroke is a faster wrist, so the pick crosses the strings in
@@ -108,14 +129,16 @@ int StrumEngine::stroke (bool up,
     {
         // Order index k runs in sweep order: ascending strings for a down
         // stroke, descending for an up stroke.
-        const int vi   = up ? (n - 1 - k) : k;
+        const int vi   = order[k];
         const int s    = v.stringIndex[vi];
         const int fret = v.fret[vi];
 
-        const float x = (n == 1) ? 0.f : (float) k / (float) (n - 1);
-        const float xNext = (n == 1) ? 0.f : (float) (k + 1) / (float) (n - 1);
+        // Positions stay those of the full chord, so a partial stroke keeps the
+        // same string spacing and simply ends sooner.
+        const float x = (m == 1) ? 0.f : (float) k / (float) (m - 1);
+        const float xNext = (m == 1) ? 0.f : (float) (k + 1) / (float) (m - 1);
         const double sweepAt = (double) stepTimeMs (sweepMs, p.separation01, x);
-        const double gapMs   = k + 1 < n ? (double) stepTimeMs (sweepMs, p.separation01, xNext) - sweepAt : 0.0;
+        const double gapMs   = k + 1 < m ? (double) stepTimeMs (sweepMs, p.separation01, xNext) - sweepAt : 0.0;
         const double jitter  = std::fmin (8.0 * (double) h, kJitterOfGap * gapMs);
 
         double tMs = sweepAt + (double) p.timeOffsetMs + strokeShiftMs

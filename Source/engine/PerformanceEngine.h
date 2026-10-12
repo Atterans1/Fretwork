@@ -151,6 +151,7 @@ private:
     std::uint32_t   ksDirty_         = 0;
     bool            keyswitchesUsed_ = false;
     bool            pedalDown_      = false;
+    bool bassHeld_ = false;   // Pick Lowest key held: strokes leave the bass string out
 
     double   modWheel_  = 0.f;
     double   bendSemis_ = 0.f;

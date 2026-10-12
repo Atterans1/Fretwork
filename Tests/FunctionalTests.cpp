@@ -673,6 +673,86 @@ FW_TEST ("body: a solid electric sustains longer than a dreadnought")
     EXPECT_MSG (semi > dread && semi < solid, "the semi-hollow sustains between the two");
 }
 
+FW_TEST ("strum: soft strokes reach fewer strings, from the side they start on")
+{
+    fw::StrumEngine engine;
+    engine.prepare (48000.0);
+    fw::Voicing v;
+    v.count = 6;
+    for (int i = 0; i < 6; ++i) { v.stringIndex[i] = i; v.pitch[i] = 40.f + 5.f * (float) i; }
+
+    fw::StrumEngine::StrokeParams p;
+    p.strumTimeMs = 30.f;
+    const auto strike = [&] (bool up, int vel, std::vector<int>& strings)
+    {
+        fw::Rng rng;
+        fw::StrumHit hits[6];
+        const int n = engine.stroke (up, fw::StrokeKind::Normal, vel, p, v, nullptr, {}, rng, hits, 6);
+        strings.clear();
+        for (int k = 0; k < n; ++k) strings.push_back (hits[k].stringIndex);
+    };
+
+    std::vector<int> hard, softDown, softUp;
+    strike (false, 115, hard);
+    strike (false, 20, softDown);
+    strike (true, 20, softUp);
+    EXPECT_MSG (hard.size() == 6, "a firm stroke reaches every string");
+    EXPECT_MSG (softDown.size() >= 3 && softDown.size() < 6, "a light stroke reaches only some strings");
+    EXPECT_MSG (! softDown.empty() && softDown.front() == 0 && softDown.back() < 5,
+                "a light down-stroke starts on the bass and stops short of the treble");
+    EXPECT_MSG (! softUp.empty() && softUp.front() == 5 && softUp.back() > 0,
+                "a light up-stroke starts on the treble and stops short of the bass");
+}
+
+FW_TEST ("strum: holding the bass key keeps the bass string out of the strum")
+{
+    fw::PerformanceEngine perf;
+    perf.prepare (48000.0);
+    fw::PerfParams pp {};
+    pp.mode = fw::PlayMode::Strum;
+    pp.strumTime = 20.f;
+    pp.strokeVol = 1.f;
+    perf.setParams (pp);
+
+    // Held E-major-ish chord, then strokes with and without the bass key held.
+    const auto strummed = [&] (const std::vector<fw::MidiMsg>& in)
+    {
+        fw::StringEvent events[64] {};
+        fw::ClickEvent clicks[32] {};
+        int numClicks = 0;
+        std::vector<int> strings;
+        for (int b = 0; b < 20; ++b)
+        {
+            const int n = perf.process (b == 0 ? in.data() : nullptr, b == 0 ? (int) in.size() : 0,
+                                        fw::Transport {}, 512, events, 64, clicks, numClicks);
+            for (int i = 0; i < n; ++i)
+                if (events[i].type == fw::EventType::Pluck) strings.push_back (events[i].string);
+        }
+        return strings;
+    };
+
+    std::vector<fw::MidiMsg> chord;
+    for (int note : { 40, 47, 52, 56, 59, 64 }) chord.push_back ({ 0, 0x90, (unsigned char) note, 110 });
+    strummed (chord);
+
+    const auto plain = strummed ({ { 0, 0x90, 28, 120 } });                         // Strum Down
+    const auto withBass = strummed ({ { 0, 0x90, 34, 120 }, { 1, 0x90, 28, 120 } }); // hold bass, strum
+    const auto released = strummed ({ { 0, 0x80, 34, 0 }, { 1, 0x90, 28, 120 } });  // release, strum
+
+    const int lowest = plain.empty() ? -1 : *std::min_element (plain.begin(), plain.end());
+    const auto strumCount = [&] (const std::vector<int>& s, bool skipFirstBass)
+    {
+        // With the bass key, the first event is the bass pick itself.
+        return (int) s.size() - (skipFirstBass ? 1 : 0);
+    };
+    EXPECT_MSG (! plain.empty(), "the plain stroke sounds the chord");
+    EXPECT_MSG (! withBass.empty() && withBass.front() == lowest, "the bass key picks the lowest string");
+    EXPECT_MSG (std::count (withBass.begin() + 1, withBass.end(), lowest) == 0,
+                "while the bass key is held, the strum leaves the bass string alone");
+    EXPECT_MSG (strumCount (withBass, true) == (int) plain.size() - 1, "the strum loses exactly the bass string");
+    EXPECT_MSG ((int) released.size() == (int) plain.size(), "releasing the bass key restores the full strum");
+}
+
 FW_TEST ("strum: harder strokes sweep the strings faster")
 {
     fw::StrumEngine engine;
@@ -688,7 +768,13 @@ FW_TEST ("strum: harder strokes sweep the strings faster")
         fw::Rng rng;
         fw::StrumHit hits[6];
         const int n = engine.stroke (false, fw::StrokeKind::Normal, vel, p, v, nullptr, {}, rng, hits, 6);
-        return (hits[n - 1].delaySamples - hits[0].delaySamples) / 48.0;
+        // Spacing between the first two strings, scaled to the full 6-string
+        // sweep: soft strokes strike fewer strings, so their span alone would
+        // shrink even though the pick moves more slowly.
+        if (n < 2) return 0.0;
+        const double firstGapMs = (hits[1].delaySamples - hits[0].delaySamples) / 48.0;
+        const double share = 1.0 - std::pow (1.0 - 1.0 / 5.0, 1.0);   // first step of the sweep at separation 0
+        return firstGapMs / share;
     };
     const double soft = sweepMs (30), typical = sweepMs (100), hard = sweepMs (127);
     std::printf ("    sweep ms: vel 30 %.1f, 100 %.1f, 127 %.1f\n", soft, typical, hard);
