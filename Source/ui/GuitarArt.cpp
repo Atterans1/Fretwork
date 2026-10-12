@@ -6,39 +6,27 @@ namespace fw::ui
 {
 namespace
 {
-const juce::Image& imageFor (GuitarArt::Body body)
+juce::Image imageFor (GuitarArt::Body body)
 {
-    // Decoded once on first use; ImageCache keeps them for the session.
+    // Looked up in ImageCache on every paint (a hash lookup once decoded) and
+    // never held in a static. A function-local static Image is destroyed when
+    // the plugin DLL unloads, under the Windows loader lock and after JUCE has
+    // shut down; releasing its Direct2D resources there deadlocked the host's
+    // exit. ImageCache is freed during JUCE's own shutdown instead.
     switch (body)
     {
-        case GuitarArt::Body::DreadnoughtSteel:
-        {
-            static const auto img = juce::ImageCache::getFromMemory (BinaryData::dreadnought_png, BinaryData::dreadnought_pngSize);
-            return img;
-        }
-        case GuitarArt::Body::ClassicalNylon:
-        {
-            static const auto img = juce::ImageCache::getFromMemory (BinaryData::classical_png, BinaryData::classical_pngSize);
-            return img;
-        }
-        case GuitarArt::Body::SolidElectric:
-        {
-            static const auto img = juce::ImageCache::getFromMemory (BinaryData::electric_png, BinaryData::electric_pngSize);
-            return img;
-        }
+        case GuitarArt::Body::DreadnoughtSteel: return juce::ImageCache::getFromMemory (BinaryData::dreadnought_png, BinaryData::dreadnought_pngSize);
+        case GuitarArt::Body::ClassicalNylon:   return juce::ImageCache::getFromMemory (BinaryData::classical_png,   BinaryData::classical_pngSize);
+        case GuitarArt::Body::SolidElectric:    return juce::ImageCache::getFromMemory (BinaryData::electric_png,    BinaryData::electric_pngSize);
         case GuitarArt::Body::SemiHollow:
-        default:
-        {
-            static const auto img = juce::ImageCache::getFromMemory (BinaryData::semihollow_png, BinaryData::semihollow_pngSize);
-            return img;
-        }
+        default:                                return juce::ImageCache::getFromMemory (BinaryData::semihollow_png,  BinaryData::semihollow_pngSize);
     }
 }
 } // namespace
 
 void GuitarArt::paint (juce::Graphics& g, const juce::Rectangle<float>& area, Body body)
 {
-    const auto& img = imageFor (body);
+    const auto img = imageFor (body);
 
     if (! img.isValid())
         return;
