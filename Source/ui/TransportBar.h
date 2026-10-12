@@ -38,7 +38,8 @@ protected:
 
 
 /** Transport row: power, transpose stepper, slot paging, play, metronome,
-    BPM drag field, and sequencer clear/copy/paste. */
+    BPM drag field, presets, undo/redo and A/B, and the sequencer's
+    clear/copy/paste/import. */
 class TransportBar final : public juce::Component
 {
 public:
@@ -55,10 +56,15 @@ private:
     class IconButton;
     class BpmField;
     class TransposeField;
+    class PresetField;
 
     int currentSlot() const noexcept;
     void nudgeTranspose (int delta);
     void nudgeSlot (int delta);
+    void stepPreset (int delta);
+    void showPresetMenu();
+    void savePresetAs();
+    void importPattern();
 
     FretworkAudioProcessor& processor;
 
@@ -82,6 +88,15 @@ private:
     FretButton* clearButton = nullptr;
     FretButton* copyButton = nullptr;
     FretButton* pasteButton = nullptr;
+    FretButton* importButton = nullptr;
+    FretButton* presetPrevButton = nullptr;
+    PresetField* presetField = nullptr;
+    FretButton* presetNextButton = nullptr;
+    FretButton* saveButton = nullptr;
+    IconButton* undoButton = nullptr;
+    IconButton* redoButton = nullptr;
+    FretButton* abButton = nullptr;
+    std::unique_ptr<juce::FileChooser> chooser;
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> powerAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> playAttachment;
@@ -90,7 +105,7 @@ private:
     // Paint-only layout from resized(): small-caps captions and the hairline
     // dividers between the control clusters.
     juce::Rectangle<float> transposeCaption, bpmCaption;
-    std::array<float, 3> dividers {};
+    std::array<float, 5> dividers {};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TransportBar)
 };

@@ -33,6 +33,33 @@ FretworkAudioProcessor::FretworkAudioProcessor()
     , vts (*this, nullptr, juce::Identifier ("Fretwork"), fw::createLayout())
 {
     midiIn.resize (128);
+    patches = std::make_unique<fw::PatchManager> (vts, [this] (int body) { applyBodyDefaults (body); });
+}
+
+//==============================================================================
+int FretworkAudioProcessor::getNumPrograms()
+{
+    return (int) fw::PatchManager::factoryPresets().size();
+}
+
+int FretworkAudioProcessor::getCurrentProgram()
+{
+    return patches->currentFactory();
+}
+
+void FretworkAudioProcessor::setCurrentProgram (int index)
+{
+    // Hosts re-send the current program on project load. Reloading it would
+    // overwrite the restored sound with the factory preset, so a request for
+    // the program that is already current does nothing.
+    if (index != patches->currentFactory())
+        patches->loadFactory (index);
+}
+
+const juce::String FretworkAudioProcessor::getProgramName (int index)
+{
+    const auto& f = fw::PatchManager::factoryPresets();
+    return juce::isPositiveAndBelow (index, (int) f.size()) ? juce::String (f[(size_t) index].name) : juce::String();
 }
 
 FretworkAudioProcessor::~FretworkAudioProcessor() = default;
@@ -491,6 +518,7 @@ void FretworkAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
         seq.setProperty (juce::String (slot), seqStore.serialiseSlot (slot), nullptr);
 
     state.appendChild (seq, nullptr);
+    state.setProperty ("program", patches->currentFactory(), nullptr);
 
     juce::MemoryOutputStream stream (destData, false);
     state.writeToStream (stream);
@@ -519,5 +547,15 @@ void FretworkAudioProcessor::setStateInformation (const void* data, int sizeInBy
         state.removeChild (seq, nullptr);
     }
 
+    // The saved program index is restored as a number only: the parameters
+    // in the state are the sound, and must not be overwritten by the preset.
+    const int program = (int) state.getProperty ("program", 0);
+    state.removeProperty ("program", nullptr);
+    if (juce::isPositiveAndBelow (program, getNumPrograms()))
+        patches->setCurrentFactoryIndexOnly (program);
+
     vts.replaceState (state);
+
+    // Undo after loading a project should not step back to the defaults.
+    patches->resetHistory();
 }

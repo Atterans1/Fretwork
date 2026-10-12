@@ -2,6 +2,7 @@
 
 #include "Contracts.h"
 #include "Params.h"
+#include "PatchManager.h"
 #include "SeqStore.h"
 #include "UiSnapshot.h"
 #include "dsp/GuitarEngine.h"
@@ -31,10 +32,11 @@ public:
     bool isMidiEffect() const override { return false; }
     double getTailLengthSeconds() const override { return 20.0; }
 
-    int getNumPrograms() override { return 1; }
-    int getCurrentProgram() override { return 0; }
-    void setCurrentProgram (int) override {}
-    const juce::String getProgramName (int) override { return {}; }
+    // Host programs are the factory presets.
+    int getNumPrograms() override;
+    int getCurrentProgram() override;
+    void setCurrentProgram (int index) override;
+    const juce::String getProgramName (int index) override;
     void changeProgramName (int, const juce::String&) override {}
 
     void getStateInformation (juce::MemoryBlock& destData) override;
@@ -45,6 +47,7 @@ public:
     juce::MidiKeyboardState& getKeyboardState() noexcept { return keyboardState; }
     fw::SeqStore& getSeqStore() noexcept { return seqStore; }
     const fw::UiSnapshot& getUi() const noexcept { return ui; }
+    fw::PatchManager& getPatches() noexcept { return *patches; }
 
     // Normalised 0..1 value; useful for UI bindings.
     float getParam (const char* paramId) const;
@@ -69,6 +72,7 @@ private:
     void buildEngineParams (fw::dsp::EngineParams& p);
 
     juce::AudioProcessorValueTreeState vts;
+    std::unique_ptr<fw::PatchManager> patches;
     juce::MidiKeyboardState keyboardState;
     fw::SeqStore seqStore;
     fw::UiSnapshot ui;

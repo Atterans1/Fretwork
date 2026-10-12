@@ -1,5 +1,7 @@
 #include "TransportBar.h"
 
+#include "SeqImport.h"
+
 #include "Params.h"
 #include "WavesStyle.h"
 
@@ -59,6 +61,27 @@ public:
                          down ? Palette::lcdText.brighter (0.35f) : Palette::lcdText);
 
         if (enabled && (over || down))
+        {
+            g.setColour (Palette::accent.withAlpha (down ? 0.9f : 0.45f));
+            g.drawRoundedRectangle (r.reduced (0.5f), 3.0f, 1.0f);
+        }
+    }
+};
+
+//==============================================================================
+// Inset LCD box showing the current preset's name; clicking it opens the list.
+class TransportBar::PresetField final : public FretButton
+{
+public:
+    using FretButton::FretButton;
+
+    void paintButton (juce::Graphics& g, bool over, bool down) override
+    {
+        const auto r = getLocalBounds().toFloat().reduced (0.5f);
+        waves::valueBox (g, r, getButtonText(), 11.0f, isEnabled(),
+                         down ? Palette::lcdText.brighter (0.35f) : Palette::lcdText);
+
+        if (isEnabled() && (over || down))
         {
             g.setColour (Palette::accent.withAlpha (down ? 0.9f : 0.45f));
             g.drawRoundedRectangle (r.reduced (0.5f), 3.0f, 1.0f);
@@ -141,6 +164,26 @@ namespace
     juce::PathStrokeType roundStroke (float w)
     {
         return juce::PathStrokeType (w, juce::PathStrokeType::curved, juce::PathStrokeType::rounded);
+    }
+
+    // A curved arrow. With turnLeft the arrow turns anticlockwise (undo); without,
+    // clockwise (redo).
+    void drawHistoryGlyph (juce::Graphics& g, const juce::Rectangle<float>& r, juce::Colour ink, bool turnLeft)
+    {
+        const auto c = r.getCentre();
+        const float rad = juce::jmin (r.getWidth(), r.getHeight()) * 0.42f;
+        juce::Path arc;
+        const float a0 = juce::degreesToRadians (turnLeft ? -60.0f : 60.0f);
+        const float a1 = juce::degreesToRadians (turnLeft ? 200.0f : -200.0f);
+        arc.addCentredArc (c.x, c.y + rad * 0.15f, rad, rad, 0.0f, a0, a1, true);
+        g.setColour (ink);
+        g.strokePath (arc, roundStroke (1.6f));
+
+        const auto tip = arc.getPointAlongPath (0.0f);
+        const float s = rad * 0.55f, dir = turnLeft ? 1.0f : -1.0f;
+        juce::Path head;
+        head.addTriangle (tip.x - dir * s, tip.y - s * 0.6f, tip.x + dir * s * 0.2f, tip.y + s * 0.75f, tip.x + dir * s * 0.75f, tip.y - s * 0.55f);
+        g.fillPath (head);
     }
 
     void drawPowerGlyph (juce::Graphics& g, const juce::Rectangle<float>& r, juce::Colour ink)
@@ -282,6 +325,51 @@ TransportBar::TransportBar (FretworkAudioProcessor& p, juce::AudioProcessorValue
     copyButton->onClick  = [this] { processor.getSeqStore().copyToClipboard (currentSlot()); };
     pasteButton->onClick = [this] { processor.getSeqStore().pasteFromClipboard (currentSlot()); };
 
+    importButton = new FretButton ("IMPORT");
+    importButton->setFretFont (Palette::font (11.0f));
+    importButton->setTooltip ("Import a strum pattern (.mid, strum keys 28-33) into this slot");
+    addAndMakeVisible (importButton);
+    importButton->onClick = [this] { importPattern(); };
+
+    // ---- presets
+    presetPrevButton = new FretButton ("<");
+    presetNextButton = new FretButton (">");
+    for (auto* b : { presetPrevButton, presetNextButton })
+    {
+        b->setFretFont (Palette::font (13.0f, juce::Font::bold));
+        addAndMakeVisible (b);
+    }
+    presetPrevButton->onClick = [this] { stepPreset (-1); };
+    presetNextButton->onClick = [this] { stepPreset (1); };
+
+    presetField = new PresetField ("");
+    addAndMakeVisible (presetField);
+    presetField->onClick = [this] { showPresetMenu(); };
+
+    saveButton = new FretButton ("SAVE");
+    saveButton->setFretFont (Palette::font (11.0f));
+    addAndMakeVisible (saveButton);
+    saveButton->onClick = [this] { savePresetAs(); };
+
+    // ---- undo / redo / A-B
+    undoButton = new IconButton ("UNDO", [] (juce::Graphics& g, const juce::Rectangle<float>& r, juce::Colour ink) { drawHistoryGlyph (g, r, ink, true); });
+    redoButton = new IconButton ("REDO", [] (juce::Graphics& g, const juce::Rectangle<float>& r, juce::Colour ink) { drawHistoryGlyph (g, r, ink, false); });
+    for (auto* b : { undoButton, redoButton })
+    {
+        b->setClickingTogglesState (false);
+        addAndMakeVisible (b);
+    }
+    undoButton->setTooltip ("Undo");
+    redoButton->setTooltip ("Redo");
+    undoButton->onClick = [this] { processor.getPatches().undo(); tick(); };
+    redoButton->onClick = [this] { processor.getPatches().redo(); tick(); };
+
+    abButton = new FretButton ("A");
+    abButton->setFretFont (Palette::font (11.0f, juce::Font::bold));
+    abButton->setTooltip ("Compare: switch between sound A and sound B");
+    addAndMakeVisible (abButton);
+    abButton->onClick = [this] { processor.getPatches().toggleAB(); tick(); };
+
     tick();
 }
 
@@ -295,7 +383,8 @@ TransportBar::~TransportBar()
 
     for (juce::Component* c : std::initializer_list<juce::Component*> {
              powerButton, transposeButton, slotPrevButton, playButton, slotNextButton,
-             metroButton, bpmField, clearButton, copyButton, pasteButton })
+             metroButton, bpmField, clearButton, copyButton, pasteButton, importButton,
+             presetPrevButton, presetField, presetNextButton, saveButton, undoButton, redoButton, abButton })
         delete c;
 }
 
@@ -338,6 +427,115 @@ void TransportBar::tick()
 
     if (playButton != nullptr && playParam != nullptr)
         playButton->setButtonText (playParam->get() ? "STOP" : "PLAY");
+
+    auto& patches = processor.getPatches();
+    patches.poll();
+    undoButton->setEnabled (patches.canUndo());
+    redoButton->setEnabled (patches.canRedo());
+    abButton->setButtonText (patches.isB() ? "B" : "A");
+    abButton->setToggleState (patches.isB(), juce::dontSendNotification);
+    presetField->setButtonText (patches.currentPresetName());
+}
+
+void TransportBar::stepPreset (int delta)
+{
+    auto& patches = processor.getPatches();
+    const int n = patches.numPresets();
+    if (n <= 0)
+        return;
+    patches.loadPreset (((patches.currentPreset() + delta) % n + n) % n);
+    tick();
+}
+
+void TransportBar::showPresetMenu()
+{
+    auto& patches = processor.getPatches();
+    const auto& factory = fw::PatchManager::factoryPresets();
+    juce::PopupMenu menu;
+
+    static constexpr const char* kBodies[] = { "Dreadnought Steel", "Classical Nylon", "Solid Electric", "Semi-Hollow" };
+    for (int body = 0; body < 4; ++body)
+    {
+        menu.addSectionHeader (kBodies[body]);
+        for (int i = 0; i < (int) factory.size(); ++i)
+            if (factory[(size_t) i].body == body)
+                menu.addItem (i + 1, factory[(size_t) i].name, true, i == patches.currentPreset());
+    }
+
+    const int users = patches.numPresets() - (int) factory.size();
+    if (users > 0)
+    {
+        menu.addSectionHeader ("User");
+        for (int u = 0; u < users; ++u)
+        {
+            const int i = (int) factory.size() + u;
+            menu.addItem (i + 1, patches.presetName (i), true, i == patches.currentPreset());
+        }
+    }
+
+    menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (presetField),
+                        [safe = juce::Component::SafePointer<TransportBar> (this)] (int result)
+                        {
+                            if (safe != nullptr && result > 0)
+                            {
+                                safe->processor.getPatches().loadPreset (result - 1);
+                                safe->tick();
+                            }
+                        });
+}
+
+void TransportBar::savePresetAs()
+{
+    auto* w = new juce::AlertWindow ("Save Preset", "Name for this sound:", juce::MessageBoxIconType::NoIcon, this);
+    w->addTextEditor ("name", processor.getPatches().currentPresetName());
+    w->addButton ("Save", 1, juce::KeyPress (juce::KeyPress::returnKey));
+    w->addButton ("Cancel", 0, juce::KeyPress (juce::KeyPress::escapeKey));
+    w->enterModalState (true, juce::ModalCallbackFunction::create (
+        [safe = juce::Component::SafePointer<TransportBar> (this), w] (int result)
+        {
+            if (safe == nullptr || result != 1)
+                return;
+            const auto name = w->getTextEditorContents ("name");
+            if (! safe->processor.getPatches().saveUserPreset (name))
+                juce::AlertWindow::showMessageBoxAsync (juce::MessageBoxIconType::WarningIcon, "Save Preset",
+                                                        "Could not save \"" + name + "\".");
+            safe->tick();
+        }), true);
+}
+
+void TransportBar::importPattern()
+{
+    chooser = std::make_unique<juce::FileChooser> ("Import strum pattern", juce::File(), "*.mid;*.midi");
+    chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+        [safe = juce::Component::SafePointer<TransportBar> (this)] (const juce::FileChooser& fc)
+        {
+            if (safe == nullptr || fc.getResult() == juce::File())
+                return;
+
+            juce::FileInputStream in (fc.getResult());
+            juce::MidiFile file;
+            if (! in.openedOk() || ! file.readFrom (in))
+            {
+                juce::AlertWindow::showMessageBoxAsync (juce::MessageBoxIconType::WarningIcon, "Import",
+                                                        "That file could not be read as MIDI.");
+                return;
+            }
+
+            auto& vts = safe->processor.getState();
+            const int q = (int) std::lround (vts.getParameter (fw::id::quantize)->convertFrom0to1 (vts.getParameter (fw::id::quantize)->getValue()));
+            const int s = (int) std::lround (vts.getParameter (fw::id::signature)->convertFrom0to1 (vts.getParameter (fw::id::signature)->getValue()));
+            const auto r = fw::importStrumPattern (file, safe->processor.getSeqStore(), safe->currentSlot(),
+                                                   fw::seqStepsPerQuarter (q), fw::seqStepsPerBar (q, s));
+
+            if (! r.ok)
+                juce::AlertWindow::showMessageBoxAsync (juce::MessageBoxIconType::InfoIcon, "Import",
+                    "No strum keys (notes 28-33) were found in the first bar, so the slot was left as it was.");
+            else if (r.ignored > 0 || r.beyondBar > 0)
+                juce::AlertWindow::showMessageBoxAsync (juce::MessageBoxIconType::InfoIcon, "Import",
+                    juce::String (r.imported) + " strokes imported. "
+                    + (r.beyondBar > 0 ? juce::String (r.beyondBar) + " after the first bar were left out (a slot holds one bar). " : juce::String())
+                    + (r.ignored > 0 ? juce::String (r.ignored) + " notes that are not strum keys were ignored." : juce::String()));
+        });
 }
 
 void TransportBar::paint (juce::Graphics& g)
@@ -395,15 +593,33 @@ void TransportBar::resized()
     place (bpmField, 66, 6);
     bpmCaption = { (float) x, (float) y, 30.0f, (float) h };
     x += 30 + clusterGap;
-
-    // CLEAR COPY PASTE edit the sequencer pattern, not the transport, so they
-    // sit at the right edge with their divider, balancing the bar.
-    constexpr int editW = 56 + gap + 52 + gap + 54;
-    x = juce::jmax (x, getWidth() - 10 - editW);
     divider (dividers[2]);
-    place (clearButton, 56, gap);
-    place (copyButton, 52, gap);
-    place (pasteButton, 54, 0);
+
+    // CLEAR COPY PASTE IMPORT edit the sequencer pattern, not the sound, so
+    // they sit at the right edge with their own divider.
+    constexpr int editW = 52 + gap + 48 + gap + 50 + gap + 56;
+    const int editX = getWidth() - 10 - editW;
+
+    // < preset name > SAVE | undo redo A/B fill the middle; the name box takes
+    // whatever width is left, so nothing overlaps at small sizes.
+    constexpr int fixedW = 24 + gap + gap + 24 + gap + 40 + clusterGap + 28 + gap + 28 + gap + 30;
+    const int nameW = juce::jlimit (70, 220, editX - clusterGap - x - fixedW);
+
+    place (presetPrevButton, 24, gap);
+    place (presetField, nameW, gap);
+    place (presetNextButton, 24, gap);
+    place (saveButton, 40, clusterGap);
+    divider (dividers[3]);
+    place (undoButton, 28, gap);
+    place (redoButton, 28, gap);
+    place (abButton, 30, clusterGap);
+
+    x = juce::jmax (x, editX);
+    divider (dividers[4]);
+    place (clearButton, 52, gap);
+    place (copyButton, 48, gap);
+    place (pasteButton, 50, gap);
+    place (importButton, 56, 0);
 }
 
 } // namespace fw::ui

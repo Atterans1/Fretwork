@@ -38,6 +38,8 @@ file(GLOB_RECURSE FRETWORK_UI_SOURCES     CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOU
 add_library(FretworkCore STATIC
     Source/Params.cpp
     Source/SeqStore.cpp
+    Source/PatchManager.cpp
+    Source/SeqImport.cpp
     Source/PluginProcessor.cpp
     ${FRETWORK_DSP_SOURCES}
     ${FRETWORK_ENGINE_SOURCES})

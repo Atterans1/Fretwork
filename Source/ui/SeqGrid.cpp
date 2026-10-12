@@ -1,4 +1,5 @@
 #include "SeqGrid.h"
+#include "SeqImport.h"
 
 #include "WavesStyle.h"
 
@@ -71,20 +72,8 @@ void SeqGrid::recomputeLayout()
     const int q = juce::jlimit (0, 2, (int) quantizeParam->getIndex());
     const int s = juce::jlimit (0, 6, (int) signatureParam->getIndex());
 
-    const int stepsPerQuarter = 2 << q;   // 0 -> 1/8, 1 -> 1/16, 2 -> 1/32
-    stepsPerQuarter_ = stepsPerQuarter;
-
-    static constexpr int kSignatures[7][2] =
-    {
-        { 2, 4 }, { 3, 4 }, { 4, 4 }, { 5, 4 }, { 6, 8 }, { 7, 8 }, { 12, 8 }
-    };
-
-    const double numerator = (double) kSignatures[s][0];
-    const double denominator = (double) kSignatures[s][1];
-
-    const int computed = juce::jlimit (1, kMaxCols,
-                                       (int) std::lround (numerator * 4.0 / denominator
-                                                          * (double) stepsPerQuarter));
+    stepsPerQuarter_ = fw::seqStepsPerQuarter (q);
+    const int computed = juce::jlimit (1, kMaxCols, fw::seqStepsPerBar (q, s));
 
     if (computed != stepsPerBar)
     {

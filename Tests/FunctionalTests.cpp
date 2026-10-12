@@ -6,6 +6,9 @@
 #include "WavesStyle.h"
 #include "SeqGrid.h"
 #include "GuitarBodyView.h"
+#include "SeqImport.h"
+#include "engine/PerformanceEngine.h"
+#include "engine/StrumEngine.h"
 
 // juce_events/messages/juce_MessageManager.cpp
 namespace juce::detail { bool dispatchNextMessageOnSystemQueue (bool returnIfNoPendingMessages); }
@@ -671,6 +674,196 @@ FW_TEST ("body: a solid electric sustains longer than a dreadnought")
     const double dread = ringRatio (0.f), solid = ringRatio (2.f), semi = ringRatio (3.f);
     EXPECT_MSG (solid > dread * 1.25, "the solid body is still clearly louder late in the note");
     EXPECT_MSG (semi > dread && semi < solid, "the semi-hollow sustains between the two");
+}
+
+FW_TEST ("seq import: a strum pattern from a MIDI file lands on the grid")
+{
+    // Write a real .mid and read it back, as loading a file from disk does.
+    constexpr int tpq = 480;
+    juce::MidiMessageSequence track;
+    const auto note = [&] (int key, double startQ, double lenQ, int vel)
+    {
+        track.addEvent (juce::MidiMessage::noteOn (1, key, (juce::uint8) vel), startQ * tpq);
+        track.addEvent (juce::MidiMessage::noteOff (1, key), (startQ + lenQ) * tpq);
+    };
+    note (28, 0.0, 1.0, 100);   // Strum Down on beat 1, a quarter long
+    note (29, 0.5, 0.25, 60);   // Strum Up on the "and"
+    note (32, 2.0, 0.25, 90);   // Palm Down on beat 3
+    note (60, 1.0, 0.5, 80);    // not a strum key
+    note (28, 4.0, 0.25, 100);  // second bar
+    track.updateMatchedPairs();
+
+    juce::MidiFile out;
+    out.setTicksPerQuarterNote (tpq);
+    out.addTrack (track);
+    juce::MemoryBlock bytes;
+    { juce::MemoryOutputStream os (bytes, false); out.writeTo (os); }
+    juce::MidiFile in;
+    { juce::MemoryInputStream is (bytes, false); EXPECT_MSG (in.readFrom (is), "the file reads back"); }
+
+    fw::SeqStore store;
+    constexpr int slot = 2;
+    const int spq = fw::seqStepsPerQuarter (1), spb = fw::seqStepsPerBar (1, 2);   // 1/16 in 4/4
+    EXPECT_MSG (spq == 4 && spb == 16, "1/16 in 4/4 is 16 steps");
+    store.addNote (slot, fw::SeqNote { 5, 15, 1, 100 });                       // stale content
+
+    const auto r = fw::importStrumPattern (in, store, slot, spq, spb);
+    EXPECT_MSG (r.ok && r.imported == 3, "the three first-bar strokes import");
+    EXPECT_MSG (r.ignored == 1 && r.beyondBar == 1, "the non-strum note and the second bar are reported, not imported");
+    EXPECT_MSG (! store.hasNote (slot, 5, 15), "the import replaces the slot's old pattern");
+
+    const auto& p = store.getSlot (slot);
+    const auto find = [&] (int row, int step) -> const fw::SeqNote*
+    {
+        for (int i = 0; i < p.count; ++i)
+            if (p.notes[(size_t) i].row == row && p.notes[(size_t) i].start == step) return &p.notes[(size_t) i];
+        return nullptr;
+    };
+    const auto* down = find (0, 0);
+    const auto* up = find (1, 2);
+    const auto* palm = find (4, 8);
+    EXPECT_MSG (down != nullptr && down->len == 4 && down->vel == 100, "the down-stroke keeps its quarter length and velocity");
+    EXPECT_MSG (up != nullptr && up->vel == 60, "the up-stroke lands on the off-beat sixteenth");
+    EXPECT_MSG (palm != nullptr, "the palm stroke lands on beat 3");
+
+    // A file with no strum keys leaves the slot alone.
+    juce::MidiMessageSequence other;
+    other.addEvent (juce::MidiMessage::noteOn (1, 64, (juce::uint8) 100), 0.0);
+    juce::MidiFile none;
+    none.setTicksPerQuarterNote (tpq);
+    none.addTrack (other);
+    const auto r2 = fw::importStrumPattern (none, store, slot, spq, spb);
+    EXPECT_MSG (! r2.ok && store.getSlot (slot).count == 3, "a file without strokes leaves the pattern untouched");
+}
+
+//==============================================================================
+// Presets, undo, A/B
+namespace
+{
+    // A UI edit: the attachments wrap every change in a gesture.
+    void uiSet (fwtest::Plugin& p, const char* id, float real)
+    {
+        auto* param = p.processor().getState().getParameter (id);
+        param->beginChangeGesture();
+        param->setValueNotifyingHost (param->convertTo0to1 (real));
+        param->endChangeGesture();
+        p.processor().getPatches().poll();
+    }
+
+    float real (fwtest::Plugin& p, const char* id)
+    {
+        auto* param = p.processor().getState().getParameter (id);
+        return param->convertFrom0to1 (param->getValue());
+    }
+}
+
+FW_TEST ("presets: host programs are the factory presets and load their sound")
+{
+    fwtest::Plugin p;
+    auto& proc = p.processor();
+    const auto& factory = fw::PatchManager::factoryPresets();
+    EXPECT_MSG (proc.getNumPrograms() == (int) factory.size() && factory.size() >= 12, "every factory preset is a host program");
+
+    int crunch = -1;
+    for (int i = 0; i < (int) factory.size(); ++i)
+    {
+        EXPECT_MSG (proc.getProgramName (i).isNotEmpty(), "every program has a name");
+        if (juce::String (factory[(size_t) i].name) == "Crunch Rhythm") crunch = i;
+    }
+    EXPECT_MSG (crunch >= 0, "the Crunch Rhythm preset exists");
+    if (crunch < 0) return;
+
+    p.set ("output", -12.f);
+    proc.setCurrentProgram (crunch);
+    EXPECT_MSG (proc.getCurrentProgram() == crunch, "the host sees the program it chose");
+    EXPECT_MSG (std::fabs (real (p, "drive") - 45.f) < 0.5f, "the preset sets its drive");
+    EXPECT_MSG ((int) std::lround (real (p, "body")) == 2, "the preset selects its body");
+    EXPECT_MSG (std::fabs (real (p, "output") - (-6.f)) < 0.01f, "everything the preset does not set returns to default");
+}
+
+FW_TEST ("presets: a host re-sending the current program does not overwrite a restored sound")
+{
+    juce::MemoryBlock saved;
+    {
+        fwtest::Plugin p;
+        p.processor().setCurrentProgram (7);
+        p.set ("drive", 80.f);                 // the user's own tweak on top of the preset
+        saved = p.save();
+    }
+
+    fwtest::Plugin q;
+    q.load (saved);
+    EXPECT_MSG (q.processor().getCurrentProgram() == 7, "the program index survives save and load");
+    q.processor().setCurrentProgram (7);       // what hosts do after restoring a project
+    EXPECT_MSG (std::fabs (real (q, "drive") - 80.f) < 0.5f, "the restored tweak is still there");
+}
+
+FW_TEST ("undo: UI edits step back and forward; host automation is not recorded")
+{
+    fwtest::Plugin p;
+    auto& patches = p.processor().getPatches();
+    EXPECT_MSG (! patches.canUndo(), "a fresh instance has nothing to undo");
+
+    uiSet (p, "drive", 30.f);
+    uiSet (p, "room", 50.f);
+    EXPECT_MSG (patches.canUndo(), "UI edits are recorded");
+
+    patches.undo();
+    EXPECT_MSG (std::fabs (real (p, "room") - 12.f) < 0.5f && std::fabs (real (p, "drive") - 30.f) < 0.5f, "undo reverts the last edit only");
+    patches.undo();
+    EXPECT_MSG (std::fabs (real (p, "drive")) < 0.5f, "a second undo reverts the edit before it");
+    patches.redo();
+    EXPECT_MSG (std::fabs (real (p, "drive") - 30.f) < 0.5f && patches.canRedo(), "redo reapplies it");
+
+    // Automation: no gesture, so nothing to undo.
+    fwtest::Plugin a;
+    a.set ("drive", 60.f);
+    a.processor().getPatches().poll();
+    EXPECT_MSG (! a.processor().getPatches().canUndo(), "host automation does not fill the undo history");
+}
+
+FW_TEST ("undo and presets leave tempo and playback alone")
+{
+    fwtest::Plugin p;
+    p.set ("bpm", 132.f);
+    uiSet (p, "drive", 30.f);
+    p.processor().getPatches().undo();
+    p.processor().setCurrentProgram (3);
+    EXPECT_MSG (std::fabs (real (p, "bpm") - 132.f) < 0.01f, "tempo is untouched by undo and preset loads");
+}
+
+FW_TEST ("A/B: switching compares two sounds without losing either")
+{
+    fwtest::Plugin p;
+    auto& patches = p.processor().getPatches();
+    uiSet (p, "drive", 10.f);
+    patches.toggleAB();                                    // to B, which starts as a copy of A
+    EXPECT_MSG (patches.isB() && std::fabs (real (p, "drive") - 10.f) < 0.5f, "B starts as a copy of A");
+    uiSet (p, "drive", 70.f);
+    patches.toggleAB();
+    EXPECT_MSG (! patches.isB() && std::fabs (real (p, "drive") - 10.f) < 0.5f, "back on A, A's sound is intact");
+    patches.toggleAB();
+    EXPECT_MSG (std::fabs (real (p, "drive") - 70.f) < 0.5f, "back on B, B's edit is intact");
+}
+
+FW_TEST ("presets: a user preset saves to a file and loads back")
+{
+    const auto dir = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("fw_preset_test");
+    dir.deleteRecursively();
+
+    fwtest::Plugin p;
+    p.set ("drive", 33.f).set ("body", 3.f).set ("bpm", 90.f);
+    EXPECT_MSG (p.processor().getPatches().saveUserPreset ("My Sound", dir), "the preset is written");
+    const auto file = dir.getChildFile ("My Sound.fwpreset");
+    EXPECT_MSG (file.existsAsFile(), "the file is named after the preset");
+
+    fwtest::Plugin q;
+    q.set ("bpm", 150.f);
+    EXPECT_MSG (q.processor().getPatches().loadUserPreset (file), "the preset loads");
+    EXPECT_MSG (std::fabs (real (q, "drive") - 33.f) < 0.5f && (int) std::lround (real (q, "body")) == 3, "its sound comes back");
+    EXPECT_MSG (std::fabs (real (q, "bpm") - 150.f) < 0.01f, "the loading project's tempo is kept");
+    EXPECT_MSG (q.processor().getPatches().currentPresetName() == "My Sound", "it is shown by name");
+    dir.deleteRecursively();
 }
 
 FW_TEST ("strum: soft strokes reach fewer strings, from the side they start on")
