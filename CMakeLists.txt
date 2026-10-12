@@ -40,6 +40,7 @@ add_library(FretworkCore STATIC
     Source/SeqStore.cpp
     Source/PatchManager.cpp
     Source/SeqImport.cpp
+    Source/MidiLearn.cpp
     Source/PluginProcessor.cpp
     ${FRETWORK_DSP_SOURCES}
     ${FRETWORK_ENGINE_SOURCES})

@@ -2,6 +2,7 @@
 
 #include "Contracts.h"
 #include "Params.h"
+#include "MidiLearn.h"
 #include "PatchManager.h"
 #include "SeqStore.h"
 #include "UiSnapshot.h"
@@ -48,6 +49,7 @@ public:
     fw::SeqStore& getSeqStore() noexcept { return seqStore; }
     const fw::UiSnapshot& getUi() const noexcept { return ui; }
     fw::PatchManager& getPatches() noexcept { return *patches; }
+    fw::MidiLearn& getMidiLearn() noexcept { return *midiLearn; }
 
     // Normalised 0..1 value; useful for UI bindings.
     float getParam (const char* paramId) const;
@@ -73,6 +75,7 @@ private:
 
     juce::AudioProcessorValueTreeState vts;
     std::unique_ptr<fw::PatchManager> patches;
+    std::unique_ptr<fw::MidiLearn> midiLearn;
     juce::MidiKeyboardState keyboardState;
     fw::SeqStore seqStore;
     fw::UiSnapshot ui;

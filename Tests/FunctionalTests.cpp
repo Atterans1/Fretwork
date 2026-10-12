@@ -431,6 +431,41 @@ FW_TEST ("midi: aftertouch bends the held note up by Bend Amount")
     EXPECT_MSG (std::fabs (fwtest::Take::cents (full, base) - 200.0) < 15.0, "full pressure bends up by the Bend Amount (2 semitones)");
 }
 
+FW_TEST ("midi: MIDI Learn links a controller to a knob and survives save/load")
+{
+    fwtest::Plugin p;
+    auto& learn = p.processor().getMidiLearn();
+    const auto driveNorm = [&] (fwtest::Plugin& q) { return q.processor().getState().getParameter ("drive")->getValue(); };
+
+    learn.startLearning ("drive");
+    EXPECT_MSG (learn.isLearning ("drive"), "the knob is waiting for a controller");
+    p.cc (0.01, 21, 64);
+    p.render (0.05);
+    EXPECT_MSG (learn.ccFor ("drive") == 21 && ! learn.isLearning ("drive"), "the next controller is linked");
+    EXPECT_MSG (std::fabs (driveNorm (p) - 64.f / 127.f) < 1.0e-3f, "and already moves the knob");
+
+    p.cc (0.10, 21, 127);
+    p.cc (0.10, 22, 0);                         // an unlinked controller changes nothing
+    p.render (0.1);
+    EXPECT_MSG (std::fabs (driveNorm (p) - 1.f) < 1.0e-3f, "the linked controller sets the value");
+
+    // Learning another knob on the same controller moves the link.
+    learn.startLearning ("room");
+    p.cc (0.20, 21, 10);
+    p.render (0.1);
+    EXPECT_MSG (learn.ccFor ("room") == 21 && learn.ccFor ("drive") == -1, "one controller drives one knob");
+    learn.startLearning ("drive");
+    p.cc (0.30, 30, 0);
+    p.render (0.1);
+
+    fwtest::Plugin q;
+    q.load (p.save());
+    EXPECT_MSG (q.processor().getMidiLearn().ccFor ("drive") == 30 && q.processor().getMidiLearn().ccFor ("room") == 21,
+                "links are saved with the project");
+    q.processor().getMidiLearn().forget ("drive");
+    EXPECT_MSG (q.processor().getMidiLearn().ccFor ("drive") == -1, "a link can be forgotten");
+}
+
 FW_TEST ("midi: Transpose shifts the sounding pitch")
 {
     fwtest::Plugin p;

@@ -34,6 +34,7 @@ FretworkAudioProcessor::FretworkAudioProcessor()
 {
     midiIn.resize (128);
     patches = std::make_unique<fw::PatchManager> (vts, [this] (int body) { applyBodyDefaults (body); });
+    midiLearn = std::make_unique<fw::MidiLearn> (vts);
 }
 
 //==============================================================================
@@ -239,6 +240,11 @@ void FretworkAudioProcessor::processBlock (juce::AudioBuffer<float>& audio,
         const bool twoByte = kind == 0xc0 || kind == 0xd0;
         if (! twoByte && size < 3) continue;
         if (midiIn.size() >= midiIn.capacity()) break;
+
+        // Learned controller links move their parameter; the message still
+        // reaches the engine, so a linked mod wheel keeps its vibrato.
+        if (kind == 0xb0)
+            midiLearn->handleController (d[1], d[2]);
 
         fw::MidiMsg msg {};
         msg.offset = meta.samplePosition;
@@ -525,6 +531,7 @@ void FretworkAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 
     state.appendChild (seq, nullptr);
     state.setProperty ("program", patches->currentFactory(), nullptr);
+    state.setProperty ("midiLearn", midiLearn->serialise(), nullptr);
 
     juce::MemoryOutputStream stream (destData, false);
     state.writeToStream (stream);
@@ -557,6 +564,8 @@ void FretworkAudioProcessor::setStateInformation (const void* data, int sizeInBy
     // in the state are the sound, and must not be overwritten by the preset.
     const int program = (int) state.getProperty ("program", 0);
     state.removeProperty ("program", nullptr);
+    midiLearn->deserialise (state.getProperty ("midiLearn", juce::String()).toString());
+    state.removeProperty ("midiLearn", nullptr);
     if (juce::isPositiveAndBelow (program, getNumPrograms()))
         patches->setCurrentFactoryIndexOnly (program);
 

@@ -38,9 +38,27 @@ public:
     juce::Slider& knob() noexcept { return slider; }
 
 private:
-    void refreshValueText();
+    /** A rotary slider whose right-click opens the MIDI Learn menu instead of
+        starting a drag. */
+    class LearnSlider final : public juce::Slider
+    {
+    public:
+        LearnSlider() : juce::Slider (juce::Slider::Rotary, juce::Slider::NoTextBox) {}
+        std::function<void()> onPopupMenu;
 
-    juce::Slider slider { juce::Slider::Rotary, juce::Slider::NoTextBox };
+        void mouseDown (const juce::MouseEvent& e) override
+        {
+            if (e.mods.isPopupMenu() && onPopupMenu != nullptr) { onPopupMenu(); return; }
+            juce::Slider::mouseDown (e);
+        }
+        void mouseDrag (const juce::MouseEvent& e) override { if (! e.mods.isPopupMenu()) juce::Slider::mouseDrag (e); }
+        void mouseUp   (const juce::MouseEvent& e) override { if (! e.mods.isPopupMenu()) juce::Slider::mouseUp (e); }
+    };
+
+    void refreshValueText();
+    void showLearnMenu();
+
+    LearnSlider slider;
     juce::String captionText;
     juce::String valueText;
     juce::Rectangle<int> captionArea, valueArea;

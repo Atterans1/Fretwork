@@ -1,6 +1,7 @@
 #include "KnobCell.h"
 
 #include "WavesStyle.h"
+#include "PluginProcessor.h"
 
 namespace fw::ui
 {
@@ -43,6 +44,7 @@ void KnobCell::attach (juce::AudioProcessorValueTreeState& apvts,
 
     attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, id, slider);
     slider.onValueChange = [this] { refreshValueText(); };
+    slider.onPopupMenu = [this] { showLearnMenu(); };
 
     captionText = caption;
 
@@ -59,6 +61,36 @@ void KnobCell::parameterChanged (const juce::String& parameterID, float)
     // onValueChange refreshes the text, so only act here on the message thread.
     if (parameterID == paramId && juce::MessageManager::existsAndIsCurrentThread())
         refreshValueText();
+}
+
+void KnobCell::showLearnMenu()
+{
+    auto* proc = state != nullptr ? dynamic_cast<FretworkAudioProcessor*> (&state->processor) : nullptr;
+    if (proc == nullptr)
+        return;
+
+    auto& learn = proc->getMidiLearn();
+    const int cc = learn.ccFor (paramId);
+
+    juce::PopupMenu menu;
+    menu.addSectionHeader (captionText.isNotEmpty() ? captionText : paramId);
+    if (learn.isLearning (paramId))
+        menu.addItem (2, "Cancel MIDI Learn (waiting for a controller)");
+    else
+        menu.addItem (1, "MIDI Learn");
+    if (cc >= 0)
+        menu.addItem (3, "Forget MIDI CC " + juce::String (cc));
+
+    menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&slider),
+        [safe = juce::Component::SafePointer<KnobCell> (this), proc] (int result)
+        {
+            if (safe == nullptr)
+                return;
+            auto& l = proc->getMidiLearn();
+            if (result == 1) l.startLearning (safe->paramId);
+            if (result == 2) l.cancelLearning();
+            if (result == 3) l.forget (safe->paramId);
+        });
 }
 
 void KnobCell::refreshValueText()
