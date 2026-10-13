@@ -153,10 +153,12 @@ Score score (const Row& row, const std::vector<float>& x, double fs)
 
 juce::String report (const Row& r, const Score& s)
 {
-    return juce::String::formatted ("%s\t%s\tpeak %.1f dBFS, rms %.1f dBFS, %d attacks, top pitch classes [%s]%s%s",
-        r.name.toRawUTF8(), s.pass ? "PASS" : "FAIL", s.peakDb, s.rmsDb, s.onsets, s.top5.toRawUTF8(),
-        r.expect == "C4" ? juce::String::formatted (", f0 %.2f Hz (%+.1f c)", s.f0, s.cents).toRawUTF8() : "",
-        s.pass ? "" : (" -- " + s.why).toRawUTF8());
+    juce::String o;
+    o << r.name << "\t" << (s.pass ? "PASS" : "FAIL") << "\tpeak " << juce::String (s.peakDb, 1) << " dBFS, rms "
+      << juce::String (s.rmsDb, 1) << " dBFS, " << s.onsets << " attacks, top pitch classes [" << s.top5 << "]";
+    if (r.expect == "C4") o << ", f0 " << juce::String (s.f0, 2) << " Hz (" << (s.cents >= 0 ? "+" : "") << juce::String (s.cents, 1) << " c)";
+    if (! s.pass) o << " -- " << s.why;
+    return o;
 }
 
 bool readMono (const juce::File& f, std::vector<float>& out, double& fs)

@@ -174,6 +174,21 @@ private:
 
     StrumHit scratch_[kMaxHits] {};
     UiState  ui_ {};
+
+    // ---- articulation auto-detection (Poly, live MIDI) -------------------
+    static constexpr int kClusterMax = 8;
+    std::int64_t clusterFirst_ = 0;          // first note-on of the current strum window
+    int          clusterCount_ = 0;
+    int          clusterPitch_[kClusterMax] {};
+    bool         clusterNoised_ = false;     // stroke noise already emitted for this cluster
+    std::int64_t noteStart_[128] {};         // absolute sample of each pitch's last note-on
+    int          soundingPitch_[kNumStrings] { -1, -1, -1, -1, -1, -1 };   // pitch each string is playing
+    std::int64_t lastOnAbs_ = -1;            // last Poly note-on
+    int          lastFret_  = -1;
+    double       autoVib_   = 0.0;           // automatic vibrato depth, 0..1 like the mod wheel
+
+    void emitStrokeNoise (int dir, double durSec, float velocity, long long at);
+    void emitSqueak (int string, int dir, float velocity, long long at);
 };
 
 } // namespace fw

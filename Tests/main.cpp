@@ -394,7 +394,9 @@ void testStrumSpread()
         const int n = perf.process (b == 0 ? in.data() : nullptr,
                                     b == 0 ? (int) in.size() : 0,
                                     fw::Transport {}, kBlock, events, 64, clicks, numClicks);
-        for (int i = 0; i < n; ++i) all.push_back ({ b, events[i].sampleOffset, events[i].string });
+        // Only the string hits: a stroke also emits one StrokeNoise (pick scrape) event.
+        for (int i = 0; i < n; ++i)
+            if (events[i].type == fw::EventType::Pluck) all.push_back ({ b, events[i].sampleOffset, events[i].string });
     }
 
     const int n = (int) all.size();
@@ -1089,7 +1091,9 @@ void testLifecycleAcrossNeck()
         double rmsByVel[2] {}, briByVel[2] {};
         for (int vi = 0; vi < 2; ++vi)
         {
-            const float vel = vi == 0 ? 0.35f : 1.0f;
+            // 51/127: soft, above the auto palm-mute band; 126/127: hard, below the
+            // velocity-127 natural-harmonic rule (notes 59 and 64 are harmonic pitches).
+            const float vel = vi == 0 ? 0.40f : 126.f / 127.f;
             // note on at 10 ms, off at 1.2 s, observe to 1.8 s
             const int onAt = (int) (0.010 * fs), offAt = (int) (1.2 * fs);
             const auto x = renderEvents (fs, 480, { { onAt, note, vel, true }, { offAt, note, 0.f, false } }, 1.8);
@@ -1261,7 +1265,9 @@ void testRealtimeMatrix()
     for (double fs : rates)
         for (int bi = 0; bi < 5; ++bi)
             for (int note : { 40, 64 })
-                for (float vel : { 0.35f, 1.0f })
+                // 0.40 = 51/127: soft, above the auto palm-mute band (<= 45); 126/127: hard,
+                // below 127, which plays a natural harmonic on harmonic pitches.
+                for (float vel : { 0.40f, 126.f / 127.f })
                 {
                     const bool variable = bi == 4;
                     const int blk = variable ? 512 : blocks[bi];
@@ -1374,7 +1380,9 @@ int renderDemo (const juce::File& dir)
 
     const int on = (int) (0.02 * fs), off = (int) (2.5 * fs);
     for (int note : { 40, 52, 64 })
-        for (float vel : { 0.35f, 1.0f })
+        // 0.40 = 51/127: soft, above the auto palm-mute band (<= 45); 126/127: hard,
+                // below 127, which plays a natural harmonic on harmonic pitches.
+                for (float vel : { 0.40f, 126.f / 127.f })
             write (juce::String ("note") + juce::String (note) + (vel < 0.5f ? "_soft" : "_hard"),
                    { { on, note, vel, true }, { off, note, 0.f, false } }, 3.5);
 

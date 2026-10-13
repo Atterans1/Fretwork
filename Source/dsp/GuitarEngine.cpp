@@ -37,6 +37,7 @@ void GuitarEngine::prepare (double sampleRate, int maxBlockSize)
 
     pickup_.prepare (fs_);
     body_.prepare   (fs_);
+    noise_.prepare  (fs_);
     amp_.prepare    (fs_, maxBlock);
     out_.prepare    (fs_, maxBlock);
 
@@ -73,6 +74,7 @@ void GuitarEngine::reset()
     for (auto& s : strings_) s.reset();
     pickup_.reset();
     body_.reset();
+    noise_.reset();
     amp_.reset();
     out_.reset();
     prevBridge_.fill (0.f);
@@ -184,6 +186,14 @@ void GuitarEngine::handle (const StringEvent& e)
         case EventType::Release:
             strings_[(std::size_t) s].release (e.releaseSec);
             bendTarget_[(std::size_t) s] = 0.f;
+            break;
+
+        case EventType::StrokeNoise:
+            noise_.stroke (e.dir, e.durSec, e.velocity, panL_.data(), panR_.data());
+            break;
+
+        case EventType::Squeak:
+            noise_.squeak (s, e.dir, e.durSec, e.velocity, panL_[(std::size_t) s], panR_[(std::size_t) s]);
             break;
     }
 }
@@ -333,6 +343,9 @@ void GuitarEngine::render (float* left, float* right, int n)
         left[i]  = el_[(std::size_t) i] + acoustic;
         right[i] = er_[(std::size_t) i] + acoustic;
     }
+
+    // Pick scrape, string ticks and squeaks join the instrument before the amp.
+    noise_.render (left, right, n);
 
     // Amp, cabinet, chorus and delay sit between the instrument and the master
     // stage; bypassed (untouched) with the amp Off and both mixes at 0.

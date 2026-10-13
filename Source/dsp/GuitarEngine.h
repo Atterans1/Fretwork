@@ -3,6 +3,7 @@
 #include "dsp/BodyModel.h"
 #include "dsp/GuitarString.h"
 #include "dsp/AmpFx.h"
+#include "dsp/ArticulationNoise.h"
 #include "dsp/OutputStage.h"
 #include "dsp/PickupModel.h"
 
@@ -103,6 +104,7 @@ private:
 
     PickupModel pickup_ {};
     BodyModel   body_ {};
+    ArticulationNoise noise_ {};
     AmpFx       amp_ {};
     OutputStage out_ {};
 

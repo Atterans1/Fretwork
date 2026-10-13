@@ -6,6 +6,34 @@
 
 namespace fw {
 
+// Articulation auto-detection rules (Poly, live MIDI). Fixed, user-approved:
+//   strum      3+ note-ons within 70 ms; rising pitch order = down-stroke;
+//              all within 1 ms = block chord (short scrape)
+//   hammer/pull new note on the string of a still-held note (held >= 30 ms),
+//              1-4 semitones up (hammer-on) or down (pull-off)
+//   slide      same overlap at 5-12 semitones, or any overlap at velocity >= 110
+//   palm mute  velocity 20-45; dead mute velocity 1-19
+//   harmonic   velocity 127 on a 12th/19th/24th-fret harmonic of an open string
+//   squeak     on slides, and on picked notes 5+ frets from the last one < 0.4 s
+//   vibrato    automatic after a note is held 0.6 s with one or two notes down
+namespace {
+    constexpr double kStrumWindowSec  = 0.070;
+    constexpr int    kStrumMinNotes   = 3;
+    constexpr double kBlockChordSec   = 0.001;
+    constexpr double kLegatoMinAgeSec = 0.030;
+    constexpr int    kHammerMaxSemis  = 4;
+    constexpr int    kSlideMaxSemis   = 12;
+    constexpr int    kSlideVel        = 110;
+    constexpr int    kPalmMuteMaxVel  = 45;
+    constexpr int    kDeadMuteMaxVel  = 19;
+    constexpr int    kHarmonicVel     = 127;
+    constexpr double kShiftWindowSec  = 0.4;
+    constexpr int    kShiftMinFrets   = 5;
+    constexpr double kAutoVibDelaySec = 0.6;
+    constexpr double kAutoVibRiseSec  = 0.4;
+    constexpr double kAutoVibDepth    = 0.5;
+}
+
 StrokeKind PerformanceEngine::kindOf (ks::Stroke s) noexcept
 {
     switch (s)
@@ -56,6 +84,13 @@ void PerformanceEngine::prepare (double sampleRate)
 
 void PerformanceEngine::reset()
 {
+    for (auto& p : soundingPitch_) p = -1;
+    clusterCount_ = 0;
+    clusterNoised_ = false;
+    lastOnAbs_ = -1;
+    lastFret_ = -1;
+    autoVib_ = 0.0;
+
     prepare (sampleRate_);
 }
 
@@ -191,7 +226,7 @@ void PerformanceEngine::refreshUi()
     for (int g = 0; g < 6; ++g) ui_.ks[g] = ks_[g];
     ui_.ksNotes       = ksNotes_;
     ui_.ksDirtyMask   = ksDirty_;
-    ui_.modWheel      = (float) modWheel_;
+    ui_.modWheel      = (float) std::max (modWheel_, autoVib_);
     ui_.pitchBendSemis = (float) (bendSemis_ + aftertouchSemis_);
     ui_.chordName = shapedChord_.pack();
 
@@ -209,6 +244,8 @@ void PerformanceEngine::toEvent (const StrumHit& hit, StringEvent& ev) const
     ev.harmonicN  = hit.harmonicN;
     ev.releaseSec = hit.releaseSec;
     ev.art        = hit.art;
+    ev.dir        = hit.dir;
+    ev.durSec     = hit.durSec;
 }
 
 void PerformanceEngine::pushHit (const StrumHit& hit, long long at)
@@ -280,7 +317,87 @@ void PerformanceEngine::noteOn (int pitch, float velocity, int offset)
     // Only Poly sounds directly; the other modes go through their own paths.
     if (p_.mode != PlayMode::Poly) return;
 
+    // ---- articulation auto-detection -------------------------------------
+    // Rules (fixed): see the constants at the top of this file. Each rule only
+    // applies while its manual control is left at its default, so the
+    // Damping / Transition / Harmonic buttons and keyswitches still override.
+    const long long at   = absCursor_ + offset;
+    const int       v127 = (int) std::lround (std::clamp (velocity, 0.f, 1.f) * 127.f);
+    Articulation    art  = p_.art;
+
+    // Strum: 3+ note-ons within kStrumWindowSec. A cluster that started earlier
+    // than the window closes and this note opens a new one.
+    const long long window = (long long) (kStrumWindowSec * sampleRate_);
+    if (! alreadyHeld)
+    {
+        if (clusterCount_ == 0 || at - clusterFirst_ > window)
+        {
+            clusterCount_  = 0;
+            clusterFirst_  = at;
+            clusterNoised_ = false;
+        }
+        if (clusterCount_ < kClusterMax) clusterPitch_[clusterCount_] = pitch;
+        ++clusterCount_;
+    }
+    const bool inStrum = clusterCount_ >= kStrumMinNotes;
+    if (inStrum && ! clusterNoised_)
+    {
+        // Direction from pitch order: rising arrivals are a down-stroke.
+        int up = 0, down = 0;
+        const int m = std::min (clusterCount_, kClusterMax);
+        for (int i = 1; i < m; ++i) (clusterPitch_[i] > clusterPitch_[i - 1] ? down : up) += 1;
+        const double span = (double) (at - clusterFirst_) / sampleRate_;
+        // A block chord (all within kBlockChordSec) still gets a short, fast scrape.
+        emitStrokeNoise (down >= up ? 1 : -1, span < kBlockChordSec ? 0.02 : span * 1.5, velocity, clusterFirst_);
+        clusterNoised_ = true;
+    }
+
+    // Mutes by velocity.
+    if (art.damp == Damping::Open)
+    {
+        if (v127 <= kDeadMuteMaxVel)      art.damp = Damping::Dead;
+        else if (v127 <= kPalmMuteMaxVel) art.damp = Damping::PalmMute;
+    }
+
+    // Natural harmonic: full velocity on a 12th / 19th / 24th-fret harmonic pitch.
+    int harmString = -1, harmN = 0;
+    if (art.harm == Harmonic::Off && v127 >= kHarmonicVel && ! alreadyHeld && ! inStrum)
+        for (int s = 0; s < kNumStrings && harmString < 0; ++s)
+        {
+            const int rel = pitch - (int) std::lround (p_.open[s]);
+            const int n = rel == 12 ? 2 : rel == 19 ? 3 : rel == 24 ? 4 : 0;
+            if (n > 0 && rel <= p_.maxFret && soundingPitch_[s] < 0) { harmString = s; harmN = n; }
+        }
+
+    // Hammer-on / pull-off / slide: the new note lands on the string of a note
+    // that is still held (and started at least kLegatoMinAgeSec ago, so chord
+    // tones played together never count).
+    int legatoString = -1, fromPitch = -1;
+    bool slide = false;
+    if (art.trans == Transition::Normal && ! alreadyHeld && ! inStrum && harmString < 0)
+    {
+        std::int64_t newest = -1;
+        for (int i = 0; i < chord_.size(); ++i)
+        {
+            const int q = chord_.at (i).pitch;
+            const int s = chord_.stringFor (q);
+            if (q == pitch || s < 0 || s >= kNumStrings || soundingPitch_[s] != q) continue;
+            if (at - noteStart_[q] < (long long) (kLegatoMinAgeSec * sampleRate_)) continue;
+            const int d = pitch - q, fret = pitch - (int) std::lround (p_.open[s]);
+            if (std::abs (d) < 1 || std::abs (d) > kSlideMaxSemis || fret < 0 || fret > p_.maxFret) continue;
+            if (noteStart_[q] > newest) { newest = noteStart_[q]; legatoString = s; fromPitch = q; }
+        }
+        if (legatoString >= 0)
+            slide = std::abs (pitch - fromPitch) > kHammerMaxSemis || v127 >= kSlideVel;
+    }
+
     int stringIdx = chord_.stringFor (pitch);
+    const int forced = harmString >= 0 ? harmString : legatoString;
+    if (forced >= 0)
+    {
+        stringIdx = forced;
+        chord_.setString (pitch, stringIdx, (float) (pitch - (int) std::lround (p_.open[stringIdx])));
+    }
 
     if (stringIdx < 0)
     {
@@ -313,53 +430,117 @@ void PerformanceEngine::noteOn (int pitch, float velocity, int offset)
         chord_.setString (pitch, stringIdx, vi >= 0 ? voicing_.fretFloat[vi] : 0.f);
     }
 
-    const bool legato = p_.art.trans == Transition::Legato && alreadyHeld;
+    const bool manualLegato = p_.art.trans == Transition::Legato && alreadyHeld;
 
     StrumHit h {};
-    h.type         = legato ? EventType::Legato : EventType::Pluck;
+    h.type         = manualLegato ? EventType::Legato : EventType::Pluck;
     h.stringIndex  = stringIdx;
     h.velocity     = velocity;
-    h.art          = p_.art;
+    h.art          = art;
     h.releaseSec   = p_.release;
     h.pitchFrom    = -1.f;
     h.delaySamples = 0.0;
     h.pitch        = p_.open[stringIdx];
     h.fret         = 0;
 
-    const int vi = voicingStringIndexOf (stringIdx);
-    if (vi >= 0)
+    if (forced >= 0)
+    {
+        h.pitch = (float) pitch;
+        h.fret  = pitch - (int) std::lround (p_.open[stringIdx]);
+    }
+    else if (const int vi = voicingStringIndexOf (stringIdx); vi >= 0)
     {
         h.pitch = voicing_.pitch[vi];
         h.fret  = voicing_.fret[vi];
 
-        if (p_.art.harm == Harmonic::Natural)
+        if (art.harm == Harmonic::Natural)
         {
             const int partial = harmonicPartialForFret (h.fret);
             if (partial > 0) { h.harmonicN = partial; h.pitch = p_.open[stringIdx]; }
         }
     }
 
-    if (p_.art.trans == Transition::Slide && ! alreadyHeld)
+    if (harmString >= 0)
+    {
+        h.art.harm  = Harmonic::Natural;
+        h.harmonicN = harmN;
+        h.pitch     = p_.open[stringIdx];
+    }
+    else if (legatoString >= 0)
+    {
+        h.type      = EventType::Legato;
+        h.art.trans = slide ? Transition::Slide : Transition::Legato;
+        if (slide)
+        {
+            h.pitchFrom = (float) fromPitch;
+            emitSqueak (stringIdx, pitch > fromPitch ? 1 : -1, velocity, at);
+        }
+    }
+    else if (p_.art.trans == Transition::Slide && ! alreadyHeld)
     {
         const int heldPitch = heldPitchOnString (stringIdx);
         if (heldPitch >= 0) h.pitchFrom = (float) heldPitch;
     }
 
+    // Position shift: a new picked note 5+ frets from the last one, quickly,
+    // drags the hand along the strings.
+    if (h.type == EventType::Pluck && ! inStrum && lastOnAbs_ >= 0 && lastFret_ >= 0
+        && at - lastOnAbs_ < (long long) (kShiftWindowSec * sampleRate_)
+        && std::abs (h.fret - lastFret_) >= kShiftMinFrets)
+        emitSqueak (stringIdx, h.fret > lastFret_ ? 1 : -1, velocity * 0.6f, at);
+
+    noteStart_[pitch & 127]   = at;
+    soundingPitch_[stringIdx] = pitch;
+    lastOnAbs_ = at;
+    lastFret_  = h.fret;
+
     sounding_[(size_t) stringIdx] = true;
-    pushHit (h, absCursor_ + offset);
+    pushHit (h, at);
+}
+
+void PerformanceEngine::emitStrokeNoise (int dir, double durSec, float velocity, long long at)
+{
+    StrumHit n {};
+    n.type     = EventType::StrokeNoise;
+    n.dir      = dir;
+    n.durSec   = (float) durSec;
+    n.velocity = velocity;
+    pushHit (n, at);
+}
+
+void PerformanceEngine::emitSqueak (int string, int dir, float velocity, long long at)
+{
+    StrumHit n {};
+    n.type        = EventType::Squeak;
+    n.stringIndex = string;
+    n.dir         = dir;
+    n.durSec      = 0.09f;
+    n.velocity    = velocity;
+    pushHit (n, at);
 }
 
 void PerformanceEngine::noteOff (int pitch, int offset)
 {
     if (chord_.isLatched (pitch)) return;
 
-    const bool pullOff = p_.mode == PlayMode::Poly
-                      && p_.art.trans == Transition::Legato
-                      && chord_.hasLowerNoteOnSameString (pitch);
+    const int stringIdx = chord_.stringFor (pitch);
 
-    int  lower = -1;
-    const bool haveLower = pullOff && chord_.nextLowerOnSameString (pitch, lower);
-    const int  stringIdx = chord_.stringFor (pitch);
+    // Another held note on the same string: releasing the sounding one pulls
+    // off (or hammers back) to it, as on a real string. Automatic unless the
+    // Transition control is set to something other than Normal/Legato.
+    int back = -1;
+    if (p_.mode == PlayMode::Poly && stringIdx >= 0 && stringIdx < kNumStrings
+        && (p_.art.trans == Transition::Legato || p_.art.trans == Transition::Normal))
+    {
+        std::int64_t newest = -1;
+        for (int i = 0; i < chord_.size(); ++i)
+        {
+            const int q = chord_.at (i).pitch;
+            if (q != pitch && chord_.stringFor (q) == stringIdx && noteStart_[q & 127] > newest)
+            { newest = noteStart_[q & 127]; back = q; }
+        }
+    }
+    const bool wasSounding = stringIdx >= 0 && stringIdx < kNumStrings && soundingPitch_[stringIdx] == pitch;
 
     chord_.remove (pitch);
     refreshVoicing();
@@ -369,6 +550,9 @@ void PerformanceEngine::noteOff (int pitch, int offset)
 
     if (p_.mode != PlayMode::Poly || stringIdx < 0 || stringIdx >= kNumStrings) return;
 
+    // The string already moved on to a newer note: nothing to release.
+    if (! wasSounding) return;
+
     StrumHit h {};
     h.stringIndex  = stringIdx;
     h.art          = p_.art;
@@ -376,17 +560,20 @@ void PerformanceEngine::noteOff (int pitch, int offset)
     h.pitchFrom    = -1.f;
     h.delaySamples = 0.0;
 
-    if (haveLower)
+    if (back >= 0)
     {
-        h.type     = EventType::Legato;
-        h.pitch    = (float) lower;
-        h.velocity = 0.7f;
+        h.type      = EventType::Legato;
+        h.art.trans = Transition::Legato;
+        h.pitch     = (float) back;
+        h.velocity  = 0.7f;
+        soundingPitch_[stringIdx] = back;
     }
     else
     {
         h.type     = EventType::Release;
         h.pitch    = (float) pitch;
         h.velocity = 0.f;
+        soundingPitch_[stringIdx] = -1;
     }
 
     pushHit (h, absCursor_ + offset);
@@ -414,11 +601,18 @@ void PerformanceEngine::strokeKey (ks::Stroke stroke, float velocity, int offset
                          (int) std::lround (velocity * 127.f), sp,
                          voicing_, p_.open, p_.art, rng_, scratch_, kMaxHits);
 
+    double lastDelay = 0.0;
     for (int i = 0; i < n; ++i)
     {
         scratch_[i].releaseSec = p_.release;
+        lastDelay = std::max (lastDelay, scratch_[i].delaySamples);
         pushHit (scratch_[i], absCursor_ + offset + (long long) scratch_[i].delaySamples);
     }
+
+    // A stroke drags the pick across the strings: add the scrape.
+    if (n >= 2 && stroke != ks::Stroke::PickLowest && stroke != ks::Stroke::PickHighest)
+        emitStrokeNoise (isUpward (stroke) ? -1 : 1, std::max (0.02, lastDelay / sampleRate_ * 1.5), velocity,
+                         absCursor_ + offset);
 }
 
 //==============================================================================
@@ -589,6 +783,22 @@ void PerformanceEngine::emitArpAndSeq (double ppqStart, double ppqEnd)
 
     for (int i = 0; i < n; ++i)
         pushHit (scratch_[i], absCursor_ + (long long) scratch_[i].delaySamples);
+
+    // Sequenced strokes are strums too: one scrape per stroke group (hits that
+    // start within the strum window), direction from string order.
+    for (int i = 0; i < n; )
+    {
+        int j = i + 1;
+        while (j < n && scratch_[j].delaySamples - scratch_[i].delaySamples < kStrumWindowSec * sampleRate_) ++j;
+        if (j - i >= 2 && scratch_[i].type == EventType::Pluck)
+        {
+            const double span = (scratch_[j - 1].delaySamples - scratch_[i].delaySamples) / sampleRate_;
+            emitStrokeNoise (scratch_[j - 1].stringIndex >= scratch_[i].stringIndex ? 1 : -1,
+                             std::max (0.02, span * 1.5), scratch_[i].velocity,
+                             absCursor_ + (long long) scratch_[i].delaySamples);
+        }
+        i = j;
+    }
 }
 
 void PerformanceEngine::pollTremolo (int numSamples)
@@ -689,6 +899,14 @@ int PerformanceEngine::process (const MidiMsg* in,
             handleMidi (in[i]);
 
     refreshVoicing();
+
+    // Automatic vibrato: one or two notes held in Poly for kAutoVibDelaySec.
+    {
+        const bool want = p_.mode == PlayMode::Poly && chord_.size() >= 1 && chord_.size() <= 2 && lastOnAbs_ >= 0
+                       && (double) (absCursor_ - lastOnAbs_) > kAutoVibDelaySec * sampleRate_;
+        const double step = kAutoVibDepth * (double) numSamples / (kAutoVibRiseSec * sampleRate_);
+        autoVib_ = want ? std::min (kAutoVibDepth, autoVib_ + step) : 0.0;
+    }
 
     const bool chordActive = ! chord_.size() == 0;
 

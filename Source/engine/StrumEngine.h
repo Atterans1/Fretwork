@@ -48,6 +48,8 @@ struct StrumHit
     int   fret         = 0;
     int   harmonicN    = 0;
     float releaseSec   = 8.f;   // used by Release events
+    int   dir          = 0;     // StrokeNoise / Squeak direction
+    float durSec       = 0.f;   // StrokeNoise / Squeak duration
     Articulation art {};
 };
 

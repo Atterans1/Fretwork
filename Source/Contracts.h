@@ -7,7 +7,10 @@ enum class Damping    : int { Open, PalmMute, Dead };
 enum class Transition : int { Normal, Slide, Legato, Bend };
 enum class Harmonic   : int { Off, Natural };
 enum class PlayMode   : int { Poly, Strum, Arp, Seq };
-enum class EventType  : int { Pluck, Legato, Release };   // Legato = hammer-on / pull-off / slide target (no full pluck)
+// Legato = hammer-on / pull-off / slide target (no full pluck).
+// StrokeNoise = pick scraping across the strings in a strum (dir, durSec).
+// Squeak = fingertip sliding along a string (string, dir, durSec).
+enum class EventType  : int { Pluck, Legato, Release, StrokeNoise, Squeak };
 struct Articulation { Excitation exc{}; Damping damp{}; Transition trans{}; Harmonic harm{}; bool tremolo{false}; };
 struct StringEvent {
   int   sampleOffset = 0;      // offset inside current block, 0..numSamples-1
@@ -18,6 +21,8 @@ struct StringEvent {
   float velocity = 0.8f;       // 0..1
   int   harmonicN = 0;         // 0 = none; 2..5 = natural-harmonic partial
   float releaseSec = 0.4f;      // used by Release events (T60 of the damped string)
+  int   dir = 0;               // StrokeNoise: +1 down-stroke, -1 up-stroke; Squeak: +1 shifting up the neck
+  float durSec = 0.f;          // StrokeNoise / Squeak duration
   Articulation art{};
 };
 struct MidiMsg { int offset; unsigned char status, d1, d2; };

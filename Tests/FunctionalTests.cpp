@@ -435,7 +435,8 @@ FW_TEST ("midi: mod wheel adds vibrato")
         p.noteOn (0.01, 64, 0.9f);
         const auto t = p.render (1.2);
         std::vector<double> c;
-        for (double a = 0.2; a < 1.1; a += 0.04)
+        // Up to 0.55 s: after 0.6 s a held single note gets automatic vibrato.
+        for (double a = 0.2; a < 0.55; a += 0.04)
             c.push_back (fwtest::Take::cents (t.pitch (a, a + 0.04, fwtest::midiToHz (64)), fwtest::midiToHz (64)));
         double m = 0; for (double v : c) m += v; m /= (double) c.size();
         double s = 0; for (double v : c) s += (v - m) * (v - m);

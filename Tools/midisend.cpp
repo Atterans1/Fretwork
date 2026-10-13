@@ -1,6 +1,7 @@
 // Sends a timed note sequence to a MIDI output whose name contains argv[1].
 // usage: midisend <portSubstring> then lines on stdin: <ms> on|off|cc <a> <b>
 //   on/off: a = note, b = velocity; cc: a = controller number, b = value
+//   pb: a = 14-bit pitch-bend value (8192 = centre), b ignored
 #include <windows.h>
 #include <mmsystem.h>
 #include <cstdio>
@@ -8,7 +9,7 @@
 #include <string>
 #include <vector>
 #pragma comment(lib, "winmm.lib")
-struct Ev { DWORD ms; int kind; int note; int vel; };   // kind: 0 off, 1 on, 2 cc
+struct Ev { DWORD ms; int kind; int note; int vel; };   // kind: 0 off, 1 on, 2 cc, 3 pitch bend
 int main (int argc, char** argv)
 {
     const UINT n = midiOutGetNumDevs();
@@ -24,7 +25,7 @@ int main (int argc, char** argv)
     std::vector<Ev> evs; char kind[8]; Ev e {};
     while (std::scanf ("%lu %7s %d %d", &e.ms, kind, &e.note, &e.vel) == 4)
     {
-        e.kind = std::strcmp (kind, "on") == 0 ? 1 : (std::strcmp (kind, "cc") == 0 ? 2 : 0);
+        e.kind = std::strcmp (kind, "on") == 0 ? 1 : std::strcmp (kind, "cc") == 0 ? 2 : std::strcmp (kind, "pb") == 0 ? 3 : 0;
         evs.push_back (e);
     }
     HMIDIOUT h {}; if (midiOutOpen (&h, (UINT) pick, 0, 0, CALLBACK_NULL) != MMSYSERR_NOERROR) { std::printf ("OPENFAIL\n"); return 4; }
@@ -33,8 +34,14 @@ int main (int argc, char** argv)
     for (const auto& ev : evs)
     {
         while (timeGetTime() - t0 < ev.ms) Sleep (1);
-        const DWORD status = ev.kind == 2 ? 0xB0u : (ev.kind == 1 ? 0x90u : 0x80u);
-        const DWORD msg = status | ((DWORD) ev.note << 8) | ((DWORD) (ev.kind == 0 ? 0 : ev.vel) << 16);
+        DWORD msg;
+        if (ev.kind == 3)
+            msg = 0xE0u | ((DWORD) (ev.note & 0x7f) << 8) | ((DWORD) ((ev.note >> 7) & 0x7f) << 16);
+        else
+        {
+            const DWORD status = ev.kind == 2 ? 0xB0u : (ev.kind == 1 ? 0x90u : 0x80u);
+            msg = status | ((DWORD) ev.note << 8) | ((DWORD) (ev.kind == 0 ? 0 : ev.vel) << 16);
+        }
         midiOutShortMsg (h, msg);
     }
     timeEndPeriod (1);
