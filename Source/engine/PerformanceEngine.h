@@ -192,6 +192,22 @@ private:
     int          lastFret_  = -1;
     double       autoVib_   = 0.0;           // automatic vibrato depth, 0..1 like the mod wheel
 
+    // ---- articulations in Strum / Arp / Seq ------------------------------
+    // A held note added on a voiced string becomes a hammer-on/slide on that
+    // string; it covers the note it replaced (which leaves the voicing) until
+    // it is released, when the string pulls off back to it.
+    int          coveredBy_[128] {};         // pitch -> the held legato note covering it (0 = none, else pitch+1)
+    int          legatoString_[128] {};      // legato pitch -> string + 1 (0 = none)
+    std::int64_t lastChordOffAbs_ = -1;      // when the last chord was let go
+    std::int64_t shiftCheckAt_    = -1;      // pending position-shift check after a chord gathers
+    bool         shiftQuick_      = false;   // that chord arrived within kShiftWindowSec of the last
+    float        lastHand_        = -1.f;    // mean fret of the previous chord's voicing
+    unsigned     frettedMask_     = 0;       // strings the held chord has fretted since it began
+
+    Articulation chordArt() const noexcept;
+    Voicing      playVoicing (const Articulation& art) const noexcept;
+    bool         chordModeLegato (int pitch, float velocity, long long at);
+
     void emitStrokeNoise (int dir, double durSec, float velocity, long long at);
     void emitSqueak (int string, int dir, float velocity, long long at, int frets = 5);
 };

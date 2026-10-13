@@ -96,6 +96,12 @@ void PerformanceEngine::reset()
     autoVib_ = 0.0;
     autoStrumAt_ = -1;
     lastStrokeKeyAbs_ = -1;
+    std::fill (std::begin (coveredBy_), std::end (coveredBy_), 0);
+    std::fill (std::begin (legatoString_), std::end (legatoString_), 0);
+    lastChordOffAbs_ = -1;
+    shiftCheckAt_ = -1;
+    lastHand_ = -1.f;
+    frettedMask_ = 0;
 
     prepare (sampleRate_);
 }
@@ -163,14 +169,18 @@ int PerformanceEngine::heldPitchOnString (int s) const
 
 void PerformanceEngine::refreshVoicing()
 {
-    const int n = chord_.size() < ChordState::kCapacity ? chord_.size()
+    int n = chord_.size() < ChordState::kCapacity ? chord_.size()
                                                         : ChordState::kCapacity;
 
     // Runs every block: only rebuild when the held notes, the mode, the voicing
     // setting, the neck range or the tuning changed.
     int key[ChordState::kCapacity + 4] {};
     int len = 0;
-    for (int i = 0; i < n; ++i) key[len++] = chord_.at (i).pitch;
+    for (int i = 0; i < n; ++i)
+    {
+        const int q = chord_.at (i).pitch;
+        key[len++] = coveredBy_[q & 127] != 0 && p_.mode != PlayMode::Poly ? -q : q;
+    }
     key[len++] = (int) p_.mode;
     key[len++] = p_.voicingMode;
     key[len++] = p_.maxFret;
@@ -187,11 +197,18 @@ void PerformanceEngine::refreshVoicing()
 
     int   held[ChordState::kCapacity];
     float pitches[ChordState::kCapacity];
+    int   kept = 0;
     for (int i = 0; i < n; ++i)
     {
-        held[i] = chord_.at (i).pitch;
-        pitches[i] = (float) held[i];
+        const int q = chord_.at (i).pitch;
+        // Chord modes: a note under a hammered/slid finger no longer sounds.
+        if (p_.mode != PlayMode::Poly && coveredBy_[q & 127] != 0) continue;
+        held[kept] = q;
+        pitches[kept] = (float) q;
+        ++kept;
     }
+    n = kept;
+    if (n <= 0) return;
 
     // Poly plays each key on its own string, so it always voices as held.
     // Elsewhere: Guitar shapes any recognised chord; Auto only when it is a
@@ -306,9 +323,136 @@ int PerformanceEngine::drain (int numSamples, StringEvent* out, int outCapacity)
 }
 
 //==============================================================================
+// Strum / Arp / Seq: the held chord's own velocity carries the right-hand
+// technique, the way it does for a single note in Poly. Manual controls win.
+Articulation PerformanceEngine::chordArt() const noexcept
+{
+    Articulation a = p_.art;
+    if (p_.mode == PlayMode::Poly || chord_.size() == 0) return a;
+
+    float vmax = 0.f;
+    for (int i = 0; i < chord_.size(); ++i) vmax = std::max (vmax, chord_.at (i).velocity);
+    const int v127 = (int) std::lround (std::clamp (vmax, 0.f, 1.f) * 127.f);
+
+    if (a.damp == Damping::Open)
+    {
+        if (v127 <= kDeadMuteMaxVel)      a.damp = Damping::Dead;
+        else if (v127 <= kPalmMuteMaxVel) a.damp = Damping::PalmMute;
+    }
+    if (a.harm == Harmonic::Off && v127 >= kHarmonicVel) a.harm = Harmonic::Natural;
+    return a;
+}
+
+// The voicing actually played. With natural harmonics on (chord modes), each
+// note that is a 12th / 19th / 24th-fret harmonic of a free string moves there.
+Voicing PerformanceEngine::playVoicing (const Articulation& art) const noexcept
+{
+    Voicing v = voicing_;
+    if (p_.mode == PlayMode::Poly || art.harm != Harmonic::Natural) return v;
+
+    bool used[kNumStrings] {};
+    for (int vi = 0; vi < v.count; ++vi) used[v.stringIndex[vi]] = true;
+    for (int vi = 0; vi < v.count; ++vi)
+    {
+        const int p = (int) std::lround (v.pitch[vi]);
+        if (harmonicPartialForFret (v.fret[vi]) > 0) continue;
+        for (int s = 0; s < kNumStrings; ++s)
+        {
+            const int rel = p - (int) std::lround (p_.open[s]);
+            if (used[s] || harmonicPartialForFret (rel) <= 0 || rel > p_.maxFret) continue;
+            used[v.stringIndex[vi]] = false;
+            used[s] = true;
+            v.stringIndex[vi] = s; v.fret[vi] = rel; v.fretFloat[vi] = (float) rel;
+            break;
+        }
+    }
+    // Keep strings ascending: stroke order follows the voicing order.
+    for (int a = 1; a < v.count; ++a)
+        for (int b = a; b > 0 && v.stringIndex[b] < v.stringIndex[b - 1]; --b)
+        {
+            std::swap (v.stringIndex[b], v.stringIndex[b - 1]);
+            std::swap (v.fret[b], v.fret[b - 1]);
+            std::swap (v.pitch[b], v.pitch[b - 1]);
+            std::swap (v.fretFloat[b], v.fretFloat[b - 1]);
+        }
+    return v;
+}
+
+bool PerformanceEngine::chordModeLegato (int pitch, float velocity, long long at)
+{
+    if (p_.art.trans != Transition::Normal) return false;
+    // Only over a single held note (a melodic line): notes added to a held
+    // chord or interval are the player building a chord, not hammering.
+    if (chord_.size() != 1) return false;
+    if (lastOnAbs_ >= 0 && at - lastOnAbs_ < (long long) (kStrumWindowSec * sampleRate_)) return false;   // part of a chord
+
+    // The newest held note voiced on a string the new note can be fretted on.
+    int bestString = -1, fromPitch = -1;
+    std::int64_t newest = -1;
+    for (int vi = 0; vi < voicing_.count; ++vi)
+    {
+        const int q = (int) std::lround (voicing_.pitch[vi]);
+        const int s = voicing_.stringIndex[vi];
+        if (! chord_.contains (q) || q == pitch) continue;
+        if (at - noteStart_[q & 127] < (long long) (kLegatoMinAgeSec * sampleRate_)) continue;
+        const int d = pitch - q, fret = pitch - (int) std::lround (p_.open[s]);
+        if (std::abs (d) < 1 || std::abs (d) > kSlideMaxSemis || fret < 0 || fret > p_.maxFret) continue;
+        if (noteStart_[q & 127] > newest) { newest = noteStart_[q & 127]; bestString = s; fromPitch = q; }
+    }
+    if (bestString < 0) return false;
+
+    if (! chord_.add (pitch, velocity, (int) std::lround (p_.open[0]))) return false;
+    chord_.setLatched (pedalDown_ || p_.hold);
+    coveredBy_[fromPitch & 127]  = pitch + 1;
+    legatoString_[pitch & 127]   = bestString + 1;
+    frettedMask_ |= 1u << bestString;
+
+    const bool slide = std::abs (pitch - fromPitch) > kHammerMaxSemis || (int) std::lround (velocity * 127.f) >= kSlideVel;
+    StrumHit h {};
+    h.type         = EventType::Legato;
+    h.stringIndex  = bestString;
+    h.velocity     = velocity;
+    h.art          = chordArt();
+    h.art.trans    = slide ? Transition::Slide : Transition::Legato;
+    h.releaseSec   = p_.release;
+    h.pitch        = (float) pitch;
+    h.pitchFrom    = slide ? (float) fromPitch : -1.f;
+    h.fret         = pitch - (int) std::lround (p_.open[bestString]);
+    pushHit (h, at);
+    if (slide) emitSqueak (bestString, pitch > fromPitch ? 1 : -1, velocity, at, std::abs (pitch - fromPitch));
+
+    refreshVoicing();
+    return true;
+}
+
 void PerformanceEngine::noteOn (int pitch, float velocity, int offset)
 {
     const bool alreadyHeld = chord_.contains (pitch);
+    const long long nowAbs = absCursor_ + offset;
+
+    // Chord modes: a lone note landing on the string of a held, ringing note
+    // is a hammer-on / slide on that string, not a new chord tone.
+    if (p_.mode != PlayMode::Poly && ! alreadyHeld)
+    {
+        refreshVoicing();
+        if (chordModeLegato (pitch, velocity, nowAbs))
+        {
+            noteStart_[pitch & 127] = nowAbs;
+            lastOnAbs_ = nowAbs;
+            return;
+        }
+
+        // First note of a new chord: check for a position shift once it has gathered.
+        const bool firstOfChord = lastOnAbs_ < 0 || nowAbs - lastOnAbs_ > (long long) (kStrumWindowSec * sampleRate_);
+        if (firstOfChord)
+        {
+            shiftQuick_ = chord_.size() > 0
+                       || (lastChordOffAbs_ >= 0 && nowAbs - lastChordOffAbs_ < (long long) (kShiftWindowSec * sampleRate_));
+            shiftCheckAt_ = nowAbs + (long long) (kChordGatherSec * sampleRate_);
+        }
+        noteStart_[pitch & 127] = nowAbs;
+        lastOnAbs_ = nowAbs;
+    }
 
     if (! alreadyHeld)
     {
@@ -319,6 +463,8 @@ void PerformanceEngine::noteOn (int pitch, float velocity, int offset)
     }
 
     refreshVoicing();
+    if (p_.mode != PlayMode::Poly)
+        for (int vi = 0; vi < voicing_.count; ++vi) frettedMask_ |= 1u << voicing_.stringIndex[vi];
 
     // Strum mode: pressing a chord strums it, the way a guitarist's right hand
     // follows the left. Hand-played stroke keys take over when in use.
@@ -504,8 +650,11 @@ void PerformanceEngine::noteOn (int pitch, float velocity, int offset)
 
     // Position shift: a new picked note 5+ frets from the last one, quickly,
     // drags the hand along the strings.
+    // Within kShiftWindowSec of the last note-on, or of letting a note go:
+    // releasing one position and landing the next is the usual way to shift.
+    const long long shiftWin = (long long) (kShiftWindowSec * sampleRate_);
     if (h.type == EventType::Pluck && ! inStrum && lastOnAbs_ >= 0 && lastFret_ >= 0
-        && at - lastOnAbs_ < (long long) (kShiftWindowSec * sampleRate_)
+        && (at - lastOnAbs_ < shiftWin || (lastChordOffAbs_ >= 0 && at - lastChordOffAbs_ < shiftWin))
         && std::abs (h.fret - lastFret_) >= kShiftMinFrets)
         emitSqueak (stringIdx, h.fret > lastFret_ ? 1 : -1, velocity * 0.6f, at, std::abs (h.fret - lastFret_));
 
@@ -543,6 +692,66 @@ void PerformanceEngine::noteOff (int pitch, int offset)
 {
     if (chord_.isLatched (pitch)) return;
 
+    if (p_.mode != PlayMode::Poly)
+    {
+        const long long at = absCursor_ + offset;
+        const Voicing before = voicing_;
+        const int ls = legatoString_[pitch & 127] - 1;
+        legatoString_[pitch & 127] = 0;
+        coveredBy_[pitch & 127] = 0;                    // a covered note lifted from under the finger
+
+        int back = -1;
+        for (int q = 0; q < 128; ++q)
+            if (coveredBy_[q] == pitch + 1) { coveredBy_[q] = 0; back = q; }
+
+        chord_.remove (pitch);
+        refreshVoicing();
+
+        // Releasing a hammered / slid note with the note under it still held
+        // pulls off to it on the same string.
+        if (ls >= 0 && back >= 0 && chord_.contains (back))
+        {
+            StrumHit h {};
+            h.type        = EventType::Legato;
+            h.stringIndex = ls;
+            h.velocity    = 0.7f;
+            h.art         = chordArt();
+            h.art.trans   = Transition::Legato;
+            h.releaseSec  = p_.release;
+            h.pitch       = (float) back;
+            h.pitchFrom   = -1.f;
+            h.fret        = back - (int) std::lround (p_.open[ls]);
+            pushHit (h, at);
+            return;
+        }
+
+        // The whole chord let go: the fretting hand lifts off every string it
+        // held, damping them with the finger-lift noise.
+        if (chord_.size() == 0)
+        {
+            lastChordOffAbs_ = at;
+            bool released[kNumStrings] {};
+            for (int vi = 0; vi < before.count; ++vi) released[before.stringIndex[vi]] = true;
+            for (int st = 0; st < kNumStrings; ++st) if ((frettedMask_ >> st) & 1u) released[st] = true;
+            frettedMask_ = 0;
+            if (ls >= 0) released[ls] = true;
+            for (int st = 0; st < kNumStrings; ++st)
+            {
+                if (! released[st]) continue;
+                StrumHit h {};
+                h.type        = EventType::Release;
+                h.stringIndex = st;
+                h.velocity    = 0.f;
+                h.art         = p_.art;
+                h.releaseSec  = p_.release;
+                h.pitch       = p_.open[st];
+                h.pitchFrom   = -1.f;
+                pushHit (h, at);
+            }
+        }
+        return;
+    }
+
     const int stringIdx = chord_.stringFor (pitch);
 
     // Another held note on the same string: releasing the sounding one pulls
@@ -564,6 +773,7 @@ void PerformanceEngine::noteOff (int pitch, int offset)
 
     chord_.remove (pitch);
     refreshVoicing();
+    lastChordOffAbs_ = absCursor_ + offset;   // Poly: any let-go starts the shift window
 
     if (stringIdx >= 0 && stringIdx < kNumStrings && ! chord_.stringIsHeld (stringIdx))
         sounding_[(size_t) stringIdx] = false;
@@ -603,7 +813,9 @@ void PerformanceEngine::strokeKey (ks::Stroke stroke, float velocity, int offset
 {
     if (! autoStroke_) { lastStrokeKeyAbs_ = absCursor_ + offset; autoStrumAt_ = -1; }
     refreshVoicing();
-    if (voicing_.count <= 0) return;
+    const Articulation art = chordArt();
+    const Voicing      v   = playVoicing (art);
+    if (v.count <= 0) return;
 
     StrumEngine::StrokeParams sp {};
     sp.strumTimeMs  = p_.strumTime;
@@ -616,11 +828,11 @@ void PerformanceEngine::strokeKey (ks::Stroke stroke, float velocity, int offset
 
     const int n = (stroke == ks::Stroke::PickLowest || stroke == ks::Stroke::PickHighest)
         ? StrumEngine::pluckExtreme (stroke == ks::Stroke::PickHighest,
-                                     voicing_, p_.open, p_.art, velocity,
+                                     v, p_.open, art, velocity,
                                      scratch_, kMaxHits)
         : strum_.stroke (isUpward (stroke), kindOf (stroke),
                          (int) std::lround (velocity * 127.f), sp,
-                         voicing_, p_.open, p_.art, rng_, scratch_, kMaxHits);
+                         v, p_.open, art, rng_, scratch_, kMaxHits);
 
     double lastDelay = 0.0;
     for (int i = 0; i < n; ++i)
@@ -737,29 +949,31 @@ void PerformanceEngine::emitArpAndSeq (double ppqStart, double ppqEnd)
     if (! (ppqEnd >= ppqStart)) return;
 
     const double bpm = clock_.bpm();
+    const Articulation art = chordArt();
+    const Voicing      v   = playVoicing (art);
 
     if (p_.mode == PlayMode::Arp)
     {
-        arp_.rebuild (voicing_, p_.arpMask, p_.arpStrings);
+        arp_.rebuild (v, p_.arpMask, p_.arpStrings);
 
         // Velocity per voiced string. Held notes only carry a string index in
         // Poly mode, so map through the voicing's pitches instead; reading
         // ChordNote::string here left every arp note at velocity 0.
         float stringVel[kNumStrings] {};
-        for (int vi = 0; vi < voicing_.count; ++vi)
+        for (int vi = 0; vi < v.count; ++vi)
         {
-            const int s = voicing_.stringIndex[vi];
+            const int s = v.stringIndex[vi];
             if (s < 0 || s >= kNumStrings) continue;
 
             // A guitar shape sounds pitches nobody holds: match the same
             // pitch, then the same pitch class, then the loudest held note.
             float exact = -1.f, sameClass = -1.f, loudest = 0.f;
-            const int pc = (((int) std::lround (voicing_.pitch[vi]) % 12) + 12) % 12;
+            const int pc = (((int) std::lround (v.pitch[vi]) % 12) + 12) % 12;
             for (int i = 0; i < chord_.size(); ++i)
             {
                 const ChordNote& n = chord_.at (i);
                 loudest = std::max (loudest, n.velocity);
-                if (std::fabs ((float) n.pitch - voicing_.pitch[vi]) < 0.5f) exact = n.velocity;
+                if (std::fabs ((float) n.pitch - v.pitch[vi]) < 0.5f) exact = n.velocity;
                 else if (sameClass < 0.f && (n.pitch % 12 + 12) % 12 == pc) sameClass = n.velocity;
             }
             stringVel[s] = exact >= 0.f ? exact : sameClass >= 0.f ? sameClass : loudest;
@@ -774,7 +988,7 @@ void PerformanceEngine::emitArpAndSeq (double ppqStart, double ppqEnd)
         ap.humanize01 = p_.humanize;
 
         const int n = arp_.advance (ppqStart, ppqEnd, sampleRate_, bpm, ap,
-                                    p_.open, stringVel, p_.art, rng_,
+                                    p_.open, stringVel, art, rng_,
                                     scratch_, kMaxHits);
         for (int i = 0; i < n; ++i)
         {
@@ -800,8 +1014,8 @@ void PerformanceEngine::emitArpAndSeq (double ppqStart, double ppqEnd)
     const int n = seq_.advance (ppqStart, ppqEnd, sampleRate_, bpm,
                                 (double) clock_.stepsPerQuarterInt(),
                                 clock_.stepsPerBar(),
-                                &p_.seqSlots[slot], voicing_, sp, strum_, p_.open,
-                                p_.release, p_.art, rng_, scratch_, kMaxHits);
+                                &p_.seqSlots[slot], v, sp, strum_, p_.open,
+                                p_.release, art, rng_, scratch_, kMaxHits);
 
     for (int i = 0; i < n; ++i)
         pushHit (scratch_[i], absCursor_ + (long long) scratch_[i].delaySamples);
@@ -924,7 +1138,7 @@ int PerformanceEngine::process (const MidiMsg* in,
 
     // Automatic vibrato: one or two notes held in Poly for kAutoVibDelaySec.
     {
-        const bool want = p_.mode == PlayMode::Poly && chord_.size() >= 1 && chord_.size() <= 2 && lastOnAbs_ >= 0
+        const bool want = chord_.size() >= 1 && chord_.size() <= 2 && lastOnAbs_ >= 0
                        && (double) (absCursor_ - lastOnAbs_) > kAutoVibDelaySec * sampleRate_;
         const double step = kAutoVibDepth * (double) numSamples / (kAutoVibRiseSec * sampleRate_);
         autoVib_ = want ? std::min (kAutoVibDepth, autoVib_ + step) : 0.0;
@@ -934,6 +1148,23 @@ int PerformanceEngine::process (const MidiMsg* in,
 
     double ppqStart = clock_.ppq();
     if (transport.hostValid && transport.hostPlaying) ppqStart = transport.ppq;
+
+    // Position-shift squeak for chord modes, once the new chord has gathered.
+    if (shiftCheckAt_ >= 0 && shiftCheckAt_ < absCursor_ + numSamples)
+    {
+        const long long at = shiftCheckAt_;
+        shiftCheckAt_ = -1;
+        if (p_.mode != PlayMode::Poly && voicing_.count > 0)
+        {
+            float sum = 0.f; int lowest = kNumStrings;
+            for (int vi = 0; vi < voicing_.count; ++vi) { sum += (float) voicing_.fret[vi]; lowest = std::min (lowest, voicing_.stringIndex[vi]); }
+            const float hand = sum / (float) voicing_.count;
+            const int frets = (int) std::lround (std::fabs (hand - lastHand_));
+            if (shiftQuick_ && lastHand_ >= 0.f && frets >= kShiftMinFrets)
+                emitSqueak (std::min (lowest, 2), hand > lastHand_ ? 1 : -1, 0.6f, at, frets);
+            lastHand_ = hand;
+        }
+    }
 
     // Pending Strum-mode auto-strum due in this block.
     if (autoStrumAt_ >= 0 && autoStrumAt_ < absCursor_ + numSamples)
