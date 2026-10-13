@@ -164,3 +164,20 @@ target_link_libraries(PluginE2E PRIVATE
     juce::juce_dsp
     juce::juce_gui_basics
     juce::juce_recommended_config_flags)
+
+# ModeMatrix: plays every mode and factory preset through a real build and
+# scores the audio (VST3 hosted directly; Standalone via a loopback recording).
+juce_add_console_app(ModeMatrix PRODUCT_NAME "ModeMatrix")
+target_sources(ModeMatrix PRIVATE Tools/ModeMatrix.cpp)
+target_compile_definitions(ModeMatrix PRIVATE
+    JUCE_PLUGINHOST_VST3=1 JUCE_MODAL_LOOPS_PERMITTED=1 JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
+target_link_libraries(ModeMatrix PRIVATE
+    juce::juce_audio_processors juce::juce_audio_formats juce::juce_dsp juce::juce_gui_basics
+    juce::juce_recommended_config_flags)
+
+# Windows-only helpers for driving the Standalone: WASAPI loopback capture and
+# a MIDI sender for a loopMIDI port.
+if (WIN32)
+    add_executable(loopcap Tools/loopcap.cpp)
+    add_executable(midisend Tools/midisend.cpp)
+endif()
