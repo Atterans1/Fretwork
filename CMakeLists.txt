@@ -115,6 +115,7 @@ target_link_libraries(FretworkTests
 
 add_test(NAME FretworkTests COMMAND FretworkTests)
 
+
 # HostCheck loads the deployed Fretwork.vst3 through JUCE's VST3 host (the
 # route a DAW takes) and checks automation, presets, editor scaling and MIDI.
 juce_add_console_app(HostCheck PRODUCT_NAME "HostCheck")
@@ -126,5 +127,31 @@ target_compile_definitions(HostCheck PRIVATE
     JUCE_USE_CURL=0)
 target_link_libraries(HostCheck PRIVATE
     juce::juce_audio_processors
+    juce::juce_gui_basics
+    juce::juce_recommended_config_flags)
+
+# PluginE2E: learns a real recording (MP3/WAV/FLAC + an independent tab or
+# MIDI reference), plays the learned notes through ANY VST3 instrument via
+# JUCE's VST3 host, and verifies the playback against the recording.
+# Usage: Tools/PluginE2E/README.md
+juce_add_console_app(PluginE2E PRODUCT_NAME "PluginE2E")
+target_sources(PluginE2E PRIVATE
+    Tools/PluginE2E/PluginE2E.cpp
+    Tools/PluginE2E/Audio.cpp
+    Tools/PluginE2E/Learner.cpp
+    Tools/PluginE2E/Verifier.cpp)
+if (MSVC)
+    target_compile_options(PluginE2E PRIVATE /utf-8)
+endif()
+target_compile_definitions(PluginE2E PRIVATE
+    JUCE_PLUGINHOST_VST3=1
+    JUCE_USE_MP3AUDIOFORMAT=1
+    JUCE_MODAL_LOOPS_PERMITTED=1
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0)
+target_link_libraries(PluginE2E PRIVATE
+    juce::juce_audio_processors
+    juce::juce_audio_formats
+    juce::juce_dsp
     juce::juce_gui_basics
     juce::juce_recommended_config_flags)
