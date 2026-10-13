@@ -32,6 +32,10 @@ namespace {
     constexpr double kAutoVibDelaySec = 0.6;
     constexpr double kAutoVibRiseSec  = 0.4;
     constexpr double kAutoVibDepth    = 0.5;
+    // Strum mode: note-ons within kChordGatherSec are one chord, strummed down
+    // once; skipped while stroke keys were used in the last kStrokeKeyHoldSec.
+    constexpr double kChordGatherSec   = 0.020;
+    constexpr double kStrokeKeyHoldSec = 4.0;
 }
 
 StrokeKind PerformanceEngine::kindOf (ks::Stroke s) noexcept
@@ -90,6 +94,8 @@ void PerformanceEngine::reset()
     lastOnAbs_ = -1;
     lastFret_ = -1;
     autoVib_ = 0.0;
+    autoStrumAt_ = -1;
+    lastStrokeKeyAbs_ = -1;
 
     prepare (sampleRate_);
 }
@@ -313,6 +319,20 @@ void PerformanceEngine::noteOn (int pitch, float velocity, int offset)
     }
 
     refreshVoicing();
+
+    // Strum mode: pressing a chord strums it, the way a guitarist's right hand
+    // follows the left. Hand-played stroke keys take over when in use.
+    if (p_.mode == PlayMode::Strum && ! alreadyHeld)
+    {
+        const long long at = absCursor_ + offset;
+        const bool byHand = lastStrokeKeyAbs_ >= 0
+                         && at - lastStrokeKeyAbs_ < (long long) (kStrokeKeyHoldSec * sampleRate_);
+        if (! byHand)
+        {
+            if (autoStrumAt_ < 0) { autoStrumAt_ = at + (long long) (kChordGatherSec * sampleRate_); autoStrumVel_ = 0.f; }
+            autoStrumVel_ = std::max (autoStrumVel_, velocity);
+        }
+    }
 
     // Only Poly sounds directly; the other modes go through their own paths.
     if (p_.mode != PlayMode::Poly) return;
@@ -581,6 +601,7 @@ void PerformanceEngine::noteOff (int pitch, int offset)
 
 void PerformanceEngine::strokeKey (ks::Stroke stroke, float velocity, int offset)
 {
+    if (! autoStroke_) { lastStrokeKeyAbs_ = absCursor_ + offset; autoStrumAt_ = -1; }
     refreshVoicing();
     if (voicing_.count <= 0) return;
 
@@ -763,7 +784,8 @@ void PerformanceEngine::emitArpAndSeq (double ppqStart, double ppqEnd)
         return;
     }
 
-    if (p_.mode != PlayMode::Seq || ! p_.seqPlay || p_.seqSlots == nullptr) return;
+    // Seq runs with Seq Play / the host transport, or while a chord is held.
+    if (p_.mode != PlayMode::Seq || (! p_.seqPlay && chord_.size() == 0) || p_.seqSlots == nullptr) return;
 
     const int slot = p_.seqSlot >= 0 && p_.seqSlot < kNumSeqSlots ? p_.seqSlot : 0;
 
@@ -912,6 +934,19 @@ int PerformanceEngine::process (const MidiMsg* in,
 
     double ppqStart = clock_.ppq();
     if (transport.hostValid && transport.hostPlaying) ppqStart = transport.ppq;
+
+    // Pending Strum-mode auto-strum due in this block.
+    if (autoStrumAt_ >= 0 && autoStrumAt_ < absCursor_ + numSamples)
+    {
+        const int off = (int) std::max<long long> (0, autoStrumAt_ - absCursor_);
+        autoStrumAt_ = -1;
+        if (p_.mode == PlayMode::Strum && chord_.size() > 0)
+        {
+            autoStroke_ = true;
+            strokeKey (ks::Stroke::Down, autoStrumVel_, off);
+            autoStroke_ = false;
+        }
+    }
 
     const bool running = clock_.advance (numSamples, transport, p_.mode, p_.seqPlay, chordActive);
     const double ppqEnd = clock_.ppq();

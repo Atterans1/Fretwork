@@ -184,6 +184,11 @@ private:
     std::int64_t noteStart_[128] {};         // absolute sample of each pitch's last note-on
     int          soundingPitch_[kNumStrings] { -1, -1, -1, -1, -1, -1 };   // pitch each string is playing
     std::int64_t lastOnAbs_ = -1;            // last Poly note-on
+    // Strum mode auto-strum: a chord's note-ons gather, then one down-stroke.
+    std::int64_t autoStrumAt_ = -1;          // absolute sample of the pending stroke, -1 none
+    float        autoStrumVel_ = 0.f;
+    bool         autoStroke_ = false;        // strokeKey() called by the auto-strum, not a key
+    std::int64_t lastStrokeKeyAbs_ = -1;     // last stroke keyswitch: the player is strumming by hand
     int          lastFret_  = -1;
     double       autoVib_   = 0.0;           // automatic vibrato depth, 0..1 like the mod wheel
 

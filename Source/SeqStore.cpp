@@ -28,6 +28,28 @@ namespace
     }
 }
 
+// Factory patterns, 16th grid, rows 0 Down 1 Up 2 Muted Down 3 Muted Up
+// 4 Palm Down 5 Palm Up (row,start,len,velocity).
+namespace
+{
+    const char* const kFactoryPatterns[] = {
+        // 1 Pop: down, down-up, up-down-up
+        "0,0,4,105;0,4,2,95;1,6,2,75;1,10,2,80;0,12,2,100;1,14,2,75",
+        // 2 Folk: accented down on 1 and 3, light ups between
+        "0,0,6,110;1,6,2,70;0,8,2,100;1,10,2,70;1,14,2,70",
+        // 3 Rock: palm-muted 8ths, accented on the beat
+        "4,0,2,115;4,2,2,90;4,4,2,115;4,6,2,90;4,8,2,115;4,10,2,90;4,12,2,115;4,14,2,90",
+        // 4 Funk: muted 16ths, open accents on 2 and 4
+        "2,0,1,75;3,1,1,60;2,2,1,75;3,3,1,60;0,4,1,110;3,5,1,60;2,6,1,75;3,7,1,60;2,8,1,75;3,9,1,60;2,10,1,75;3,11,1,60;0,12,1,110;3,13,1,60;2,14,1,75;3,15,1,60",
+    };
+}
+
+SeqStore::SeqStore()
+{
+    for (int s = 0; s < (int) std::size (kFactoryPatterns); ++s)
+        deserialiseSlot (s, kFactoryPatterns[s]);
+}
+
 void SeqStore::clearSlot (int slot)
 {
     const juce::SpinLock::ScopedLockType sl (lock);

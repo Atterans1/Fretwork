@@ -41,7 +41,7 @@ public:
     bool advance (int numSamples,
                   const Transport& transport,
                   PlayMode mode,
-                  bool seqPlay,
+                  bool seqPlay,   // Seq also runs while a chord is held
                   bool chordActive) noexcept;
 
     // True when the host is driving.

@@ -16,6 +16,9 @@ namespace fw {
 class SeqStore
 {
 public:
+    /** Starts with the factory strum patterns in slots 1-4 (5-8 empty). */
+    SeqStore();
+
     // ---------------------------------------------------------- message thread
     void clearSlot (int slot);
     void copySlot (int from, int to);

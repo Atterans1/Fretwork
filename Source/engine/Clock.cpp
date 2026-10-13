@@ -102,7 +102,7 @@ bool Clock::advance (int numSamples,
 
     // The internal counter only runs for the two consumers that read it.
     const bool wants = hostLocked_
-                    || (mode == PlayMode::Seq && seqPlay)
+                    || (mode == PlayMode::Seq && (seqPlay || chordActive))
                     || (mode == PlayMode::Arp && chordActive);
 
     if (! wants)

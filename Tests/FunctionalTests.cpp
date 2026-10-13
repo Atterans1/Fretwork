@@ -2,6 +2,8 @@
 // fwtest::Plugin exactly as a host would drive it. See Harness.h.
 
 #include "Harness.h"
+#include "SeqStore.h"
+#include "engine/PerformanceEngine.h"
 #include "PluginEditor.h"
 #include "WavesStyle.h"
 #include "SeqGrid.h"
@@ -697,6 +699,73 @@ FW_TEST ("midi: notes sound an octave below written, like a real guitar")
         std::printf ("    written %d sounds %+.1f c from %.2f Hz\n", written, c, hz);
         EXPECT_MSG (std::fabs (c) < 5.0, "sounds one octave below the written note");
     }
+}
+
+FW_TEST ("out of box: Strum mode strums a pressed chord without stroke keys")
+{
+    fwtest::Plugin p;
+    p.set ("mode", 1.f);
+    p.chord (0.10, { 48, 52, 55, 60, 64 }, 0.8f, 0.008);   // a keyboard chord, keys 8 ms apart
+    const auto t = p.render (1.0);
+    // One down-stroke: sound within 50 ms of the first key, nothing before it.
+    double onset = -1;
+    for (double a = 0.05; a < 0.4 && onset < 0; a += 0.001) if (t.rms (a, a + 0.002) > 0.002) onset = a;
+    std::printf ("    auto-strum onset %.1f ms after the first key, rms %.4f\n", (onset - 0.10) * 1000, t.rms (0.15, 0.8));
+    EXPECT_MSG (onset > 0.10 && onset < 0.15, "the chord sounds within 50 ms");
+    EXPECT_MSG (t.rms (0.15, 0.8) > 0.01, "and rings");
+
+    // Stroke keys in use: the chord itself stays silent until a stroke.
+    fwtest::Plugin q;
+    q.set ("mode", 1.f);
+    q.keyOn (0.05, 28, 0.8f).keyOff (0.06, 28);              // a stroke with nothing held
+    q.chord (0.10, { 48, 52, 55, 60, 64 }, 0.8f, 0.008);
+    const auto u = q.render (0.6);
+    EXPECT_MSG (u.rms (0.10, 0.5) < 0.001, "stroke-key players are not double-strummed");
+}
+
+FW_TEST ("out of box: Seq plays its factory pattern while a chord is held")
+{
+    // Ground truth from the engine: the Pop pattern in slot 1 strokes on 16th
+    // steps 0 4 6 10 12 14, i.e. 0, 0.6, 0.9, 1.5, 1.8, 2.1 s at 100 BPM, with
+    // Seq Play left off. (An RMS attack count misses quiet up-strokes over a
+    // ringing chord, so it is not used for timing.)
+    fw::SeqStore store; store.refresh();
+    static fw::SeqPattern slots[fw::kNumSeqSlots];
+    for (int s = 0; s < fw::kNumSeqSlots; ++s) slots[s] = store.snapshot (s);
+    fw::PerformanceEngine perf; perf.prepare (48000.0);
+    fw::PerfParams pp {}; pp.mode = fw::PlayMode::Seq; pp.seqPlay = false; pp.seqSlots = slots; pp.seqSlot = 0; pp.bpm = 100.f;
+    perf.setParams (pp);
+    fw::StringEvent ev[256]; fw::ClickEvent ck[8]; int nc = 0;
+    std::vector<double> strokes;
+    for (int b = 0; b < 250; ++b)
+    {
+        std::vector<fw::MidiMsg> in;
+        if (b == 5) for (int n : { 60, 64, 67, 72, 76 }) in.push_back ({ 0, 0x90, (unsigned char) n, 100 });
+        const int n = perf.process (in.empty() ? nullptr : in.data(), (int) in.size(), fw::Transport {}, 480, ev, 256, ck, nc);
+        for (int i = 0; i < n; ++i)
+            if (ev[i].type == fw::EventType::Pluck)
+            {
+                const double t = (b * 480 + ev[i].sampleOffset) / 48000.0 - 0.05;
+                if (strokes.empty() || t - strokes.back() > 0.05) strokes.push_back (t);
+            }
+    }
+    const double want[] = { 0.0, 0.6, 0.9, 1.5, 1.8, 2.1 };
+    bool onGrid = strokes.size() >= 6;
+    for (size_t i = 0; onGrid && i < 6; ++i) onGrid = std::fabs (strokes[i] - want[i]) < 0.005;
+    std::printf ("    seq factory pattern: %zu strokes in 2.4 s, on the 16th grid: %s\n", strokes.size(), onGrid ? "yes" : "no");
+    EXPECT_MSG (onGrid, "the pattern plays without drawing or pressing Play");
+
+    // Silent with no chord held and Play off.
+    fw::PerformanceEngine idle; idle.prepare (48000.0); idle.setParams (pp);
+    int idleHits = 0;
+    for (int b = 0; b < 100; ++b) idleHits += idle.process (nullptr, 0, fw::Transport {}, 480, ev, 256, ck, nc);
+    EXPECT_MSG (idleHits == 0, "no chord and no Play: the sequencer stays silent");
+
+    // And through the real plugin, the strokes are heard.
+    fwtest::Plugin p;
+    p.set ("mode", 3.f);
+    p.chord (0.05, { 48, 52, 55, 60, 64 }, 0.8f);
+    EXPECT_MSG (p.render (2.5).rms (0.05, 2.4) > 0.01, "audible through the plugin");
 }
 
 //==============================================================================
