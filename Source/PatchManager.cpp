@@ -15,15 +15,15 @@ namespace
         { "Fingerstyle Folk",   0, { { id::excitation, 1 }, { id::pickHard, 30 }, { id::pickPos, 20 }, { id::sustain, 120 }, { id::room, 15 } } },
         { "Palm-Muted Pop",     0, { { id::mode, 1 }, { id::damping, 1 }, { id::strumTime, 18 }, { id::humanize, 10 } } },
         // ---- Classical Nylon
-        { "Bossa Nova",         1, { { id::mode, 1 }, { id::excitation, 1 }, { id::strumTime, 45 }, { id::humanize, 25 }, { id::tone, 7000 }, { id::room, 18 } } },
+        { "Bossa Nova",         1, { { id::mode, 1 }, { id::excitation, 1 }, { id::strumTime, 45 }, { id::humanize, 25 }, { id::tone, legacyToneHz (7000) }, { id::room, 18 } } },
         { "Classical Arpeggio", 1, { { id::mode, 2 }, { id::excitation, 1 }, { id::arpOrder, 2 }, { id::arpRate, 1 }, { id::sustain, 130 }, { id::room, 25 } } },
         { "Nylon Lead",         1, { { id::transition, 2 }, { id::vibDepth, 30 }, { id::room, 22 } } },
         // ---- Solid Electric
-        { "Clean Funk Rhythm",  2, { { id::mode, 1 }, { id::strumTime, 10 }, { id::humanize, 15 }, { id::tone, 11000 } } },
+        { "Clean Funk Rhythm",  2, { { id::mode, 1 }, { id::strumTime, 10 }, { id::humanize, 15 }, { id::tone, legacyToneHz (11000) } } },
         { "Crunch Rhythm",      2, { { id::mode, 1 }, { id::pickupType, 1 }, { id::pickupSel, 0 }, { id::drive, 45 }, { id::strumTime, 15 } } },
         { "Blues Lead",         2, { { id::pickupSel, 2 }, { id::drive, 25 }, { id::transition, 3 }, { id::bendAmount, 1 }, { id::vibDepth, 35 }, { id::sustain, 140 } } },
         // ---- Semi-Hollow
-        { "Jazz Box Comping",   3, { { id::mode, 1 }, { id::excitation, 2 }, { id::strumTime, 25 }, { id::tone, 5500 } } },
+        { "Jazz Box Comping",   3, { { id::mode, 1 }, { id::excitation, 2 }, { id::strumTime, 25 }, { id::tone, legacyToneHz (5500) } } },
         { "Warm Semi Strum",    3, { { id::mode, 1 }, { id::strumTime, 30 }, { id::drive, 10 }, { id::room, 25 } } },
         { "Rockabilly Slap",    3, { { id::pickupSel, 3 }, { id::damping, 1 }, { id::drive, 20 }, { id::room, 35 } } },
     };
@@ -230,6 +230,7 @@ bool PatchManager::saveUserPreset (const juce::String& name, juce::File dir)
 
     juce::XmlElement xml ("FretworkPreset");
     xml.setAttribute ("name", name.trim());
+    xml.setAttribute ("toneMapping", kToneMappingVersion);
     for (auto* p : params)
     {
         auto* e = xml.createNewChildElement ("P");
@@ -254,13 +255,17 @@ bool PatchManager::loadUserPreset (const juce::File& file)
     {
         const juce::ScopedValueSetter<bool> guard (applying, true);
         resetToDefaults();   // parameters missing from an older file fall back to defaults
+        const bool legacyTone = xml->getIntAttribute ("toneMapping", 1) < kToneMappingVersion;
         for (auto* e : xml->getChildWithTagNameIterator ("P"))
         {
             const auto pid = e->getStringAttribute ("id");
             if (! isSoundParameter (pid))
                 continue;
+            double v = e->getDoubleAttribute ("v");
+            if (legacyTone && pid == id::tone)
+                v = legacyToneHz (v);
             if (auto* p = vts.getParameter (pid))
-                p->setValueNotifyingHost (p->convertTo0to1 ((float) e->getDoubleAttribute ("v")));
+                p->setValueNotifyingHost (p->convertTo0to1 ((float) v));
         }
     }
 

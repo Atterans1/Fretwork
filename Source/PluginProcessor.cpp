@@ -534,6 +534,7 @@ void FretworkAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
     state.appendChild (seq, nullptr);
     state.setProperty ("program", patches->currentFactory(), nullptr);
     state.setProperty ("midiLearn", midiLearn->serialise(), nullptr);
+    state.setProperty ("toneMapping", fw::kToneMappingVersion, nullptr);
 
     juce::MemoryOutputStream stream (destData, false);
     state.writeToStream (stream);
@@ -568,6 +569,17 @@ void FretworkAudioProcessor::setStateInformation (const void* data, int sizeInBy
     state.removeProperty ("program", nullptr);
     midiLearn->deserialise (state.getProperty ("midiLearn", juce::String()).toString());
     state.removeProperty ("midiLearn", nullptr);
+
+    // Projects saved before the Tone fix store the inverted-mapping value.
+    if ((int) state.getProperty ("toneMapping", 1) < fw::kToneMappingVersion)
+        for (int i = 0; i < state.getNumChildren(); ++i)
+        {
+            auto child = state.getChild (i);
+            if (child.getProperty ("id").toString() == fw::id::tone)
+                child.setProperty ("value", fw::legacyToneHz ((double) child.getProperty ("value")), nullptr);
+        }
+    state.removeProperty ("toneMapping", nullptr);
+
     if (juce::isPositiveAndBelow (program, getNumPrograms()))
         patches->setCurrentFactoryIndexOnly (program);
 

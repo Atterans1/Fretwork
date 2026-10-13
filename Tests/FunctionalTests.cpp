@@ -172,6 +172,62 @@ FW_TEST ("params: sound-shaping parameters audibly change the output")
     }
 }
 
+FW_TEST ("params: Tone brightens as it goes up")
+{
+    double prev = -1;
+    for (float hz : { 1000.f, 2811.f, 6000.f, 16000.f })
+    {
+        fwtest::Plugin p;
+        p.set ("tone", hz);
+        const auto t = pluck (p, 52, 0.9f, 0.6);
+        const double al = std::exp (-2.0 * 3.14159265358979 * 3000.0 / t.fs);
+        double y = 0, lo = 0, tot = 0;
+        for (size_t i = (size_t) (0.05 * t.fs); i < (size_t) (0.3 * t.fs); ++i)
+        { const double x = t.left[i]; y += (1 - al) * (x - y); lo += y * y; tot += x * x; }
+        const double hi = (tot - lo) / tot;
+        std::printf ("    tone %5.0f Hz: energy above 3 kHz %.3f %%\n", hz, 100 * hi);
+        EXPECT_MSG (hi > prev, "a higher Tone setting has more top end");
+        prev = hi;
+    }
+}
+
+FW_TEST ("params: projects and presets saved before the Tone fix keep their sound")
+{
+    // An old project: Tone stored on the inverted mapping, no toneMapping marker.
+    fwtest::Plugin src;
+    src.set ("tone", 9000.f);   // in range on both mappings
+    auto old = juce::ValueTree::readFromData (src.save().getData(), src.save().getSize());
+    old.removeProperty ("toneMapping", nullptr);
+    for (int i = 0; i < old.getNumChildren(); ++i)
+        if (old.getChild (i).getProperty ("id").toString() == "tone")
+            old.getChild (i).setProperty ("value", 9000.0, nullptr);
+    juce::MemoryBlock mb;
+    { juce::MemoryOutputStream os (mb, false); old.writeToStream (os); }
+
+    fwtest::Plugin loaded, fresh;
+    loaded.load (mb);
+    EXPECT_MSG (std::fabs (loaded.get ("tone") - 2811.f) < 2.f, "old default 9000 loads as the 2811 Hz it sounded like");
+    const double d = diffRatio (pluck (loaded), pluck (fresh));
+    std::printf ("    old-default project vs new default: difference %.2e\n", d);
+    EXPECT_MSG (d < 1e-4, "an old default project sounds like the new default");
+
+    // A new save round-trips without converting again.
+    fwtest::Plugin again;
+    again.load (loaded.save());
+    EXPECT (std::fabs (again.get ("tone") - loaded.get ("tone")) < 0.5f);
+
+    // An old user preset file converts on load.
+    const auto dir = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("fw_tone_preset");
+    dir.deleteRecursively();
+    dir.createDirectory();
+    const auto file = dir.getChildFile ("Old.fwpreset");
+    file.replaceWithText ("<FretworkPreset name=\"Old\"><P id=\"tone\" v=\"7000\"/></FretworkPreset>");
+    fwtest::Plugin pp;
+    EXPECT (pp.processor().getPatches().loadUserPreset (file));
+    EXPECT_MSG (std::fabs (pp.get ("tone") - 3902.f) < 3.f, "an old preset's Tone 7000 loads as 3902 Hz");
+    dir.deleteRecursively();
+}
+
 FW_TEST ("params: sympathetic resonance stays bounded and decays")
 {
     // Sympathetic drive feeds the string mix back into every string. At any
@@ -628,9 +684,12 @@ FW_TEST ("host: blocks larger than announced are rendered completely")
     // Smoothed tone/body coefficients update once per internal render call,
     // so chunking changes the output by a tiny, inaudible amount. A dropped,
     // repeated or mis-placed chunk (the bug this guards) differs by ~1.
+    // The chunking difference measures about 1e-2 (-40 dB): 9.6e-3 before the
+    // Tone filter fix, 1.03e-2 after it passed more high end. The limit sits
+    // well above that noise and 20x below the failure it catches.
     const double d = diffRatio (a, b);
     std::printf ("    480 vs 2048 host blocks: difference %.2e (%.1f dB)\n", d, 20.0 * std::log10 (std::max (d, 1e-12)));
-    EXPECT (d < 0.01);
+    EXPECT (d < 0.05);
     EXPECT (std::fabs (a.rms (0.05, 0.6) / b.rms (0.05, 0.6) - 1.0) < 0.01);
 }
 

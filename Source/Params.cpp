@@ -152,7 +152,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout createLayout()
     add (floatParam  (id::pickupOut,  "Pickup Out", -12.f, 12.f, 0.f,    "dB", 0.5f));
 
     // -------------------------------------------------------------- tone/output
-    add (floatParam  (id::tone,       "Tone",     1500.f, 16000.f, 9000.f, "Hz", 0.5f));
+    // Default 2811 Hz is the old default (9000 on the inverted mapping) as it
+    // actually sounded; the range reaches 1000 Hz so every old setting maps in.
+    add (floatParam  (id::tone,       "Tone",     1000.f, 16000.f, 2811.f, "Hz", 0.5f));
     add (floatParam  (id::drive,      "Drive",    0.f, 100.f, 0.f,       "%",  0.5f));
     add (floatParam  (id::room,       "Room",     0.f, 100.f, 12.f,      "%",  0.5f));
     add (floatParam  (id::width,      "Width",    0.f, 100.f, 60.f,      "%",  0.5f));

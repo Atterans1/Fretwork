@@ -43,7 +43,9 @@ void OutputStage::setParams (const OutputParams& p)
 
     const float nyquist = (float) (fs_ * 0.49);
     const float hz = clampf (p_.toneHz, 20.f, nyquist);
-    toneCoef_ = (float) std::exp (-2.0 * 3.14159265358979323846 * hz / fs_);
+    // One-pole low-pass: y += (x - y) * (1 - exp(-2*pi*f/fs)). Using the bare
+    // exponential inverted the knob (higher Tone was darker).
+    toneCoef_ = (float) (1.0 - std::exp (-2.0 * 3.14159265358979323846 * hz / fs_));
 
     const float room = clampf (p_.room01, 0.f, 1.f);
 

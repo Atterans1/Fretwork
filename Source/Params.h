@@ -3,6 +3,19 @@
 
 namespace fw {
 
+/** Tone was inverted before state version "toneMapping" 2: the master filter
+    used exp(-2*pi*f/fs) as its one-pole coefficient instead of 1 - that. This
+    returns the cutoff that sounds the same as an old Tone setting (at 48 kHz),
+    so projects and presets saved before the fix keep their sound. */
+inline float legacyToneHz (double oldHz)
+{
+    constexpr double fs = 48000.0, twoPi = 6.283185307179586;
+    const double alpha = std::exp (-twoPi * oldHz / fs);
+    const double hz = -std::log (1.0 - alpha) * fs / twoPi;
+    return (float) juce::jlimit (1000.0, 16000.0, hz);
+}
+inline constexpr int kToneMappingVersion = 2;
+
 namespace id {
 inline constexpr const char* strumTime   = "strumTime";
 inline constexpr const char* release     = "release";
