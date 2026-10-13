@@ -1,6 +1,7 @@
 #pragma once
 #include "Contracts.h"
 #include "engine/ArpEngine.h"
+#include "engine/ChordDetect.h"
 #include "engine/ChordState.h"
 #include "engine/Clock.h"
 #include "engine/KeyswitchMap.h"
@@ -29,6 +30,7 @@ struct UiState
     std::uint32_t ksDirtyMask = 0;
     float modWheel = 0.f;
     float pitchBendSemis = 0.f;
+    int   chordName = -1;      // ChordName::pack() of the guitar-voiced chord, -1 when playing as held
 };
 
 struct ClickEvent { int sampleOffset = 0; bool accent = false; };
@@ -52,6 +54,7 @@ struct PerfParams
     float atBendRange = 2.f;       // full aftertouch bends up this many semitones (Bend Amount)
 
     bool  hold       = false;
+    int   voicingMode = 0;     // 0 Auto, 1 Played, 2 Guitar (Params "Voicing")
     PlayMode mode    = PlayMode::Poly;
 
     Articulation art {};
@@ -139,6 +142,10 @@ private:
 
     ChordState  chord_ {};
     Voicing     voicing_ {};
+    Voicing     lastShape_ {};           // previous guitar shape, for voice leading
+    ChordName   shapedChord_ {};         // chord currently voiced as a shape (invalid = as held)
+    int         voicingKey_[ChordState::kCapacity + 4] {};   // cache key of the last refreshVoicing
+    int         voicingKeyLen_ = -1;
     StrumEngine strum_ {};
     ArpEngine   arp_ {};
     SeqEngine   seq_ {};

@@ -1,5 +1,6 @@
 #include "FretboardView.h"
 #include "WavesStyle.h"
+#include "engine/ChordDetect.h"
 
 namespace fw::ui
 {
@@ -86,6 +87,19 @@ void FretboardView::paint (juce::Graphics& g)
 
     if (ui == nullptr)
         return;
+
+    // ---- chord name when the held notes are being played as a guitar shape
+    {
+        char name[24];
+        chord::label (ChordName::unpack (ui->chordName.load()), name, (int) sizeof (name));
+        if (name[0] != 0)
+        {
+            g.setColour (Palette::accent.brighter (0.35f));
+            g.setFont (juce::FontOptions (13.0f, juce::Font::bold));
+            g.drawText (juce::String::fromUTF8 (name), well.reduced (8.0f, 2.0f).withHeight (16.0f),
+                        juce::Justification::topRight, false);
+        }
+    }
 
     // ---- sounding fret per string: violet LED dot with a soft glow. Fretted
     // notes sit between their wires where the finger goes; open strings get a

@@ -61,7 +61,7 @@ private:
     std::array<std::unique_ptr<fw::ui::ChoiceCell>, 2> choiceCells;
 
     // ---- region F: articulation bar
-    std::array<std::unique_ptr<fw::ui::Segmented>, 7> articulation;
+    std::array<std::unique_ptr<fw::ui::Segmented>, 8> articulation;
     std::unique_ptr<fw::ui::GuitarBodyView> guitarView;
 
     // ---- attachment-backed proxy for the eight slot buttons

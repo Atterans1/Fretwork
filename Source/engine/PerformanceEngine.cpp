@@ -30,6 +30,9 @@ void PerformanceEngine::prepare (double sampleRate)
 
     chord_.clear();
     voicing_.clear();
+    lastShape_.clear();
+    shapedChord_ = {};
+    voicingKeyLen_ = -1;
     for (bool& b : sounding_) b = false;
 
     strum_.prepare (sampleRate_);
@@ -119,15 +122,56 @@ int PerformanceEngine::heldPitchOnString (int s) const
 
 void PerformanceEngine::refreshVoicing()
 {
-    voicing_.clear();
-
     const int n = chord_.size() < ChordState::kCapacity ? chord_.size()
                                                         : ChordState::kCapacity;
+
+    // Runs every block: only rebuild when the held notes, the mode, the voicing
+    // setting, the neck range or the tuning changed.
+    int key[ChordState::kCapacity + 4] {};
+    int len = 0;
+    for (int i = 0; i < n; ++i) key[len++] = chord_.at (i).pitch;
+    key[len++] = (int) p_.mode;
+    key[len++] = p_.voicingMode;
+    key[len++] = p_.maxFret;
+    int tuning = 0;
+    for (int s = 0; s < kNumStrings; ++s) tuning = tuning * 31 + (int) std::lround (p_.open[s] * 8.f);
+    key[len++] = tuning;
+    if (len == voicingKeyLen_ && std::equal (key, key + len, voicingKey_)) return;
+    std::copy (key, key + len, voicingKey_);
+    voicingKeyLen_ = len;
+
+    voicing_.clear();
+    shapedChord_ = {};
     if (n <= 0) return;
 
+    int   held[ChordState::kCapacity];
     float pitches[ChordState::kCapacity];
     for (int i = 0; i < n; ++i)
-        pitches[i] = (float) chord_.at (i).pitch;
+    {
+        held[i] = chord_.at (i).pitch;
+        pitches[i] = (float) held[i];
+    }
+
+    // Poly plays each key on its own string, so it always voices as held.
+    // Elsewhere: Guitar shapes any recognised chord; Auto only when it is a
+    // real chord (3+ distinct notes), so single notes and intervals stay as
+    // played and the switch follows what is being played.
+    if (p_.mode != PlayMode::Poly && p_.voicingMode != 1)
+    {
+        const ChordName c = chord::detect (held, n);
+        unsigned pcs = 0;
+        for (int i = 0; i < n; ++i) pcs |= 1u << (((held[i] % 12) + 12) % 12);
+        int distinct = 0;
+        for (unsigned v = pcs; v != 0; v &= v - 1) ++distinct;
+
+        const bool shape = c.valid() && (p_.voicingMode == 2 || distinct >= 3);
+        if (shape && chord::guitarVoicing (c, p_.open, p_.maxFret, lastShape_.count > 0 ? &lastShape_ : nullptr, voicing_))
+        {
+            shapedChord_ = c;
+            lastShape_ = voicing_;
+            return;
+        }
+    }
 
     assignVoicing (pitches, n, p_.open, p_.maxFret, voicing_);
 }
@@ -149,6 +193,7 @@ void PerformanceEngine::refreshUi()
     ui_.ksDirtyMask   = ksDirty_;
     ui_.modWheel      = (float) modWheel_;
     ui_.pitchBendSemis = (float) (bendSemis_ + aftertouchSemis_);
+    ui_.chordName = shapedChord_.pack();
 
     ksDirty_ = 0;   // every change is reported exactly once
 }
@@ -491,15 +536,18 @@ void PerformanceEngine::emitArpAndSeq (double ppqStart, double ppqEnd)
             const int s = voicing_.stringIndex[vi];
             if (s < 0 || s >= kNumStrings) continue;
 
+            // A guitar shape sounds pitches nobody holds: match the same
+            // pitch, then the same pitch class, then the loudest held note.
+            float exact = -1.f, sameClass = -1.f, loudest = 0.f;
+            const int pc = (((int) std::lround (voicing_.pitch[vi]) % 12) + 12) % 12;
             for (int i = 0; i < chord_.size(); ++i)
             {
                 const ChordNote& n = chord_.at (i);
-                if (std::fabs ((float) n.pitch - voicing_.pitch[vi]) < 0.5f)
-                {
-                    stringVel[s] = n.velocity;
-                    break;
-                }
+                loudest = std::max (loudest, n.velocity);
+                if (std::fabs ((float) n.pitch - voicing_.pitch[vi]) < 0.5f) exact = n.velocity;
+                else if (sameClass < 0.f && (n.pitch % 12 + 12) % 12 == pc) sameClass = n.velocity;
             }
+            stringVel[s] = exact >= 0.f ? exact : sameClass >= 0.f ? sameClass : loudest;
         }
 
         ArpEngine::Params ap {};

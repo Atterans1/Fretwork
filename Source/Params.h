@@ -27,6 +27,7 @@ inline constexpr const char* transition  = "transition";
 inline constexpr const char* harmonic    = "harmonic";
 inline constexpr const char* tremolo     = "tremolo";
 inline constexpr const char* mode        = "mode";
+inline constexpr const char* voicing     = "voicing";
 
 inline constexpr const char* glideTime   = "glideTime";
 inline constexpr const char* bendAmount  = "bendAmount";

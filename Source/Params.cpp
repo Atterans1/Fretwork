@@ -92,6 +92,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout createLayout()
     add (choiceParam (id::harmonic,   "Harmonic",   { "Off", "Natural" },          0));
     add (choiceParam (id::tremolo,    "Tremolo",    { "Off", "On" },               0));
     add (choiceParam (id::mode,       "Mode",       { "Poly", "Strum", "Arp", "Seq" }, 0));
+    // How held keys become a guitar chord in Strum/Arp/Seq. Auto voices
+    // recognised chords (3+ notes) as guitar shapes and plays anything else as
+    // held; Guitar always shapes recognised chords; Played never re-voices.
+    add (choiceParam (id::voicing,    "Voicing",    { "Auto", "Played", "Guitar" }, 0));
 
     // -------------------------------------------------------------- transitions
     add (floatParam  (id::glideTime,  "Glide Time",   20.f,  400.f, 90.f,   "ms", 0.5f));

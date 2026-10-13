@@ -218,24 +218,24 @@ PluginEditor::PluginEditor (FretworkAudioProcessor& p)
     addAndMakeVisible (*choiceCells[1]);
 
     // ---- region F
-    static const char* const kArtIds[7] =
+    static const char* const kArtIds[8] =
     {
         fw::id::excitation, fw::id::damping, fw::id::transition,
-        fw::id::harmonic, fw::id::tremolo, fw::id::mode
+        fw::id::harmonic, fw::id::tremolo, fw::id::mode, fw::id::voicing
     };
 
-    static const char* const kArtCaptions[7] =
+    static const char* const kArtCaptions[8] =
     {
-        "Excitation", "Damping", "Transition", "Harmonic", "Tremolo", "Mode", "Hold"
+        "Excitation", "Damping", "Transition", "Harmonic", "Tremolo", "Mode", "Voicing", "Hold"
     };
 
-    for (int i = 0; i < 7; ++i)
+    for (int i = 0; i < 8; ++i)
     {
         articulation[(std::size_t) i] = std::make_unique<fw::ui::Segmented>();
         articulation[(std::size_t) i]->setCaption (kArtCaptions[i]);
         addAndMakeVisible (*articulation[(std::size_t) i]);
 
-        if (i < 6)
+        if (i < 7)
             articulation[(std::size_t) i]->addChoices (processor.getState(), kArtIds[i]);
         else
             articulation[(std::size_t) i]->addFlag (processor.getState(), fw::id::hold);
@@ -309,16 +309,16 @@ void PluginEditor::resized()
 
 void PluginEditor::layoutArticulationBar()
 {
-    static constexpr int weights[7] = { 3, 3, 4, 2, 2, 4, 1 };
-    static constexpr int total = 19;
+    static constexpr int weights[8] = { 3, 3, 4, 2, 2, 4, 3, 1 };
+    static constexpr int total = 22;
     constexpr int x0 = 12, y0 = 384, height = 56, gap = 8;
 
-    const int usable = 1096 - gap * (7 - 1);
+    const int usable = 1096 - gap * (8 - 1);
     int x = x0, assigned = 0;
 
-    for (int i = 0; i < 7; ++i)
+    for (int i = 0; i < 8; ++i)
     {
-        const int w = (i == 6) ? (usable - assigned) : (usable * weights[i]) / total;
+        const int w = (i == 7) ? (usable - assigned) : (usable * weights[i]) / total;
         assigned += w;
         articulation[(std::size_t) i]->setBounds (x, y0, w, height);
         x += w + gap;

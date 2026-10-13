@@ -15,6 +15,10 @@ struct UiSnapshot
     // Sequencer playhead step, -1 when the sequencer is not running.
     std::atomic<int> seqStep { -1 };
 
+    // fw::ChordName::pack() of the chord being played as a guitar shape, -1 when
+    // the notes sound as held.
+    std::atomic<int> chordName { -1 };
+
     // Latched articulation values, index order: exc, damp, trans, harm, tremolo, mode.
     std::atomic<int> ks[kNumStrings];
 

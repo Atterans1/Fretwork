@@ -132,6 +132,7 @@ void FretworkAudioProcessor::buildPerfParams (fw::PerfParams& p)
     }
 
     p.arpOrder = getChoiceParam (fw::id::arpOrder);
+    p.voicingMode = getChoiceParam (fw::id::voicing);
     p.arpRate  = getChoiceParam (fw::id::arpRate);
     p.arpGate  = getScaled (fw::id::arpGate);
     p.arpSwing = getScaled (fw::id::arpSwing);
@@ -390,6 +391,7 @@ void FretworkAudioProcessor::processBlock (juce::AudioBuffer<float>& audio,
         ui.fret[i2].store (s.fret[i2]);
 
     ui.seqStep.store (s.seqStep);
+    ui.chordName.store (s.chordName);
     ui.ksNotes.store (s.ksNotes);
 
     for (int g = 0; g < 6; ++g)
