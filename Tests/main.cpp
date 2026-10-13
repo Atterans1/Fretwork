@@ -375,7 +375,7 @@ void testStrumSpread()
 
     std::vector<fw::MidiMsg> in;
     for (int i = 0; i < 3; ++i)
-        in.push_back ({ 0, 0x90, (unsigned char) (40 + i * 5), 110 });
+        in.push_back ({ 0, 0x90, (unsigned char) (40 + i * 5 + fw::kWrittenOctave), 110 });
 
     in.push_back ({ 0, 0x90, 28, 120 });   // StrumDown
 
@@ -463,9 +463,9 @@ void testArpSteps()
     p.strokeVol = 1.f;
     perf.setParams (p);
 
-    std::vector<fw::MidiMsg> in { { 0, 0x90, 40, 100 },
-                                  { 0, 0x90, 47, 100 },
-                                  { 0, 0x90, 52, 100 } };
+    std::vector<fw::MidiMsg> in { { 0, 0x90, 40 + fw::kWrittenOctave, 100 },
+                                  { 0, 0x90, 47 + fw::kWrittenOctave, 100 },
+                                  { 0, 0x90, 52 + fw::kWrittenOctave, 100 } };
 
     fw::StringEvent events[64] {};
     fw::ClickEvent clicks[32] {};
@@ -538,8 +538,8 @@ void testProcessorRenders()
     juce::AudioBuffer<float> audio (2, kBlock);
 
     juce::MidiBuffer midi;
-    midi.addEvent (juce::MidiMessage::noteOn (1, 40, 0.9f), 0);
-    midi.addEvent (juce::MidiMessage::noteOn (1, 47, 0.9f), 0);
+    midi.addEvent (juce::MidiMessage::noteOn (1, 40 + fw::kWrittenOctave, 0.9f), 0);
+    midi.addEvent (juce::MidiMessage::noteOn (1, 47 + fw::kWrittenOctave, 0.9f), 0);
 
     double energy = 0.0;
     bool finite = true;
@@ -877,7 +877,7 @@ void testTimbreDiagnostic()
     juce::AudioBuffer<float> audio (2, kBlock);
     juce::MidiBuffer empty;
     juce::MidiBuffer on;
-    on.addEvent (juce::MidiMessage::noteOn (1, 40, 1.0f), 0);
+    on.addEvent (juce::MidiMessage::noteOn (1, 40 + fw::kWrittenOctave, 1.0f), 0);
 
     std::vector<float> mono;
     mono.reserve ((size_t) kSampleRate / 2);
@@ -1008,7 +1008,7 @@ std::vector<float> renderProcessor (double fs, int prepBlock, bool variable, int
         juce::AudioBuffer<float> buf (2, n);
         buf.clear();
         juce::MidiBuffer midi;
-        if (! sent) { midi.addEvent (juce::MidiMessage::noteOn (1, note, vel), std::min (17, n - 1)); sent = true; }
+        if (! sent) { midi.addEvent (juce::MidiMessage::noteOn (1, note + fw::kWrittenOctave, vel), std::min (17, n - 1)); sent = true; }
         proc.processBlock (buf, midi);
         const float* l = buf.getReadPointer (0);
         out.insert (out.end(), l, l + n);
@@ -1036,8 +1036,8 @@ std::vector<float> renderEvents (double fs, int block, const std::vector<NoteEv>
         juce::MidiBuffer midi;
         for (const auto& e : evs)
             if (e.sample >= start && e.sample < start + n)
-                midi.addEvent (e.on ? juce::MidiMessage::noteOn (1, e.note, e.vel)
-                                    : juce::MidiMessage::noteOff (1, e.note), e.sample - start);
+                midi.addEvent (e.on ? juce::MidiMessage::noteOn (1, e.note + fw::kWrittenOctave, e.vel)
+                                    : juce::MidiMessage::noteOff (1, e.note + fw::kWrittenOctave), e.sample - start);
         proc.processBlock (buf, midi);
         const float* l = buf.getReadPointer (0);
         out.insert (out.end(), l, l + n);
@@ -1172,8 +1172,8 @@ void testHoldDoesNotRetrigger()
         const int start = (int) out.size();
         juce::AudioBuffer<float> buf (2, 480); buf.clear();
         juce::MidiBuffer midi;
-        if (start == 0)             midi.addEvent (juce::MidiMessage::noteOn (1, 52, 0.8f), 10);
-        if (start == 480 * 50)      midi.addEvent (juce::MidiMessage::noteOff (1, 52), 0);
+        if (start == 0)             midi.addEvent (juce::MidiMessage::noteOn (1, 52 + fw::kWrittenOctave, 0.8f), 10);
+        if (start == 480 * 50)      midi.addEvent (juce::MidiMessage::noteOff (1, 52 + fw::kWrittenOctave), 0);
         proc.processBlock (buf, midi);
         out.insert (out.end(), buf.getReadPointer (0), buf.getReadPointer (0) + 480);
     }
@@ -1358,8 +1358,8 @@ int renderDemo (const juce::File& dir)
             juce::MidiBuffer midi;
             for (const auto& e : evs)
                 if (e.sample >= start && e.sample < start + n)
-                    midi.addEvent (e.on ? juce::MidiMessage::noteOn (1, e.note, e.vel)
-                                        : juce::MidiMessage::noteOff (1, e.note), e.sample - start);
+                    midi.addEvent (e.on ? juce::MidiMessage::noteOn (1, e.note + fw::kWrittenOctave, e.vel)
+                                        : juce::MidiMessage::noteOff (1, e.note + fw::kWrittenOctave), e.sample - start);
             proc.processBlock (buf, midi);
             for (int c = 0; c < 2; ++c) all.copyFrom (c, start, buf, c, 0, n);
         }

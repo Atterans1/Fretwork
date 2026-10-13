@@ -150,7 +150,7 @@ FW_TEST ("amp: the amp factory presets load the amp and play cleanly")
         q.processor().getPatches().loadPreset (i);
         EXPECT_MSG (q.get ("ampModel") >= 1.f, name);
         q.chord (0.01, { 40, 47, 52, 55, 59, 64 }, 0.9f);
-        q.noteOn (0.05, 28, 0.9f).noteOff (0.15, 28);   // down-stroke key: Strum presets sound only when strummed
+        q.keyOn (0.05, 28, 0.9f).keyOff (0.15, 28);   // down-stroke key: Strum presets sound only when strummed
         const auto take = q.render (1.5);
         std::printf ("    %-13s peak %.3f rms %.4f\n", name, take.peak(), take.rms (0.05, 1.0));
         EXPECT_MSG (take.finite() && take.peak() < 0.98 && take.rms (0.05, 1.0) > 0.01, name);

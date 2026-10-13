@@ -1,7 +1,10 @@
 #pragma once
 namespace fw {
 constexpr int kNumStrings = 6;                       // index 0 = low E ... 5 = high E (UI "string 1" = index 5)
-constexpr int kLowestPlayable = 38;                  // D2; MIDI 12..37 are keyswitches, >=38 are playable
+constexpr int kLowestPlayable = 38;                  // MIDI 12..37 are keyswitches, >=38 are playable
+// Guitar is written an octave above where it sounds: incoming MIDI is the
+// written note, so MIDI 52 (written E3) plays the low E string (E2, 82 Hz).
+constexpr int kWrittenOctave = 12;
 enum class Excitation : int { Pick, Finger, Thumb };
 enum class Damping    : int { Open, PalmMute, Dead };
 enum class Transition : int { Normal, Slide, Legato, Bend };

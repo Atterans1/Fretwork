@@ -15,7 +15,9 @@
 
 namespace artic
 {
-struct AEv { double t; int kind; int a; int b; };   // kind 0 off, 1 on (a note, b vel), 3 pitch bend (a 14-bit)
+// kind 0 off, 1 on (a = SOUNDING note, b vel), 3 pitch bend (a 14-bit). Notes are
+// sent as written MIDI, an octave up, by the players in ModeMatrix.
+struct AEv { double t; int kind; int a; int b; };
 
 struct Result { bool pass = false; juce::String evidence; };
 

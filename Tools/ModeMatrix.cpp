@@ -43,6 +43,10 @@ const char* const kPresets[] = {
 
 constexpr double kLen = 2.5;
 
+// Rows name SOUNDING pitches (C4 = 60). Guitar MIDI is written an octave up, so
+// pitches are sent +12; keyswitches (below MIDI 38) are keys and go unchanged.
+int written (int note) { return note < 38 ? note : note + 12; }
+
 // C-E-G held 0.05..2.2 s, a down stroke (key 28) at 0.3 s and an up stroke
 // (key 29) at 0.9 s. Stroke keys only act in Strum, so every mode gets the
 // same input.
@@ -199,7 +203,7 @@ int main (int argc, char* argv[])
             o->setProperty ("name", r.name); o->setProperty ("kind", r.kind); o->setProperty ("program", r.program);
             o->setProperty ("params", r.params.joinIntoString (";"));
             juce::Array<juce::var> ev;
-            for (const auto& e : r.events) ev.add (juce::String ((int) std::lround (e.t * 1000)) + (e.on ? " on " : " off ") + juce::String (e.note) + " 100");
+            for (const auto& e : r.events) ev.add (juce::String ((int) std::lround (e.t * 1000)) + (e.on ? " on " : " off ") + juce::String (written (e.note)) + " 100");
             o->setProperty ("events", ev);
             arr.add (juce::var (o));
         }
@@ -222,7 +226,7 @@ int main (int argc, char* argv[])
             std::stable_sort (ev.begin(), ev.end(), [] (const artic::AEv& a, const artic::AEv& b) { return a.t < b.t; });
             for (const auto& e : ev)
                 lines.add (juce::String ((int) std::lround (e.t * 1000)) + (e.kind == 1 ? " on " : e.kind == 0 ? " off " : " pb ")
-                           + juce::String (e.a) + " " + juce::String (e.kind == 1 ? e.b : 0));
+                           + juce::String (e.kind == 3 ? e.a : written (e.a)) + " " + juce::String (e.kind == 1 ? e.b : 0));
             o->setProperty ("midisend", lines.joinIntoString ("\n"));
             o->setProperty ("first", ev.empty() ? 0.0 : ev.front().t);
             arr.add (juce::var (o));
@@ -293,8 +297,8 @@ int main (int argc, char* argv[])
                 {
                     const int at = (int) std::lround (e.t * fs);
                     if (at < pos || at >= pos + n) continue;
-                    if (e.kind == 1) m.addEvent (juce::MidiMessage::noteOn (1, e.a, (juce::uint8) e.b), at - pos);
-                    else if (e.kind == 0) m.addEvent (juce::MidiMessage::noteOff (1, e.a), at - pos);
+                    if (e.kind == 1) m.addEvent (juce::MidiMessage::noteOn (1, written (e.a), (juce::uint8) e.b), at - pos);
+                    else if (e.kind == 0) m.addEvent (juce::MidiMessage::noteOff (1, written (e.a)), at - pos);
                     else m.addEvent (juce::MidiMessage::pitchWheel (1, e.a), at - pos);
                 }
                 p->processBlock (b, m);
@@ -331,7 +335,21 @@ int main (int argc, char* argv[])
             {
                 std::vector<float> x; double fs = 0;
                 if (! readMono (juce::File (argv[3]), x, fs)) { std::printf ("cannot read %s\n", argv[3]); return 2; }
-                const auto s = score (r, x, fs);
+                // Align the loopback capture: its first sound (5 ms RMS above -50 dBFS)
+                // is placed at the row's first note-on.
+                double first = 1e9; for (const auto& e : r.events) if (e.on) first = std::min (first, e.t);
+                const int hop = (int) (0.005 * fs);
+                long lead = -1;
+                for (size_t i = 0; i + (size_t) hop < x.size(); i += (size_t) hop)
+                {
+                    double e = 0; for (int k = 0; k < hop; ++k) e += (double) x[i + (size_t) k] * x[i + (size_t) k];
+                    if (10 * std::log10 (e / hop + 1e-24) > -50) { lead = (long) i; break; }
+                }
+                if (lead < 0) { std::printf ("%s\tFAIL\trecording is silent\n", name.toRawUTF8()); return 1; }
+                const long shift = lead - (long) (first * fs);
+                std::vector<float> y ((size_t) (kLen * fs), 0.f);
+                for (size_t i = 0; i < y.size(); ++i) { const long j = (long) i + shift; if (j >= 0 && j < (long) x.size()) y[i] = x[(size_t) j]; }
+                const auto s = score (r, y, fs);
                 std::printf ("%s\n", report (r, s).toRawUTF8());
                 return s.pass ? 0 : 1;
             }
@@ -454,7 +472,7 @@ int main (int argc, char* argv[])
                 {
                     const int at = (int) std::lround (e.t * fs);
                     if (at >= pos && at < pos + n)
-                        m.addEvent (e.on ? juce::MidiMessage::noteOn (1, e.note, (juce::uint8) 100) : juce::MidiMessage::noteOff (1, e.note), at - pos);
+                        m.addEvent (e.on ? juce::MidiMessage::noteOn (1, written (e.note), (juce::uint8) 100) : juce::MidiMessage::noteOff (1, written (e.note)), at - pos);
                 }
                 p->processBlock (b, m);
                 L.insert (L.end(), b.getReadPointer (0), b.getReadPointer (0) + n);

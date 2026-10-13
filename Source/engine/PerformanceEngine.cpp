@@ -656,7 +656,7 @@ void PerformanceEngine::handleMidi (const MidiMsg& m)
         }
 
         if (note >= kLowestPlayable)
-            noteOn (note + p_.transpose, (float) m.d2 / 127.f, offset);
+            noteOn (note + p_.transpose - kWrittenOctave, (float) m.d2 / 127.f, offset);
 
         return;
     }
@@ -671,7 +671,7 @@ void PerformanceEngine::handleMidi (const MidiMsg& m)
             if (ks::stroke (note) == ks::Stroke::PickLowest) bassHeld_ = false;
             return;
         }
-        if (note >= kLowestPlayable) noteOff (note + p_.transpose, offset);
+        if (note >= kLowestPlayable) noteOff (note + p_.transpose - kWrittenOctave, offset);
         return;
     }
 

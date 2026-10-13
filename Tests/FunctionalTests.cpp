@@ -536,7 +536,7 @@ FW_TEST ("modes: Velocity offset shifts strum-stroke loudness")
         fwtest::Plugin p;
         p.set ("mode", 1.f).set ("velOffset", offset);
         p.chord (0.01, { 52, 56, 59, 64 }, 0.9f);
-        p.noteOn (0.3, 28, 0.5f).noteOff (0.4, 28);           // Strum Down
+        p.keyOn (0.3, 28, 0.5f).keyOff (0.4, 28);           // Strum Down
         return p.render (0.9).rms (0.3, 0.6);
     };
     const double lo = stroke (-40.f), hi = stroke (40.f);
@@ -593,7 +593,7 @@ FW_TEST ("modes: Strum strokes sound the held chord, Strum Time spreads it")
         fwtest::Plugin p;
         p.set ("mode", 1.f).set ("strumTime", strumMs);
         p.chord (0.01, { 52, 56, 59, 64 }, 0.9f);
-        p.noteOn (0.5, 28, 0.9f).noteOff (0.6, 28);           // Strum Down keyswitch
+        p.keyOn (0.5, 28, 0.9f).keyOff (0.6, 28);           // Strum Down keyswitch
         const auto t = p.render (1.2);
         // When half of the stroke's energy has arrived. Spreading the strings
         // moves it later whatever the waveforms do; peak-based rise times do
@@ -683,6 +683,20 @@ FW_TEST ("articulation: Bend transition bends up INTO the played pitch")
     std::printf ("    bend transition: starts %+.0f c, settles %+.1f c\n", early, held);
     EXPECT_MSG (early < -100.0, "starts below the written note");
     EXPECT_MSG (std::fabs (held) < 10.0, "ends on the written note, not Bend Amount above it");
+}
+
+FW_TEST ("midi: notes sound an octave below written, like a real guitar")
+{
+    // Raw MIDI 60 (written C4) sounds C3, 130.8 Hz; written E3 (52) is the open low E.
+    for (const auto [written, hz] : { std::pair { 60, 130.81 }, std::pair { 52, 82.41 } })
+    {
+        fwtest::Plugin p;
+        p.noteOn (0.01, written - fw::kWrittenOctave, 0.8f);   // raw MIDI = written
+        const auto t = p.render (0.8);
+        const double c = fwtest::Take::cents (t.pitch (0.3, 0.7, hz), hz);
+        std::printf ("    written %d sounds %+.1f c from %.2f Hz\n", written, c, hz);
+        EXPECT_MSG (std::fabs (c) < 5.0, "sounds one octave below the written note");
+    }
 }
 
 //==============================================================================
@@ -1068,7 +1082,7 @@ FW_TEST ("strum: holding the bass key keeps the bass string out of the strum")
     };
 
     std::vector<fw::MidiMsg> chord;
-    for (int note : { 40, 47, 52, 56, 59, 64 }) chord.push_back ({ 0, 0x90, (unsigned char) note, 110 });
+    for (int note : { 40, 47, 52, 56, 59, 64 }) chord.push_back ({ 0, 0x90, (unsigned char) (note + fw::kWrittenOctave), 110 });
     strummed (chord);
 
     const auto plain = strummed ({ { 0, 0x90, 28, 120 } });                         // Strum Down
@@ -1166,10 +1180,11 @@ FW_TEST ("midi: notes from the host light the on-screen piano")
     EXPECT_MSG (! keys.isNoteOnForChannels (0xffff, note), "the key starts unlit");
     p.noteOn (0.01, note, 0.8f);
     p.render (0.1);
-    EXPECT_MSG (keys.isNoteOnForChannels (0xffff, note), "a host note-on lights its key");
+    // The piano shows the key the host sent: the written note, an octave above the sound.
+    EXPECT_MSG (keys.isNoteOnForChannels (0xffff, note + fw::kWrittenOctave), "a host note-on lights its key");
     p.noteOff (0.15, note);                     // event times are absolute
     p.render (0.1);
-    EXPECT_MSG (! keys.isNoteOnForChannels (0xffff, note), "the host note-off clears it");
+    EXPECT_MSG (! keys.isNoteOnForChannels (0xffff, note + fw::kWrittenOctave), "the host note-off clears it");
 }
 
 FW_TEST ("editor: body display draws a distinct guitar for every body")

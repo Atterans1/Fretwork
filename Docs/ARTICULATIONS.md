@@ -29,6 +29,11 @@ All rows above were checked against the source at the tested commit.
 
 ## Automatic detection (live path, Poly mode, no UI controls needed)
 
+MIDI is guitar notation: it sounds an octave below the written note, as on a real
+guitar (written E3, MIDI 52, is the open low E at 82.4 Hz). Pitches below are
+the SOUNDING notes; Transpose applies on top. Keyswitches (MIDI 12-37) are keys
+and are not shifted.
+
 All rules run in `PerformanceEngine` on incoming MIDI, ahead of the voices that
 produce the audio (the same path the host and the Standalone use).
 

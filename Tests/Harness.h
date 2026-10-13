@@ -17,6 +17,7 @@
 //     }
 
 #include "PluginProcessor.h"
+#include "Contracts.h"
 
 #include <algorithm>
 #include <chrono>
@@ -242,8 +243,14 @@ public:
     }
 
     // ---- MIDI, scheduled at absolute times from the start of the next render
-    Plugin& noteOn  (double t, int note, float vel = 0.8f) { return add (t, juce::MidiMessage::noteOn (1, note, vel)); }
-    Plugin& noteOff (double t, int note)                   { return add (t, juce::MidiMessage::noteOff (1, note)); }
+    // Tests name notes by the pitch that SOUNDS (52 = E3, 164.8 Hz). Guitar MIDI
+    // is written an octave higher (fw::kWrittenOctave), so it is added here;
+    // raw MIDI goes through add() / midiRaw() unchanged.
+    Plugin& noteOn  (double t, int note, float vel = 0.8f) { return add (t, juce::MidiMessage::noteOn (1, note + fw::kWrittenOctave, vel)); }
+    Plugin& noteOff (double t, int note)                   { return add (t, juce::MidiMessage::noteOff (1, note + fw::kWrittenOctave)); }
+    // Keyswitches (MIDI 12..37) are keys, not pitches: sent unchanged.
+    Plugin& keyOn   (double t, int key, float vel = 0.8f)  { return add (t, juce::MidiMessage::noteOn (1, key, vel)); }
+    Plugin& keyOff  (double t, int key)                    { return add (t, juce::MidiMessage::noteOff (1, key)); }
     Plugin& cc      (double t, int number, int value)      { return add (t, juce::MidiMessage::controllerEvent (1, number, value)); }
     Plugin& bend    (double t, int value14)                { return add (t, juce::MidiMessage::pitchWheel (1, value14)); }
     Plugin& midi    (double t, const juce::MidiMessage& m)  { return add (t, m); }   // any other message, e.g. aftertouch
