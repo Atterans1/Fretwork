@@ -13,17 +13,19 @@ automatically from overlapping MIDI. Ample is sample-based; Fretwork matches the
 
 | Articulation | Model | Code |
 |---|---|---|
-| Pick attack | Excitation burst shaped by pick position comb + pick hardness / velocity low-pass, plus a short high-passed click. Harder velocity = brighter burst. | `dsp/Excitation.cpp` `renderExcitation` |
+| Pick attack | Excitation = triangle displacement with its apex at the pick position, plus 6 % noise; two-pole low-pass at f0 x (6 + 34 x hardness) x (0.12 + 0.88 vel^2) (finger x0.35, thumb x0.5); RMS normalised to 0.35 vel^1.5; plus a 1.5 ms pick click (0.03 x hardness x vel, high-passed at 2.5-6 kHz by velocity). | `dsp/Excitation.cpp` `renderExcitation`, `GuitarString::pluck` |
 | Strum down / up | Per-string onsets offset in stroke order (spread from strum speed), plus `ArticulationNoise` scrape: white noise through a band-pass gliding 1.6 -> 3.4 kHz (down) or 3.4 -> 1.6 kHz (up), Q 1.2, 2 ms / stroke / 18 ms envelope, and a 3 ms 2.5 kHz-high-passed tick per string. | `engine/PerformanceEngine.cpp`, `dsp/ArticulationNoise.cpp` |
-| Palm mute | Loop T60 cut (damping = PalmMute) and excitation low-passed; the string still pitches. | `dsp/LoopDesign.cpp` `computeT60*`, `Excitation.cpp` |
-| Mute (dead note) | Damping = Dead: loop gain so low the string dies in tens of ms; burst is mostly the pick click. | same |
-| Slide | Gliding legato: the delay-line length is swept from the held pitch to the new pitch (90 ms), with a squeak. | `GuitarString` legato glide |
-| Hammer-on / pull-off | Legato event: delay length steps to the new pitch without a new pick burst; a small, dark finger-impact (hammer) or pluck (pull-off) excitation is injected. | `GuitarString` legato, `Excitation.cpp` |
-| Bend | Pitch wheel scales the loop delay continuously (range = Wheel Range, default 2 semitones). | `GuitarEngine` pitch bend |
+| Palm mute | Damping = PalmMute: loop T60 x 0.22 and excitation cutoff x 0.6; the string still pitches. | `dsp/LoopDesign.cpp` `computeT60*`, `Excitation.cpp` |
+| Mute (dead note) | Damping = Dead: loop T60 cut so the string dies in tens of ms, plus a body thump (0.25 x vel) instead of a tone. | same |
+| Slide | Gliding legato: the string's pitch offset ramps linearly from the held pitch to the new one over Glide Time (default 90 ms), with a squeak and fret burst. | `GuitarString::legato` |
+| Hammer-on / pull-off | Legato event: pitch steps to the new note in 3 ms without a pick; a finger-type excitation (soft 6 ms attack, dark) is injected at 0.35 x vel (hammer) or 0.25 x vel (pull-off), plus an 8 ms 4 kHz fret burst. | `GuitarString::legato` |
+| Bend | Pitch wheel x Wheel Range (default 2 semitones) sets each string's bend offset, which retunes the loop delay continuously. | `GuitarEngine::setPitchBend`, `GuitarString::setBendSemis` |
 | Natural harmonic | String touched at its 1/n node vibrates in n segments: loop designed at exactly n x the open pitch; burst low-passed at 1.5 x the sounding pitch (3 one-pole passes), injected at -5 dB, loop dulled (finger drains upper partials). | `GuitarString::design`, `GuitarString::pluck` |
-| Vibrato | Sinusoidal 5.5 Hz delay modulation, fading in after a note has been held 0.6 s (max of this and mod wheel). | `PerformanceEngine` / `GuitarEngine` |
-| Fret noise | At note-off: band-limited noise burst (finger leaving the string) shaped by the Fret Noise amount. | `Excitation.cpp` fret-noise path |
+| Vibrato | Sinusoidal pitch modulation at Vibrato Rate (default 5.5 Hz); depth = max(mod wheel, auto-vibrato), where auto-vibrato reaches 0.5 over 0.4 s, starting once a note has been held 0.6 s. | `PerformanceEngine` (`kAutoVib*`), `GuitarEngine` |
+| Fret noise | At note-off: an 8 ms noise burst high-passed at 4 kHz, at 0.006 x note velocity x Fret Noise (finger lifting off); legato notes add a 0.02 x Fret Noise burst. | `GuitarString::release`, `GuitarString::legato` |
 | String squeak | Q-7 band-pass noise swept 1.2 <-> 3.8 kHz under a raised cosine, 40 ms + 12 ms per fret shifted, full level on wound strings, 0.25 on plain. | `dsp/ArticulationNoise.cpp` |
+
+All rows above were checked against the source at the tested commit.
 
 ## Automatic detection (live path, Poly mode, no UI controls needed)
 
