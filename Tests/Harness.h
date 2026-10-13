@@ -28,6 +28,28 @@
 #include <string>
 #include <vector>
 
+#if JUCE_MAC
+ #include <CoreFoundation/CoreFoundation.h>
+#else
+// juce_events/native/juce_Messaging_{windows,linux}.cpp
+namespace juce::detail { bool dispatchNextMessageOnSystemQueue (bool returnIfNoPendingMessages); }
+#endif
+
+namespace fwtest
+{
+/** Delivers one pending message-thread message (timers, async updates)
+    without a modal loop. Returns false when nothing was pending. JUCE's Mac
+    queue lives on the CoreFoundation run loop, so it is stepped directly. */
+inline bool dispatchOneMessage()
+{
+   #if JUCE_MAC
+    return CFRunLoopRunInMode (kCFRunLoopDefaultMode, 0, true) == kCFRunLoopRunHandledSource;
+   #else
+    return juce::detail::dispatchNextMessageOnSystemQueue (true);
+   #endif
+}
+} // namespace fwtest
+
 namespace fwtest
 {
 

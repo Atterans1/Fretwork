@@ -8,7 +8,6 @@
 #include "Params.h"
 #include "Harness.h"
 
-namespace juce::detail { bool dispatchNextMessageOnSystemQueue (bool returnIfNoPendingMessages); }
 #include "SeqStore.h"
 #include "dsp/GuitarEngine.h"
 #include "dsp/GuitarString.h"
@@ -1400,7 +1399,7 @@ int renderSnapshots (const juce::File& dir)
 
     // Let timers and async updaters settle so values are painted.
     for (int i = 0; i < 50; ++i)
-        if (! juce::detail::dispatchNextMessageOnSystemQueue (true)) break;
+        if (! fwtest::dispatchOneMessage()) break;
 
     for (float scale : { 1.0f, 2.0f })
     {

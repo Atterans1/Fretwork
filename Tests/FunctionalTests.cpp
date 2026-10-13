@@ -10,12 +10,6 @@
 #include "engine/PerformanceEngine.h"
 #include "engine/StrumEngine.h"
 
-// juce_events/messages/juce_MessageManager.cpp
-namespace juce::detail { bool dispatchNextMessageOnSystemQueue (bool returnIfNoPendingMessages); }
-
-// JUCE's per-message dispatcher (juce_events/messages/juce_MessageManager.cpp).
-namespace juce::detail { bool dispatchNextMessageOnSystemQueue (bool returnIfNoPendingMessages); }
-
 namespace
 {
 struct Golden { const char* id; char kind; double lo, hi, def; int count; };
@@ -750,7 +744,7 @@ bool visibleIn (const juce::Component& c, const juce::Component& root)
 void pump()
 {
     for (int i = 0; i < 200; ++i)
-        if (! juce::detail::dispatchNextMessageOnSystemQueue (true))
+        if (! fwtest::dispatchOneMessage())
             break;
 }
 }
