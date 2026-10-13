@@ -30,6 +30,31 @@ struct Phrase
 
 constexpr double kLen = 6.0;
 
+// Real-guitar timing references, fixed before any measurement. A response
+// outside its range reads as "not like a guitar" in a listening test.
+struct TimingRef { const char* what; double lo, hi; const char* why; };
+inline constexpr TimingRef kTiming[] = {
+    { "note-on to sound (ms)",          0.0,  10.0, "a plucked string speaks within one cycle of release; >10 ms is felt as lag by players" },
+    { "pick transient length (ms)",     0.5,   8.0, "pick-to-string contact plus release: a few ms (shorter = click, longer = soft finger)" },
+    { "strum sweep, 6 strings (ms)",   10.0,  80.0, "fast rhythm strokes ~10-25 ms, relaxed strums ~40-80 ms" },
+    { "hammer-on pitch change (ms)",    0.0,  10.0, "the finger lands in a few ms; the new pitch is immediate" },
+    { "slide glide (ms)",              40.0, 250.0, "a 2-7 fret slide at moderate speed" },
+    { "vibrato onset (s)",              0.3,   1.2, "players start vibrato after the note has settled" },
+    { "vibrato rate (Hz)",              4.0,   7.5, "finger/wrist vibrato on guitar" },
+    { "vibrato depth (cents)",          5.0,  50.0, "subtle to wide finger vibrato" },
+    { "palm-mute decay to -20 dB (s)",  0.1,   0.6, "muted strings choke within a fraction of a second" },
+    { "dead-note decay to -30 dB (s)",  0.01,  0.15, "a fully damped string is a percussive tick" },
+};
+
+inline const TimingRef& timing (const char* what)
+{
+    for (const auto& t : kTiming) if (juce::String (t.what) == what) return t;
+    jassertfalse;
+    return kTiming[0];
+}
+inline bool within (const char* what, double v) { const auto& t = timing (what); return v >= t.lo && v <= t.hi; }
+
+
 inline double hz (double midi) { return 440.0 * std::pow (2.0, (midi - 69.0) / 12.0); }
 inline double db (double v) { return 10.0 * std::log10 (v + 1e-24); }
 

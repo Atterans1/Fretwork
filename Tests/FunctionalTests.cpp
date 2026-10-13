@@ -2,6 +2,7 @@
 // fwtest::Plugin exactly as a host would drive it. See Harness.h.
 
 #include "Harness.h"
+#include "PatchManager.h"
 #include "SeqStore.h"
 #include "engine/PerformanceEngine.h"
 #include "PluginEditor.h"
@@ -766,6 +767,22 @@ FW_TEST ("out of box: Seq plays its factory pattern while a chord is held")
     p.set ("mode", 3.f);
     p.chord (0.05, { 48, 52, 55, 60, 64 }, 0.8f);
     EXPECT_MSG (p.render (2.5).rms (0.05, 2.4) > 0.01, "audible through the plugin");
+}
+
+FW_TEST ("out of box: every factory preset sounds a held chord, no other input")
+{
+    const auto& all = fw::PatchManager::factoryPresets();
+    for (int i = 0; i < (int) all.size(); ++i)
+    {
+        fwtest::Plugin q;
+        q.processor().getPatches().loadPreset (i);
+        q.chord (0.05, { 48, 52, 55, 60, 64 }, 0.8f, 0.006);
+        const auto t = q.render (1.5);
+        char msg[96];
+        std::snprintf (msg, sizeof msg, "%s sounds unclipped (rms %.4f, peak %.3f)", all[(size_t) i].name, t.rms (0.05, 1.4), t.peak());
+        std::printf ("    preset %-20s rms %6.1f dBFS peak %6.1f dBFS\n", all[(size_t) i].name, 20 * std::log10 (t.rms (0.05, 1.4) + 1e-9), 20 * std::log10 (t.peak() + 1e-9));
+        EXPECT_MSG (t.finite() && t.rms (0.05, 1.4) > 0.01 && t.peak() < 0.98, msg);
+    }
 }
 
 //==============================================================================

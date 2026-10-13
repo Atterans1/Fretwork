@@ -39,7 +39,7 @@ struct Row
 const char* const kPresets[] = {
     "Campfire Strum", "Fingerstyle Folk", "Palm-Muted Pop", "Bossa Nova", "Classical Arpeggio", "Nylon Lead",
     "Clean Funk Rhythm", "Crunch Rhythm", "Blues Lead", "Jazz Box Comping", "Warm Semi Strum", "Rockabilly Slap",
-    "Crunch Amp", "Lead Stack", "Chorus Clean", "Jazz Amp" };
+    "Crunch Amp", "Lead Stack", "Chorus Clean", "Jazz Amp", "Pop Strum", "Rock Rhythm" };
 
 constexpr double kLen = 2.5;
 
@@ -69,7 +69,9 @@ std::vector<Row> rows()
     // on the beats, up strokes (row 1) on the off-beats.
     r.back().seq = "0,0,1,100;1,2,1,90;0,4,1,100;1,6,1,90;0,8,1,100;1,10,1,90;0,12,1,100;1,14,1,90";
     for (int i = 0; i < (int) std::size (kPresets); ++i)
-        r.push_back ({ kPresets[i], "preset", i, {}, chordWithStrokes(), "CEG", 1 });
+        // Presets get a plain held chord, no stroke keys: each must sound out of the box.
+        r.push_back ({ kPresets[i], "preset", i, {}, { { 0.05, 60, true }, { 0.05, 64, true }, { 0.05, 67, true },
+                                                        { 2.20, 60, false }, { 2.20, 64, false }, { 2.20, 67, false } }, "CEG", 1 });
     return r;
 }
 
@@ -424,8 +426,16 @@ int main (int argc, char* argv[])
                 if (p == nullptr) { std::printf ("load: %s\n", err.toRawUTF8()); return 2; }
                 const auto why = configure (*p, r);
                 if (why.isNotEmpty()) { std::printf ("%s\n", why.toRawUTF8()); return 2; }
+                // The Standalone stores the plugin's own state, not the VST3 host
+                // container: unwrap <IComponent> and keep just the ValueTree.
                 juce::MemoryBlock mb; p->getStateInformation (mb);
-                juce::File (argv[4]).replaceWithText (mb.toBase64Encoding());
+                auto xml = juce::AudioProcessor::getXmlFromBinary (mb.getData(), (int) mb.getSize());
+                auto* comp = xml != nullptr ? xml->getChildByName ("IComponent") : nullptr;
+                if (comp == nullptr) { std::printf ("plugin state has no IComponent\n"); return 2; }
+                juce::MemoryBlock inner; inner.fromBase64Encoding (comp->getAllSubText().trim());
+                juce::MemoryOutputStream os;
+                juce::ValueTree::readFromData (inner.getData(), inner.getSize()).writeToStream (os);
+                juce::File (argv[4]).replaceWithText (os.getMemoryBlock().toBase64Encoding());
                 return 0;
             }
         std::printf ("no row %s\n", argv[3]);

@@ -91,12 +91,28 @@ void OutputStage::clickAt (int sampleOffset, bool accent)
     clickAccent_ = accent;
 }
 
+// Drive loudness compensation exponent: output ~ tanh(pre x) / pre^k.
+static constexpr float kDriveComp = 0.75f;
+
 void OutputStage::process (float* left, float* right, int n) noexcept
 {
     if (left == nullptr || right == nullptr || n <= 0) return;
 
-    const float gain = (float) std::pow (10.0, (double) p_.outDb * 0.05);
-    const float pre  = 1.0f + 6.0f * clampf (p_.drive01, 0.f, 1.f);
+    // Headroom: a six-string strum sums six strings in phase at the attack.
+    // -4 dB keeps a full strum at the default Output below about -6 dBFS.
+    constexpr float kHeadroom = 0.631f;
+    const float gain = (float) std::pow (10.0, (double) p_.outDb * 0.05) * kHeadroom;
+
+    // Drive is saturation, not volume: tanh with the pre-gain, then level
+    // compensation so turning it up adds harmonics and compression at about
+    // the same loudness. (It used to be a plain x7 gain into the hard clamp.)
+    const float drive = clampf (p_.drive01, 0.f, 1.f);
+    const float pre   = 1.0f + 6.0f * drive;
+    const float comp  = 1.0f / std::pow (pre, kDriveComp);
+    const auto  shape = [drive, pre, comp] (float x) noexcept
+    {
+        return drive > 0.f ? std::tanh (x * pre) * comp : x;
+    };
 
     for (int i = 0; i < n; ++i)
     {
@@ -113,8 +129,8 @@ void OutputStage::process (float* left, float* right, int n) noexcept
         const float mono = (l + r) * 0.5f;
         toneState_ += (mono - toneState_) * toneCoef_;
 
-        left[i]  = (toneState_ + (l - mono)) * pre;
-        right[i] = (toneState_ + (r - mono)) * pre;
+        left[i]  = shape (toneState_ + (l - mono));
+        right[i] = shape (toneState_ + (r - mono));
     }
 
     const float room = clampf (p_.room01, 0.f, 1.f);

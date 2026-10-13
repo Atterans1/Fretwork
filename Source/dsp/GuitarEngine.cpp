@@ -101,8 +101,11 @@ void GuitarEngine::refreshModel()
     const BodyTable& bt = kBodyTables[bi];
 
     acousticLevel_ = dbToLin (bt.mixDb);
+    // The magnetic pickup sums every string with little body loss, so electric
+    // bodies ran ~3 dB hotter than the acoustics at the same settings and a
+    // hard six-string strum clipped. 0.7 (-3 dB) matches their loudness.
     electricLevel_ = (bi == (int) BodyKind::SolidElectric
-                   || bi == (int) BodyKind::SemiHollow) ? 1.f : 0.25f;
+                   || bi == (int) BodyKind::SemiHollow) ? 0.7f : 0.25f;
 
     PickupParams pp {};
     pp.type     = p_.pickupType;

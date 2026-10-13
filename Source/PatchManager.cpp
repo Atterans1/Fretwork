@@ -40,6 +40,12 @@ namespace
                                      { id::chorusMix, 45 }, { id::chorusRate, 0.7f } } },
         { "Jazz Amp",           3, { { id::excitation, 2 }, { id::room, 15 },
                                      { id::ampModel, 1 }, { id::cab, 2 }, { id::ampGain, 25 }, { id::ampBass, 60 }, { id::ampTreble, 35 }, { id::ampLevel, -4 } } },
+
+        // ---- Style starters (appended). Hold a chord and it plays: Pop Strum
+        // runs the Pop pattern in sequencer slot 1, Rock Rhythm strums each chord.
+        { "Pop Strum",          0, { { id::mode, 3 }, { id::strumTime, 22 }, { id::humanize, 20 }, { id::room, 18 } } },
+        { "Rock Rhythm",        2, { { id::mode, 1 }, { id::pickupType, 1 }, { id::pickupSel, 0 }, { id::strumTime, 12 }, { id::humanize, 10 },
+                                     { id::ampModel, 2 }, { id::cab, 3 }, { id::ampGain, 55 }, { id::ampMid, 55 } } },
     };
 
     const char* const kTransportIds[] = { id::seqPlay, id::seqSlot, id::metronome, id::bpm, id::power };
