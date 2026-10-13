@@ -78,7 +78,13 @@ namespace {
     {
         if (note == s.n)
         {
-            const float c = costOf (s.cur, s.n);
+            // s.cur holds string indices; the cost is defined on frets. Scoring
+            // the indices themselves always favoured the lowest strings, so
+            // C4-E4-G4 landed at frets 20/19/17 instead of 5/5/3.
+            int frets[kNumStrings];
+            for (int i = 0; i < s.n; ++i)
+                frets[i] = (int) std::lround (s.pitches[i] - s.open[s.cur[i]]);
+            const float c = costOf (frets, s.n);
             if (s.haveBest && ! (c < s.bestCost - kCostEpsilon)) return;
             s.bestCost = c;
             s.haveBest = true;
@@ -166,6 +172,23 @@ void assignVoicing (const float* pitches,
     s.n       = n;
     s.maxFret = maxFret < 0 ? 0 : maxFret;
     s.out     = &out;
+
+    // A lone note keeps Fretwork's established sound: the lowest string that
+    // can play it (high on the thick strings). Fret-based scoring applies to
+    // two or more notes, where it decides how the chord sits under the hand.
+    if (n == 1)
+    {
+        for (int str = 0; str < kNumStrings; ++str)
+        {
+            float fretOut = 0.f;
+            if (! voicing::fits (pitches[0], open[str], s.maxFret, fretOut)) continue;
+            s.best[0] = str;
+            commit (s);
+            return;
+        }
+        greedy (s);
+        return;
+    }
 
     recurse (s, 0, 0);
 

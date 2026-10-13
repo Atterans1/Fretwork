@@ -157,3 +157,20 @@ FW_TEST ("chords: Arp over a guitar shape is not silent")
     EXPECT_MSG (uiChord (p) == "C", uiChord (p).c_str());
     EXPECT_MSG (t.peak (0.2, 1.5) > 0.01, "the arp plays the shape's strings, including notes nobody holds");
 }
+
+FW_TEST ("chords: as-held placement keeps chords low on the neck and single notes where they were")
+{
+    const auto place = [] (std::initializer_list<float> pitches)
+    {
+        float p[6]; int n = 0;
+        for (float x : pitches) p[n++] = x;
+        fw::Voicing v;
+        fw::assignVoicing (p, n, kStd, 20, v);
+        return shapeText (v);
+    };
+    // Scoring used to run on string numbers instead of frets, so C4-E4-G4 sat
+    // at frets 20/19/17 on the three low strings.
+    EXPECT_MSG (place ({ 60.f, 64.f, 67.f }) == "xxx553", place ({ 60.f, 64.f, 67.f }).c_str());
+    EXPECT_MSG (place ({ 48.f, 52.f, 55.f }) == "x320xx", place ({ 48.f, 52.f, 55.f }).c_str());
+    EXPECT_MSG (place ({ 59.f }) == "jxxxxx", ("a lone B3 stays on the low E string: " + place ({ 59.f })).c_str());
+}
