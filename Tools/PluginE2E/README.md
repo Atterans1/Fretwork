@@ -34,7 +34,7 @@ All analysis constants were fixed before the first real run. Do not tune them to
 
 - Instruments only (MIDI in, audio out). Effects are loaded but warned about.
 - The source pitch check reads one predominant pitch. In chord-melody or band recordings it often lands on a chord tone, so a correct melody note can be scored as a pitch miss. Prefer monophonic or lightly accompanied recordings for a clean gate.
-- Durations are reported, not gated. The render's length is note-off plus the instrument's own release tail; the source's length is how long its pitch stays readable as the plucked note decays. The two do not agree within 50 ms on plucked material even when the notes are right.
+- Durations are reported, not gated. Both sides are measured with the same pitch tracker over the same window (up to the next learned onset): a note lasts while its pitch stays readable. The last note of a run has no next onset, so it can read long.
 - "Heard in mix" (diagnostic, never gated): the played pitch is among the 4 strongest semitones of the source and stronger than both neighbours. In chordal recordings this separates "wrong note" from "right note under a chord".
 - Legato notes (slides, pull-offs) have weak attacks and may not register as source onsets.
 
@@ -50,6 +50,7 @@ Both through Fretwork 1.0.0 VST3 at default parameters. Recordings and tabs live
 | Learned | transpose -5 (F to C, chosen by the audio), tuning +1.7 cents, 62/62 notes | transpose 0, tuning +1.6 cents, 38/38 notes at 70.7-93.0 s |
 | Pitch within 1 semitone | **100 %** (62/62) | 55.3 % |
 | Onset within 50 ms | **100 %** (mean abs 2.7 ms, max 6.6 ms) | 57.9 % (matched: mean abs 17.6 ms, max 143.9 ms) |
+| Duration within 50 ms (reported) | 90.3 % (mean abs 27.7 ms) | 10.5 % |
 | Heard in mix (diagnostic) | 100 % | 84.2 % |
 | Octave errors | 0 | 3 |
 | Verdict | **PASS** | **FAIL** |
@@ -64,6 +65,10 @@ The first Ode to Joy run failed pitch at 48.4 %: 32 notes were exactly 12 semito
 - The heard-in-mix check found the played E4/F4/G4 sounding in the recording on every note.
 
 The cause is the known weak point of a harmonic product spectrum: on plain strings it can pick the 2nd harmonic. I added the standard sub-octave check: take f/2 when a real peak of at least 20 % of the chosen peak's amplitude sits there. The check never looks at the learned notes, and it applies to every run. It moved Sparkle from 60.5 % to 55.3 % pitch, so it did not favour either song.
+
+### Duration measurement fix
+
+Durations first read 0 % on both songs. The render's length was measured as an amplitude decay to -30 dB, which includes the instrument's 0.40 s release tail, while the source's length was pitch persistence. After switching the render to the same pitch tracker (64.5 %), its window still ran 0.3 s past the next onset, so repeated notes (E E, G G) read long on the render side only. With the same tracker and the same window on both sides, Ode to Joy is at 90.3 %. Of the six misses, five are 60 ms long and the sixth is the last note ringing out (2.0 s vs 1.2 s). Tolerance unchanged (50 ms).
 
 ### Why Sparkle fails
 

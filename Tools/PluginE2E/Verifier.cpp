@@ -166,23 +166,6 @@ double trackDuration (const std::vector<float>& x, double fs, double t, double t
     return last - t;
 }
 
-double renderDuration (const std::vector<float>& x, double fs, double t, double limit)
-{
-    // Envelope in 5 ms blocks; the note ends where it falls 30 dB below its peak.
-    const int blk = (int) (0.005 * fs);
-    double peak = 0, end = t;
-    std::vector<double> env;
-    for (double u = t; u < t + limit; u += 0.005)
-    {
-        const int a = (int) (u * fs);
-        if (a < 0 || a + blk >= (int) x.size()) break;
-        double s = 0; for (int i = 0; i < blk; ++i) s += x[(size_t) (a + i)] * x[(size_t) (a + i)];
-        env.push_back (std::sqrt (s / blk));
-        peak = std::max (peak, env.back());
-    }
-    for (size_t i = 0; i < env.size(); ++i) if (env[i] > peak * 0.0316) end = t + 0.005 * (double) (i + 1);
-    return end - t;
-}
 } // namespace
 
 VerifyResult verify (const Pcm& source, const std::vector<float>& render, double renderFs, double offset,
@@ -231,8 +214,12 @@ VerifyResult verify (const Pcm& source, const std::vector<float>& render, double
         }
 
         const double nextOn = i + 1 < notes.size() ? notes[i + 1].onset : ln.onset + 2.0;
-        v.renderDur = renderDuration (render, renderFs, ref - offset, std::max (0.05, nextOn - ln.onset + 0.3));
-        v.sourceDur = v.sourcePitch > 0 ? trackDuration (source.x, source.fs, sref, v.sourcePitch, std::max (0.05, nextOn - sref)) : 0;
+        // Same tracker and the same window (until the next learned onset) on
+        // both sides, so the two durations measure the same thing.
+        const double window = std::max (0.05, nextOn - ln.onset);
+        v.sourceDur = v.sourcePitch > 0 ? trackDuration (source.x, source.fs, sref, v.sourcePitch, window) : 0;
+        v.renderDur = v.renderPitch > 0 ? trackDuration (render, renderFs, ref - offset, v.renderPitch, window) : 0;
+        
         const double de = (v.renderDur - v.sourceDur) * 1000.0;
         v.durOk = std::abs (de) <= gates.durTolMs;
         if (v.durOk) ++nDur;
