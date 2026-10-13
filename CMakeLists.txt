@@ -8,12 +8,18 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_subdirectory(JUCE)
 
+# AU is Apple-only; AAX needs Avid's SDK and signing and is not built here.
+set(FRETWORK_FORMATS VST3 Standalone)
+if (APPLE)
+    list(APPEND FRETWORK_FORMATS AU)
+endif()
+
 juce_add_plugin(Fretwork
     COMPANY_NAME             "Jeffr"
     BUNDLE_ID                com.jeffr.fretwork
     PLUGIN_MANUFACTURER_CODE Jfry
     PLUGIN_CODE              Frtw
-    FORMATS                  VST3 Standalone
+    FORMATS                  ${FRETWORK_FORMATS}
     PRODUCT_NAME             "Fretwork"
     IS_SYNTH                 TRUE
     NEEDS_MIDI_INPUT         TRUE
@@ -118,17 +124,20 @@ add_test(NAME FretworkTests COMMAND FretworkTests)
 
 # HostCheck loads the deployed Fretwork.vst3 through JUCE's VST3 host (the
 # route a DAW takes) and checks automation, presets, editor scaling and MIDI.
-juce_add_console_app(HostCheck PRODUCT_NAME "HostCheck")
-target_sources(HostCheck PRIVATE Tools/HostCheck.cpp)
-target_compile_definitions(HostCheck PRIVATE
-    JUCE_PLUGINHOST_VST3=1
-    JUCE_MODAL_LOOPS_PERMITTED=1
-    JUCE_WEB_BROWSER=0
-    JUCE_USE_CURL=0)
-target_link_libraries(HostCheck PRIVATE
-    juce::juce_audio_processors
-    juce::juce_gui_basics
-    juce::juce_recommended_config_flags)
+# Windows-only: captures the editor through its HWND.
+if (WIN32)
+    juce_add_console_app(HostCheck PRODUCT_NAME "HostCheck")
+    target_sources(HostCheck PRIVATE Tools/HostCheck.cpp)
+    target_compile_definitions(HostCheck PRIVATE
+        JUCE_PLUGINHOST_VST3=1
+        JUCE_MODAL_LOOPS_PERMITTED=1
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0)
+    target_link_libraries(HostCheck PRIVATE
+        juce::juce_audio_processors
+        juce::juce_gui_basics
+        juce::juce_recommended_config_flags)
+endif()
 
 # PluginE2E: learns a real recording (MP3/WAV/FLAC + an independent tab or
 # MIDI reference), plays the learned notes through ANY VST3 instrument via

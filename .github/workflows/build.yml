@@ -1,0 +1,74 @@
+# Builds and tests Fretwork on Windows and macOS. On macOS it also builds the
+# Audio Unit and validates it with Apple's auval. Unsigned builds; AAX is not
+# built (needs Avid's SDK and signing).
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  # JUCE is not vendored in the repo; pin the exact commit the project is developed against (8.0.12).
+  JUCE_REPO: https://github.com/juce-framework/JUCE.git
+  JUCE_COMMIT: 29396c22c93392d6738e021b83196283d6e4d850
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch JUCE at the pinned commit
+        shell: bash
+        run: |
+          git init JUCE
+          git -C JUCE remote add origin "$JUCE_REPO"
+          git -C JUCE fetch --depth 1 origin "$JUCE_COMMIT"
+          git -C JUCE checkout --detach FETCH_HEAD
+
+      - name: Configure
+        shell: bash
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release ${{ matrix.os == 'macos-latest' && '-G Xcode -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"' || '' }}
+
+      - name: Build plugin and tests
+        shell: bash
+        run: |
+          targets="Fretwork_VST3 Fretwork_Standalone FretworkTests PluginE2E"
+          if [ "$RUNNER_OS" = "macOS" ]; then targets="$targets Fretwork_AU"; fi
+          for t in $targets; do cmake --build build --config Release --target "$t" --parallel; done
+
+      - name: Unit and functional tests
+        shell: bash
+        run: |
+          exe=$(find build -type f \( -name FretworkTests -o -name FretworkTests.exe \) -perm -u+x 2>/dev/null | head -n 1)
+          [ -z "$exe" ] && exe=$(find build -type f -name 'FretworkTests.exe' | head -n 1)
+          echo "running $exe"
+          "$exe"
+
+      - name: Validate the Audio Unit (auval)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          comp=$(find build -type d -name 'Fretwork.component' | head -n 1)
+          mkdir -p ~/Library/Audio/Plug-Ins/Components
+          rm -rf ~/Library/Audio/Plug-Ins/Components/Fretwork.component
+          cp -R "$comp" ~/Library/Audio/Plug-Ins/Components/
+          killall -9 AudioComponentRegistrar 2>/dev/null || true
+          auval -a | grep -i fretwork || true
+          auval -strict -v aumu Frtw Jfry
+
+      - name: Upload builds
+        uses: actions/upload-artifact@v4
+        with:
+          name: Fretwork-${{ runner.os }}
+          path: |
+            build/**/Fretwork.vst3
+            build/**/Fretwork.component
+            build/**/Release/Standalone/**
+          if-no-files-found: warn
