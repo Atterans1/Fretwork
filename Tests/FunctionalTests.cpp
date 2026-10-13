@@ -653,6 +653,38 @@ FW_TEST ("modes: Seq mode and playback run cleanly in every slot")
     }
 }
 
+FW_TEST ("modes: Seq plays a drawn pattern on its 16th-note grid")
+{
+    // Down strokes on every beat, up strokes on the off-beat 8ths, at 100 BPM:
+    // a stroke every 0.3 s. The grid used to advance one step per bar.
+    fwtest::Plugin p;
+    p.processor().getSeqStore().deserialiseSlot (0, "0,0,1,100;1,2,1,90;0,4,1,100;1,6,1,90;0,8,1,100;1,10,1,90;0,12,1,100;1,14,1,90");
+    p.set ("mode", 3.f).set ("seqPlay", 1.f).set ("seqSlot", 0.f).set ("bpm", 100.f);
+    p.chord (0.01, { 60, 64, 67 }, 0.8f);
+    const auto t = p.render (2.5);
+
+    // Attacks: 10 ms RMS rising 6 dB above the previous 30 ms, 100 ms apart.
+    int attacks = 0; double last = -1;
+    for (double a = 0.04; a < 2.4; a += 0.005)
+        if (t.rms (a, a + 0.01) > 0.003 && t.rms (a, a + 0.01) > 2.0 * t.rms (a - 0.03, a) && a - last > 0.1) { ++attacks; last = a; }
+    std::printf ("    seq: %d stroke attacks in 2.4 s (pattern gives 7)\n", attacks);
+    EXPECT_MSG (attacks >= 6 && attacks <= 9, "a stroke every 0.3 s");
+}
+
+FW_TEST ("articulation: Bend transition bends up INTO the played pitch")
+{
+    fwtest::Plugin p;
+    p.set ("transition", 3.f).set ("bendAmount", 2.f);
+    p.noteOn (0.01, 60, 0.8f);
+    const auto t = p.render (1.5);
+    const double want = fwtest::midiToHz (60);
+    const double early = fwtest::Take::cents (t.pitch (0.02, 0.07, fwtest::midiToHz (58)), want);
+    const double held  = fwtest::Take::cents (t.pitch (1.0, 1.4, want), want);
+    std::printf ("    bend transition: starts %+.0f c, settles %+.1f c\n", early, held);
+    EXPECT_MSG (early < -100.0, "starts below the written note");
+    EXPECT_MSG (std::fabs (held) < 10.0, "ends on the written note, not Bend Amount above it");
+}
+
 //==============================================================================
 // Host conditions
 FW_TEST ("host: every sample rate and block size plays in tune")

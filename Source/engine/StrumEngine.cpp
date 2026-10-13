@@ -41,6 +41,11 @@ namespace {
                   Articulation art,
                   float velocity) noexcept
     {
+        // Every field is written: callers reuse scratch slots that may still
+        // hold a Release from the previous block (sequenced strokes after the
+        // first one used to come out as releases and never sounded).
+        h.type          = EventType::Pluck;
+        h.pitchFrom     = -1.f;
         h.stringIndex   = stringIndex;
         h.fret          = fret;
         h.velocity      = velocity;

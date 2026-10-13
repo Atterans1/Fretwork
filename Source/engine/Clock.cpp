@@ -75,12 +75,12 @@ double Clock::samplesPerStep() const noexcept
 int Clock::step() const noexcept
 {
     if (! (ppq_ > 0.0)) return 0;
-    return (int) std::floor (ppq_ / kStepsPerQuarter[quantize_]);
+    return (int) std::floor (ppq_ * kStepsPerQuarter[quantize_]);
 }
 
 double Clock::sampleAtStep (int stepIndex) const noexcept
 {
-    return ((double) stepIndex * kStepsPerQuarter[quantize_] - ppq_) * samplesPerQuarter();
+    return ((double) stepIndex / kStepsPerQuarter[quantize_] - ppq_) * samplesPerQuarter();
 }
 
 double Clock::ppqAt (int numSamples, int absOffset) const noexcept

@@ -33,6 +33,7 @@ struct Row
     std::vector<Ev> events;
     juce::String expect;              // "C4" or "CEG"
     int minOnsets = 1;
+    juce::String seq;                 // sequencer slot 0, SeqStore text format (row,start,len,vel;...)
 };
 
 const char* const kPresets[] = {
@@ -58,7 +59,11 @@ std::vector<Row> rows()
     r.push_back ({ "Poly",  "mode", -1, { "Mode=Poly" },  { { 0.05, 60, true }, { 2.2, 60, false } }, "C4", 1 });
     r.push_back ({ "Strum", "mode", -1, { "Mode=Strum" }, chordWithStrokes(), "CEG", 2 });
     r.push_back ({ "Arp",   "mode", -1, { "Mode=Arp" },   chordWithStrokes(), "CEG", 3 });
-    r.push_back ({ "Seq",   "mode", -1, { "Mode=Seq", "Seq Play=On" }, chordWithStrokes(), "CEG", 3 });
+    r.push_back ({ "Seq",   "mode", -1, { "Mode=Seq", "Seq Play=On", "Seq Slot=1" }, chordWithStrokes(), "CEG", 3 });
+    // A fresh instance has empty slots, so the Seq row loads a one-bar pattern
+    // through the plugin state, as a saved project does: down strokes (row 0)
+    // on the beats, up strokes (row 1) on the off-beats.
+    r.back().seq = "0,0,1,100;1,2,1,90;0,4,1,100;1,6,1,90;0,8,1,100;1,10,1,90;0,12,1,100;1,14,1,90";
     for (int i = 0; i < (int) std::size (kPresets); ++i)
         r.push_back ({ kPresets[i], "preset", i, {}, chordWithStrokes(), "CEG", 1 });
     return r;
@@ -334,6 +339,81 @@ int main (int argc, char* argv[])
         return 2;
     }
 
+    // Applies a row's program, sequencer pattern and parameters to a fresh instance.
+    const auto configure = [] (juce::AudioPluginInstance& p, const Row& r) -> juce::String
+    {
+        if (r.program >= 0)
+        {
+            if (p.getProgramName (r.program) != r.name) return "program " + juce::String (r.program) + " is '" + p.getProgramName (r.program) + "'";
+            p.setCurrentProgram (r.program);
+        }
+        if (r.seq.isNotEmpty())
+        {
+            // A hosted VST3 returns JUCE binary XML (VST3PluginState); the plugin's own
+            // ValueTree is base64 inside <IComponent>, possibly followed by wrapper data.
+            juce::MemoryBlock mb; p.getStateInformation (mb);
+            auto xml = juce::AudioProcessor::getXmlFromBinary (mb.getData(), (int) mb.getSize());
+            auto* comp = xml != nullptr ? xml->getChildByName ("IComponent") : nullptr;
+            if (comp == nullptr) return "plugin state has no IComponent";
+            juce::MemoryBlock inner;
+            inner.fromBase64Encoding (comp->getAllSubText().trim());
+            juce::MemoryInputStream in (inner, false);
+            auto st = juce::ValueTree::readFromStream (in);
+            const auto tail = (size_t) in.getPosition();
+            auto seq = st.getChildWithName ("SEQ");
+            if (! seq.isValid()) return "no SEQ node in the plugin state";
+            seq.setProperty ("0", r.seq, nullptr);
+            juce::MemoryOutputStream os;
+            st.writeToStream (os);
+            if (tail < inner.getSize()) os.write (static_cast<const char*> (inner.getData()) + tail, inner.getSize() - tail);
+            comp->deleteAllTextElements();
+            comp->addTextElement (os.getMemoryBlock().toBase64Encoding());
+            juce::MemoryBlock out;
+            juce::AudioProcessor::copyXmlToBinary (*xml, out);
+            p.setStateInformation (out.getData(), (int) out.getSize());
+
+            juce::MemoryBlock back; p.getStateInformation (back);
+            auto bx = juce::AudioProcessor::getXmlFromBinary (back.getData(), (int) back.getSize());
+            juce::MemoryBlock bi; bi.fromBase64Encoding (bx->getChildByName ("IComponent")->getAllSubText().trim());
+            const auto got = juce::ValueTree::readFromData (bi.getData(), bi.getSize()).getChildWithName ("SEQ").getProperty ("0").toString();
+            if (got != r.seq) return "sequencer pattern did not load (reads back '" + got + "')";
+        }
+        for (const auto& kv : r.params)
+        {
+            juce::AudioProcessorParameter* q = nullptr;
+            for (auto* c : p.getParameters()) if (c->getName (64) == kv.upToFirstOccurrenceOf ("=", false, false)) q = c;
+            if (q == nullptr) return "no parameter " + kv;
+            q->setValueNotifyingHost (q->getValueForText (kv.fromFirstOccurrenceOf ("=", false, false)));
+            const auto shown = q->getText (q->getValue(), 64);
+            if (! shown.equalsIgnoreCase (kv.fromFirstOccurrenceOf ("=", false, false))) return kv + " reads back as " + shown;
+        }
+        return {};
+    };
+
+    // Writes a row's full plugin state as base64 (the Standalone's filterState value).
+    if (cmd == "state" && argc >= 5)
+    {
+        juce::AudioPluginFormatManager fm;
+        fm.addFormat (std::make_unique<juce::VST3PluginFormat>());
+        juce::OwnedArray<juce::PluginDescription> types;
+        fm.getFormat (0)->findAllTypesForFile (types, argv[2]);
+        if (types.isEmpty()) { std::printf ("no VST3 in %s\n", argv[2]); return 2; }
+        for (const auto& r : all)
+            if (r.name == juce::String (argv[3]))
+            {
+                juce::String err;
+                auto p = fm.createPluginInstance (*types[0], 48000.0, 512, err);
+                if (p == nullptr) { std::printf ("load: %s\n", err.toRawUTF8()); return 2; }
+                const auto why = configure (*p, r);
+                if (why.isNotEmpty()) { std::printf ("%s\n", why.toRawUTF8()); return 2; }
+                juce::MemoryBlock mb; p->getStateInformation (mb);
+                juce::File (argv[4]).replaceWithText (mb.toBase64Encoding());
+                return 0;
+            }
+        std::printf ("no row %s\n", argv[3]);
+        return 2;
+    }
+
     if (cmd == "vst3" && argc >= 4)
     {
         const juce::File plugin (argv[2]), outDir (argv[3]);
@@ -353,20 +433,12 @@ int main (int argc, char* argv[])
             auto p = fm.createPluginInstance (*types[0], fs, blk, err);   // fresh instance per row
             if (p == nullptr) { std::printf ("%s\tFAIL\tload: %s\n", r.name.toRawUTF8(), err.toRawUTF8()); ++fails; continue; }
             p->enableAllBuses();
-            if (r.program >= 0)
+            if (const auto why = configure (*p, r); why.isNotEmpty())
             {
-                if (p->getProgramName (r.program) != r.name) { std::printf ("%s\tFAIL\tprogram %d is '%s'\n", r.name.toRawUTF8(), r.program, p->getProgramName (r.program).toRawUTF8()); ++fails; continue; }
-                p->setCurrentProgram (r.program);
+                std::printf ("%s\tFAIL\t%s\n", r.name.toRawUTF8(), why.toRawUTF8());
+                ++fails;
+                continue;
             }
-            bool ok = true;
-            for (const auto& kv : r.params)
-            {
-                juce::AudioProcessorParameter* q = nullptr;
-                for (auto* c : p->getParameters()) if (c->getName (64) == kv.upToFirstOccurrenceOf ("=", false, false)) q = c;
-                if (q == nullptr) { std::printf ("%s\tFAIL\tno parameter %s\n", r.name.toRawUTF8(), kv.toRawUTF8()); ok = false; break; }
-                q->setValueNotifyingHost (q->getValueForText (kv.fromFirstOccurrenceOf ("=", false, false)));
-            }
-            if (! ok) { ++fails; continue; }
             p->prepareToPlay (fs, blk);
 
             const int total = (int) (kLen * fs);

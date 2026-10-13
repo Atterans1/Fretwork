@@ -174,8 +174,11 @@ void GuitarEngine::handle (const StringEvent& e)
     {
         case EventType::Pluck:
             strings_[(std::size_t) s].pluck (e, s);
-            bendTarget_[(std::size_t) s] = (e.art.trans == Transition::Bend)
-                ? clampf (p_.bendAmount, 0.f, 24.f) : 0.f;
+            // Bend transition: the note is picked Bend Amount below and bent
+            // up INTO the played pitch, so it always ends in tune.
+            bendNow_[(std::size_t) s]    = (e.art.trans == Transition::Bend)
+                ? -clampf (p_.bendAmount, 0.f, 24.f) : 0.f;
+            bendTarget_[(std::size_t) s] = 0.f;
             break;
 
         case EventType::Legato:

@@ -57,8 +57,10 @@ int SeqEngine::advance (double ppqStart,
     if (ppqStart < lastPpq_ - 1e-9) { lastStep_ = -1; pendingCount_ = 0; }
     lastPpq_ = ppqEnd;
 
-    const long long firstStep = (long long) std::floor (ppqStart / stepsPerQuarter);
-    const long long endStep   = (long long) std::floor (ppqEnd   / stepsPerQuarter);
+    // Step n starts at quarter n / stepsPerQuarter. (This used to divide ppq by
+    // the rate, which ran the grid 4x-64x too slowly: one 16th step per bar.)
+    const long long firstStep = (long long) std::floor (ppqStart * stepsPerQuarter);
+    const long long endStep   = (long long) std::floor (ppqEnd   * stepsPerQuarter);
 
     int written = 0;
 
@@ -73,7 +75,7 @@ int SeqEngine::advance (double ppqStart,
             StrumHit& h = out[written];
             h.type         = EventType::Release;
             h.stringIndex  = r.stringIndex;
-            h.delaySamples = ((double) r.step * stepsPerQuarter - ppqStart) * spq;
+            h.delaySamples = ((double) r.step / stepsPerQuarter - ppqStart) * spq;
             if (h.delaySamples < 0.0) h.delaySamples = 0.0;
             h.velocity     = 0.f;
             h.pitchFrom    = -1.f;
@@ -104,7 +106,7 @@ int SeqEngine::advance (double ppqStart,
             const SeqNote& cell = pattern->notes[(std::size_t) n];
             if ((int) cell.start != slot) continue;
 
-            const double delay = ((double) step * stepsPerQuarter - ppqStart) * spq;
+            const double delay = ((double) step / stepsPerQuarter - ppqStart) * spq;
             const int    vel127 = (int) cell.vel;
 
             const int strokeRow = rowToStroke ((int) cell.row);
