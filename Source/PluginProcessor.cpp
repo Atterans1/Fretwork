@@ -199,6 +199,19 @@ void FretworkAudioProcessor::buildEngineParams (fw::dsp::EngineParams& p)
     p.width        = getScaled (fw::id::width);
     p.output       = getScaled (fw::id::output);
     p.power        = getParam (fw::id::power) > 0.5f ? 1 : 0;
+
+    p.ampModel      = getChoiceParam (fw::id::ampModel);
+    p.ampGain       = getScaled (fw::id::ampGain);
+    p.ampBass       = getScaled (fw::id::ampBass);
+    p.ampMid        = getScaled (fw::id::ampMid);
+    p.ampTreble     = getScaled (fw::id::ampTreble);
+    p.ampLevel      = getScaled (fw::id::ampLevel);
+    p.cab           = getChoiceParam (fw::id::cab);
+    p.chorusMix     = getScaled (fw::id::chorusMix);
+    p.chorusRate    = getScaled (fw::id::chorusRate);
+    p.delayMix      = getScaled (fw::id::delayMix);
+    p.delayTime     = getScaled (fw::id::delayTime);
+    p.delayFeedback = getScaled (fw::id::delayFeedback);
 }
 
 //==============================================================================

@@ -110,6 +110,8 @@ SetupTabs::SetupTabs (FretworkAudioProcessor& p, juce::AudioProcessorValueTreeSt
     tabBar.addTab ("PICKUP", Palette::panel, Pickup + 1);
     tabBar.addTab ("TONE", Palette::panel, Tone + 1);
     tabBar.addTab ("ARP", Palette::panel, Arp + 1);
+    tabBar.addTab ("AMP", Palette::panel, Amp + 1);
+    tabBar.addTab ("FX", Palette::panel, Fx + 1);
     tabBar.addChangeListener (this);
     addAndMakeVisible (tabBar);
 
@@ -124,6 +126,8 @@ SetupTabs::SetupTabs (FretworkAudioProcessor& p, juce::AudioProcessorValueTreeSt
     buildPickup (*pages[Pickup], state);
     buildTone (*pages[Tone], state);
     buildArp (*pages[Arp], state);
+    buildAmp (*pages[Amp], state);
+    buildFx (*pages[Fx], state);
 
     tabBar.setCurrentTabIndex (0);
     setCurrentPage (0);
@@ -305,6 +309,53 @@ void SetupTabs::buildTone (juce::Component& page, juce::AudioProcessorValueTreeS
     knob (4, 1, fw::id::bendTime, "BEND TIME", false);
 
     knob (0, 2, fw::id::wheelRange, "WHEEL", true);
+}
+
+//==============================================================================
+void SetupTabs::buildAmp (juce::Component& page, juce::AudioProcessorValueTreeState& state)
+{
+    const auto knob = [&state, &page] (int col, int row, const char* id, const char* cap, int colSpan = 1)
+    {
+        auto* cell = new KnobCell();
+        cell->attach (state, id, cap, false);
+        cell->setBounds (cellRect (col, row, colSpan));
+        page.addAndMakeVisible (cell);
+    };
+
+    const auto combo = [&state, &page] (int col, int row, const char* id, const char* cap, int colSpan = 1)
+    {
+        auto* cell = new ComboCell (state, id, cap);
+        cell->setBounds (cellRect (col, row, colSpan));
+        page.addAndMakeVisible (cell);
+    };
+
+    combo (0, 0, fw::id::ampModel, "AMP", 2);
+    combo (2, 0, fw::id::cab, "CABINET", 2);
+    knob (4, 0, fw::id::ampGain, "GAIN");
+
+    knob (0, 1, fw::id::ampBass, "BASS");
+    knob (1, 1, fw::id::ampMid, "MID");
+    knob (2, 1, fw::id::ampTreble, "TREBLE");
+    knob (3, 1, fw::id::ampLevel, "LEVEL");
+}
+
+//==============================================================================
+void SetupTabs::buildFx (juce::Component& page, juce::AudioProcessorValueTreeState& state)
+{
+    const auto knob = [&state, &page] (int col, int row, const char* id, const char* cap)
+    {
+        auto* cell = new KnobCell();
+        cell->attach (state, id, cap, false);
+        cell->setBounds (cellRect (col, row));
+        page.addAndMakeVisible (cell);
+    };
+
+    knob (0, 0, fw::id::chorusMix, "CHORUS");
+    knob (1, 0, fw::id::chorusRate, "RATE");
+
+    knob (0, 1, fw::id::delayMix, "DELAY");
+    knob (1, 1, fw::id::delayTime, "TIME");
+    knob (2, 1, fw::id::delayFeedback, "FEEDBK");
 }
 
 //==============================================================================

@@ -13,10 +13,13 @@ class Biquad
 public:
     void reset() noexcept { x1_ = x2_ = y1_ = y2_ = 0.f; }
 
-    // RBJ cookbook. q is the quality factor; gainDb is only used by bandPass.
+    // RBJ cookbook. q is the quality factor; gainDb sets the band-pass, peak and shelf gains.
     void setLowPass  (double fs, double hz, double q) noexcept { set (fs, hz, q, 0.0, Kind::LowPass); }
     void setHighPass (double fs, double hz, double q) noexcept { set (fs, hz, q, 0.0, Kind::HighPass); }
     void setBandPass (double fs, double hz, double q, double gainDb = 0.0) noexcept { set (fs, hz, q, gainDb, Kind::BandPass); }
+    void setPeak      (double fs, double hz, double q, double gainDb) noexcept { set (fs, hz, q, gainDb, Kind::Peak); }
+    void setLowShelf  (double fs, double hz, double gainDb) noexcept { set (fs, hz, 0.7071, gainDb, Kind::LowShelf); }
+    void setHighShelf (double fs, double hz, double gainDb) noexcept { set (fs, hz, 0.7071, gainDb, Kind::HighShelf); }
 
     float process (float x) noexcept
     {
@@ -31,7 +34,7 @@ public:
     void setPassthrough() noexcept { b0_ = 1.f; b1_ = b2_ = a1_ = a2_ = 0.f; }
 
 private:
-    enum class Kind { LowPass, HighPass, BandPass };
+    enum class Kind { LowPass, HighPass, BandPass, Peak, LowShelf, HighShelf };
 
     void set (double fs, double hz, double q, double gainDb, Kind kind) noexcept
     {
@@ -49,6 +52,43 @@ private:
         const double cw = std::cos (w0);
         const double sw = std::sin (w0);
         const double alpha = sw / (2.0 * q);
+
+        if (kind == Kind::Peak || kind == Kind::LowShelf || kind == Kind::HighShelf)
+        {
+            // RBJ peaking EQ and shelves (shelf slope S = 1).
+            const double A = std::pow (10.0, gainDb / 40.0);
+            double b0 = 1, b1 = 0, b2 = 0, a0 = 1, a1 = 0, a2 = 0;
+            if (kind == Kind::Peak)
+            {
+                b0 = 1.0 + alpha * A; b1 = -2.0 * cw; b2 = 1.0 - alpha * A;
+                a0 = 1.0 + alpha / A; a1 = -2.0 * cw; a2 = 1.0 - alpha / A;
+            }
+            else
+            {
+                const double sa = 2.0 * std::sqrt (A) * alpha;
+                if (kind == Kind::LowShelf)
+                {
+                    b0 = A * ((A + 1) - (A - 1) * cw + sa);
+                    b1 = 2 * A * ((A - 1) - (A + 1) * cw);
+                    b2 = A * ((A + 1) - (A - 1) * cw - sa);
+                    a0 = (A + 1) + (A - 1) * cw + sa;
+                    a1 = -2 * ((A - 1) + (A + 1) * cw);
+                    a2 = (A + 1) + (A - 1) * cw - sa;
+                }
+                else
+                {
+                    b0 = A * ((A + 1) + (A - 1) * cw + sa);
+                    b1 = -2 * A * ((A - 1) + (A + 1) * cw);
+                    b2 = A * ((A + 1) + (A - 1) * cw - sa);
+                    a0 = (A + 1) - (A - 1) * cw + sa;
+                    a1 = 2 * ((A - 1) - (A + 1) * cw);
+                    a2 = (A + 1) - (A - 1) * cw - sa;
+                }
+            }
+            b0_ = (float) (b0 / a0); b1_ = (float) (b1 / a0); b2_ = (float) (b2 / a0);
+            a1_ = (float) (a1 / a0); a2_ = (float) (a2 / a0);
+            return;
+        }
 
         double b0 = 1.0, b1 = 0.0, b2 = 0.0;
 

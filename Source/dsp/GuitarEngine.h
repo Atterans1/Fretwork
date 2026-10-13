@@ -2,6 +2,7 @@
 #include "Contracts.h"
 #include "dsp/BodyModel.h"
 #include "dsp/GuitarString.h"
+#include "dsp/AmpFx.h"
 #include "dsp/OutputStage.h"
 #include "dsp/PickupModel.h"
 
@@ -33,12 +34,26 @@ struct EngineParams
     float topDamp     = 30.f;     // %
     float micBlend    = 70.f;     // %
 
-    float tone        = 9000.f;   // Hz
+    float tone        = 2811.f;   // Hz
     float drive       = 0.f;      // %
     float room        = 12.f;     // %
     float width       = 60.f;     // %
     float output      = -6.f;     // dB
     int   power       = 1;
+
+    // Amp, cabinet and effects (AmpFx). Amp Off and both mixes 0 = bypassed.
+    int   ampModel      = 0;      // 0 Off, 1 Clean, 2 Crunch, 3 Lead
+    float ampGain       = 40.f;   // %
+    float ampBass       = 50.f;   // %, 50 flat
+    float ampMid        = 50.f;
+    float ampTreble     = 50.f;
+    float ampLevel      = 0.f;    // dB
+    int   cab           = 2;      // 0 Off, 1 1x12, 2 2x12, 3 4x12
+    float chorusMix     = 0.f;    // %
+    float chorusRate    = 0.8f;   // Hz
+    float delayMix      = 0.f;    // %
+    float delayTime     = 380.f;  // ms
+    float delayFeedback = 30.f;   // %
 };
 
 // Exponential smoother stepped once per sample.
@@ -88,6 +103,7 @@ private:
 
     PickupModel pickup_ {};
     BodyModel   body_ {};
+    AmpFx       amp_ {};
     OutputStage out_ {};
 
     EngineParams p_ {};

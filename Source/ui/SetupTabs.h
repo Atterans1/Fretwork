@@ -11,7 +11,7 @@
 namespace fw::ui
 {
 
-/** BODY / STRINGS / PICKUP / TONE / ARP tab stack: Atlas tab strip above a
+/** BODY / STRINGS / PICKUP / TONE / ARP / AMP / FX tab stack: Atlas tab strip above a
     Waves group frame holding the pages. Every control is built once in the
     constructor; switching tabs only flips visibility. */
 class SetupTabs final : public juce::Component,
@@ -35,7 +35,7 @@ private:
     class ComboCell;
     class MaskCell;
 
-    enum Page { Body = 0, Strings, Pickup, Tone, Arp, NumPages };
+    enum Page { Body = 0, Strings, Pickup, Tone, Arp, Amp, Fx, NumPages };
 
     // Grid is 5 columns of kCellW (right edge 317) plus a 6-wide strip row of
     // kMaskW cells (right edge 324), so nothing ever runs off the side. Vertically
@@ -59,6 +59,8 @@ private:
     void buildPickup (juce::Component& page, juce::AudioProcessorValueTreeState& state);
     void buildTone (juce::Component& page, juce::AudioProcessorValueTreeState& state);
     void buildArp (juce::Component& page, juce::AudioProcessorValueTreeState& state);
+    void buildAmp (juce::Component& page, juce::AudioProcessorValueTreeState& state);
+    void buildFx (juce::Component& page, juce::AudioProcessorValueTreeState& state);
 
     FretworkAudioProcessor& processor;
     juce::TabbedButtonBar tabBar { juce::TabbedButtonBar::TabsAtTop };

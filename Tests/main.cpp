@@ -802,7 +802,7 @@ void testSetupTabPages()
     fw::ui::SetupTabs tabs (proc, proc.getState());
     tabs.setBounds (0, 0, 330, 228);
 
-    // Child 0 is the tab bar; children 1..5 are the pages. Counting all
+    // Child 0 is the tab bar; children 1..7 are the pages. Counting all
     // visible children would always include the bar and prove nothing.
     const auto visiblePageCount = [&tabs]
     {
@@ -813,10 +813,10 @@ void testSetupTabPages()
         return n;
     };
 
-    CHECK (tabs.getNumChildComponents() == 6, "tab bar plus five pages");
+    CHECK (tabs.getNumChildComponents() == 8, "tab bar plus seven pages (BODY STRINGS PICKUP TONE ARP AMP FX)");
     CHECK (visiblePageCount() == 1, "exactly one page is shown at construction");
 
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < 7; ++i)
     {
         tabs.setCurrentPage (i);
 

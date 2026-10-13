@@ -96,6 +96,18 @@ inline constexpr const char* drive       = "drive";
 inline constexpr const char* room        = "room";
 inline constexpr const char* width       = "width";
 inline constexpr const char* output      = "output";
+inline constexpr const char* ampModel    = "ampModel";
+inline constexpr const char* ampGain     = "ampGain";
+inline constexpr const char* ampBass     = "ampBass";
+inline constexpr const char* ampMid      = "ampMid";
+inline constexpr const char* ampTreble   = "ampTreble";
+inline constexpr const char* ampLevel    = "ampLevel";
+inline constexpr const char* cab         = "cab";
+inline constexpr const char* chorusMix   = "chorusMix";
+inline constexpr const char* chorusRate  = "chorusRate";
+inline constexpr const char* delayMix    = "delayMix";
+inline constexpr const char* delayTime   = "delayTime";
+inline constexpr const char* delayFeedback = "delayFeedback";
 } // namespace id
 
 juce::AudioProcessorValueTreeState::ParameterLayout createLayout();

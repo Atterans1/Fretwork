@@ -160,6 +160,21 @@ juce::AudioProcessorValueTreeState::ParameterLayout createLayout()
     add (floatParam  (id::width,      "Width",    0.f, 100.f, 60.f,      "%",  0.5f));
     add (floatParam  (id::output,     "Output",   -24.f, 6.f,  -6.f,      "dB", 0.5f));
 
+    // ------------------------------------------------------- amp, cab, effects
+    // Amp Off and both mixes at 0 leave the sound untouched.
+    add (choiceParam (id::ampModel,   "Amp",          { "Off", "Clean", "Crunch", "Lead" }, 0));
+    add (floatParam  (id::ampGain,    "Amp Gain",     0.f, 100.f, 40.f,  "%",  1.f));
+    add (floatParam  (id::ampBass,    "Amp Bass",     0.f, 100.f, 50.f,  "%",  1.f));
+    add (floatParam  (id::ampMid,     "Amp Mid",      0.f, 100.f, 50.f,  "%",  1.f));
+    add (floatParam  (id::ampTreble,  "Amp Treble",   0.f, 100.f, 50.f,  "%",  1.f));
+    add (floatParam  (id::ampLevel,   "Amp Level",    -24.f, 12.f, 0.f,  "dB", 1.f));
+    add (choiceParam (id::cab,        "Cabinet",      { "Off", "1x12", "2x12", "4x12" }, 2));
+    add (floatParam  (id::chorusMix,  "Chorus Mix",   0.f, 100.f, 0.f,   "%",  1.f));
+    add (floatParam  (id::chorusRate, "Chorus Rate",  0.1f, 5.f, 0.8f,   "Hz", 0.5f));
+    add (floatParam  (id::delayMix,   "Delay Mix",    0.f, 100.f, 0.f,   "%",  1.f));
+    add (floatParam  (id::delayTime,  "Delay Time",   20.f, 1500.f, 380.f, "ms", 0.5f));
+    add (floatParam  (id::delayFeedback, "Delay Feedback", 0.f, 90.f, 30.f, "%", 1.f));
+
     return layout;
 }
 

@@ -37,6 +37,7 @@ void GuitarEngine::prepare (double sampleRate, int maxBlockSize)
 
     pickup_.prepare (fs_);
     body_.prepare   (fs_);
+    amp_.prepare    (fs_, maxBlock);
     out_.prepare    (fs_, maxBlock);
 
     debug_.assign (kNumStrings, std::vector<float> ((std::size_t) maxBlock, 0.f));
@@ -72,6 +73,7 @@ void GuitarEngine::reset()
     for (auto& s : strings_) s.reset();
     pickup_.reset();
     body_.reset();
+    amp_.reset();
     out_.reset();
     prevBridge_.fill (0.f);
     prevBridgeSum_ = 0.f;
@@ -122,6 +124,21 @@ void GuitarEngine::refreshModel()
 void GuitarEngine::setParams (const EngineParams& p)
 {
     p_ = p;
+
+    AmpFxParams ap;
+    ap.ampModel     = p_.ampModel;
+    ap.gain01       = clampf (p_.ampGain, 0.f, 100.f) * 0.01f;
+    ap.bass01       = clampf (p_.ampBass, 0.f, 100.f) * 0.01f;
+    ap.mid01        = clampf (p_.ampMid, 0.f, 100.f) * 0.01f;
+    ap.treble01     = clampf (p_.ampTreble, 0.f, 100.f) * 0.01f;
+    ap.levelDb      = clampf (p_.ampLevel, -24.f, 12.f);
+    ap.cab          = p_.cab;
+    ap.chorusMix01  = clampf (p_.chorusMix, 0.f, 100.f) * 0.01f;
+    ap.chorusRateHz = clampf (p_.chorusRate, 0.05f, 10.f);
+    ap.delayMix01   = clampf (p_.delayMix, 0.f, 100.f) * 0.01f;
+    ap.delayMs      = clampf (p_.delayTime, 1.f, 1500.f);
+    ap.feedback01   = clampf (p_.delayFeedback, 0.f, 90.f) * 0.01f;
+    amp_.setParams (ap);
 
     sSympathetic_.target = clampf (p_.sympathetic, 0.f, 100.f) * 0.01f;
     sWidth_.target      = clampf (p_.width, 0.f, 100.f) * 0.01f;
@@ -316,6 +333,10 @@ void GuitarEngine::render (float* left, float* right, int n)
         left[i]  = el_[(std::size_t) i] + acoustic;
         right[i] = er_[(std::size_t) i] + acoustic;
     }
+
+    // Amp, cabinet, chorus and delay sit between the instrument and the master
+    // stage; bypassed (untouched) with the amp Off and both mixes at 0.
+    amp_.process (left, right, n);
 
     outParams_.width01 = sWidth_.value;
     outParams_.toneHz  = sTone_.value;
