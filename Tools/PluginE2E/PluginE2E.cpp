@@ -285,20 +285,21 @@ int main (int argc, char* argv[])
        << "| Pitch within tolerance (render vs source) | " << juce::String (v.pitchRate * 100, 1) << " % |\n"
        << "| Onset within tolerance (render vs source) | " << juce::String (v.onsetRate * 100, 1) << " % |\n"
        << "| Duration within tolerance | " << juce::String (v.durRate * 100, 1) << " % |\n"
+       << "| Played pitch heard in the source mix (diagnostic, not gated) | " << juce::String (v.heardRate * 100, 1) << " % |\n"
        << "| Mean signed onset error (render - source) | " << f1 (v.meanOnsetErrMs) << " ms |\n"
        << "| Mean / max abs onset error | " << f1 (v.meanAbsOnsetErrMs) << " / " << f1 (v.maxOnsetErrMs) << " ms |\n"
        << "| Mean / max abs duration error | " << f1 (v.meanDurErrMs) << " / " << f1 (v.maxDurErrMs) << " ms |\n"
        << "| Octave errors | " << v.octaveErrors << " |\n"
        << "| Source tuning, first / second half | " << f1 (v.sourceCentsFirstHalf) << " / " << f1 (v.sourceCentsSecondHalf) << " cents |\n\n"
        << "## Per note\n\n"
-       << "| # | Reference | Learned | Src onset s | Onset err ms | Render pitch | Source pitch | Pitch err st | Dur render/src ms | Pitch | Onset | Dur |\n"
-       << "|---|---|---|---|---|---|---|---|---|---|---|---|\n";
+       << "| # | Reference | Learned | Src onset s | Onset err ms | Render pitch | Source pitch | Pitch err st | Dur render/src ms | Pitch | Onset | Dur | In mix |\n"
+       << "|---|---|---|---|---|---|---|---|---|---|---|---|---|\n";
     for (const auto& n : learned.notes)
     {
         const auto& t = ref[(size_t) n.tabIndex];
         juce::String refTxt = (t.stringNo > 0 ? juce::String (t.stringNo) + ":" + juce::String (t.fret) + (t.technique ? juce::String::charToString (t.technique) : juce::String()) + " " : juce::String())
                               + nn (n.tabMidi);
-        if (n.skipped) { md << "| " << n.tabIndex + 1 << " | " << refTxt << " | vetoed | | | | | | | | | |\n"; continue; }
+        if (n.skipped) { md << "| " << n.tabIndex + 1 << " | " << refTxt << " | vetoed | | | | | | | | | | |\n"; continue; }
         const e2e::VerifyNote* q = nullptr;
         for (const auto& x : v.notes) if (x.tabIndex == n.tabIndex) q = &x;
         if (q == nullptr) continue;
@@ -310,12 +311,12 @@ int main (int argc, char* argv[])
            << " | " << nn (q->sourcePitch) << " " << juce::String (q->sourcePitch, 2)
            << " | " << juce::String (q->renderPitch - q->sourcePitch, 2)
            << " | " << juce::String (q->renderDur * 1000, 0) << "/" << juce::String (q->sourceDur * 1000, 0)
-           << " | " << (q->pitchOk ? "ok" : "FAIL") << " | " << (q->onsetOk ? "ok" : "FAIL") << " | " << (q->durOk ? "ok" : "off") << " |\n";
+           << " | " << (q->pitchOk ? "ok" : "FAIL") << " | " << (q->onsetOk ? "ok" : "FAIL") << " | " << (q->durOk ? "ok" : "off") << " | " << (q->heardInMix ? "yes" : "no") << " |\n";
     }
     out.getChildFile ("report.md").replaceWithText (md);
 
-    std::printf ("verify: pitch %.1f %%, onset %.1f %%, duration %.1f %%; onset err mean %+.1f ms, mean abs %.1f, max %.1f; octave errors %d\n",
-                 v.pitchRate * 100, v.onsetRate * 100, v.durRate * 100, v.meanOnsetErrMs, v.meanAbsOnsetErrMs, v.maxOnsetErrMs, v.octaveErrors);
+    std::printf ("verify: pitch %.1f %%, onset %.1f %%, duration %.1f %%, heard-in-mix %.1f %% (diagnostic); onset err mean %+.1f ms, mean abs %.1f, max %.1f; octave errors %d\n",
+                 v.pitchRate * 100, v.onsetRate * 100, v.durRate * 100, v.heardRate * 100, v.meanOnsetErrMs, v.meanAbsOnsetErrMs, v.maxOnsetErrMs, v.octaveErrors);
     std::printf ("%s  (report: %s)\n", pass ? "PASS" : "FAIL", out.getChildFile ("report.md").getFullPathName().toRawUTF8());
     return pass ? 0 : 1;
 }

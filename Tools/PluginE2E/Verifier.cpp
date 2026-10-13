@@ -4,7 +4,8 @@
 // grade itself:
 //   onsets  - high-frequency-content (HFC) novelty, 1024-sample windows
 //   render  - YIN fundamental (the render is a single synthesised guitar line)
-//   source  - harmonic product spectrum over a fixed melody range (MIDI 48-84)
+//   source  - harmonic product spectrum over a fixed melody range (MIDI 48-84),
+//             with the standard sub-octave check against 2nd-harmonic picks
 // Analysis constants fixed before the first run; tolerances come from Gates.
 
 #include "E2E.h"
@@ -96,9 +97,52 @@ double hpsMidi (const std::vector<float>& x, double fs, double t0, double t1)
         if (v > bestV) { bestV = v; bestK = k; }
     }
     if (bestK <= 0) return 0;
+
+    // Standard HPS octave correction: when a real peak sits at half the chosen
+    // frequency (>= 20 % of the chosen peak's amplitude), the chosen peak is the
+    // 2nd harmonic of a weak fundamental (common on plain guitar strings), so
+    // take the lower octave. Independent of what the learner played.
+    const int kMin = (int) (440.0 * std::pow (2.0, (kSourceLo - 69) / 12.0) / df);
+    for (int half = bestK / 2; half >= kMin; half = bestK / 2)
+    {
+        float h = 0; int hk = half;
+        for (int k = half - 1; k <= half + 1; ++k) if (buf[(size_t) k] > h) { h = buf[(size_t) k]; hk = k; }
+        const bool isPeak = buf[(size_t) hk] >= buf[(size_t) hk - 1] && buf[(size_t) hk] >= buf[(size_t) hk + 1];
+        if (! isPeak || h < 0.2f * buf[(size_t) bestK]) break;
+        bestK = hk;
+    }
+
     const double l = std::log (1e-9 + buf[(size_t) bestK - 1]), c = std::log (1e-9 + buf[(size_t) bestK]), r = std::log (1e-9 + buf[(size_t) bestK + 1]);
     const double k = bestK + 0.5 * (l - r) / (l - 2 * c + r + 1e-12);
     return 69.0 + 12.0 * std::log2 (k * df / 440.0);
+}
+
+/** Diagnostic for mixed recordings: is the semitone 'midi' sounding in the
+    source, chord or not? Semitone energy = strongest FFT bin within +-50
+    cents. Heard when that semitone is among the 4 strongest of MIDI 40-88 and
+    stronger than both neighbours. Fixed before use; never gates. */
+bool heardInMix (const std::vector<float>& x, double fs, double t0, double t1, int midi)
+{
+    const int n = 8192;
+    juce::dsp::FFT fft (13);
+    std::vector<float> buf ((size_t) (2 * n), 0.f);
+    const int a = (int) (t0 * fs), len = std::min ((int) (t1 * fs) - a, n);
+    if (a < 0 || len < 256 || a + len > (int) x.size()) return false;
+    for (int i = 0; i < len; ++i)
+        buf[(size_t) i] = x[(size_t) (a + i)] * (0.5f - 0.5f * std::cos (2.f * juce::MathConstants<float>::pi * (float) i / (float) len));
+    fft.performFrequencyOnlyForwardTransform (buf.data());
+    const double df = fs / n;
+    const auto energy = [&] (int m)
+    {
+        const double lo = 440.0 * std::pow (2.0, (m - 69 - 0.5) / 12.0), hi = 440.0 * std::pow (2.0, (m - 69 + 0.5) / 12.0);
+        float e = 0; for (int k = (int) std::ceil (lo / df); k <= (int) (hi / df) && k < n / 2; ++k) e = std::max (e, buf[(size_t) k]);
+        return e;
+    };
+    std::vector<float> all;
+    for (int m = 40; m <= 88; ++m) all.push_back (energy (m));
+    const float self = energy (midi);
+    int stronger = 0; for (float e : all) if (e > self) ++stronger;
+    return stronger < 4 && self > energy (midi - 1) && self > energy (midi + 1);
 }
 
 double nearestOnset (const std::vector<double>& on, double t, double tol)
@@ -148,7 +192,7 @@ VerifyResult verify (const Pcm& source, const std::vector<float>& render, double
     const auto srcOn = hfcOnsets (source.x, source.fs);
     const auto renOn = hfcOnsets (render, renderFs);
 
-    double sumErr = 0, sumAbs = 0, sumDur = 0; int nOn = 0, nPitch = 0, nDur = 0, counted = 0;
+    double sumErr = 0, sumAbs = 0, sumDur = 0; int nOn = 0, nPitch = 0, nDur = 0, counted = 0, nHeard = 0;
     double cents1 = 0, cents2 = 0; int c1 = 0, c2 = 0;
     for (size_t i = 0; i < notes.size(); ++i)
     {
@@ -172,6 +216,8 @@ VerifyResult verify (const Pcm& source, const std::vector<float>& render, double
 
         v.pitchOk = v.renderPitch > 0 && v.sourcePitch > 0 && std::abs (v.renderPitch - v.sourcePitch) <= gates.pitchTolSemis;
         if (v.pitchOk) ++nPitch;
+        v.heardInMix = heardInMix (source.x, source.fs, sref + 0.02, sref + 0.02 + std::max (win, 0.08), ln.midi);
+        if (v.heardInMix) ++nHeard;
         const double dev = std::abs (v.renderPitch - v.sourcePitch);
         if (v.renderPitch > 0 && v.sourcePitch > 0 && std::abs (dev - 12.0) <= 1.0) ++r.octaveErrors;
 
@@ -204,6 +250,7 @@ VerifyResult verify (const Pcm& source, const std::vector<float>& render, double
     r.pitchRate = nPitch / nn;
     r.onsetRate = nOn / nn;
     r.durRate = nDur / nn;
+    r.heardRate = nHeard / nn;
     r.meanOnsetErrMs = sumErr / std::max (1.0, (double) r.notes.size());
     r.meanAbsOnsetErrMs = sumAbs / std::max (1.0, (double) r.notes.size());
     r.meanDurErrMs = sumDur / nn;

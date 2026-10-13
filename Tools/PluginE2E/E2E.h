@@ -89,12 +89,14 @@ struct VerifyNote
     double sourcePitch = 0.0;      // fractional MIDI, HPS on the source
     double renderDur = 0.0, sourceDur = 0.0;
     bool   pitchOk = false, onsetOk = false, durOk = false;
+    bool   heardInMix = false;     // diagnostic: the played pitch is among the strongest semitones in the source (chords included)
 };
 
 struct VerifyResult
 {
     std::vector<VerifyNote> notes;
     double pitchRate = 0.0, onsetRate = 0.0, durRate = 0.0;
+    double heardRate = 0.0;        // diagnostic, never gated
     double meanOnsetErrMs = 0.0, maxOnsetErrMs = 0.0, meanAbsOnsetErrMs = 0.0;
     double meanDurErrMs = 0.0, maxDurErrMs = 0.0;
     int    octaveErrors = 0;
