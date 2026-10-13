@@ -26,6 +26,20 @@ namespace
         { "Jazz Box Comping",   3, { { id::mode, 1 }, { id::excitation, 2 }, { id::strumTime, 25 }, { id::tone, legacyToneHz (5500) } } },
         { "Warm Semi Strum",    3, { { id::mode, 1 }, { id::strumTime, 30 }, { id::drive, 10 }, { id::room, 25 } } },
         { "Rockabilly Slap",    3, { { id::pickupSel, 3 }, { id::damping, 1 }, { id::drive, 20 }, { id::room, 35 } } },
+
+        // ---- Amp presets. Appended, not grouped above: hosts save the program
+        // number, so inserting would point old projects at a different name.
+        // The menu groups by body, so these still list under their guitar.
+        { "Crunch Amp",         2, { { id::mode, 1 }, { id::pickupType, 1 }, { id::strumTime, 15 },
+                                     { id::ampModel, 2 }, { id::cab, 2 }, { id::ampGain, 45 } } },
+        { "Lead Stack",         2, { { id::pickupType, 1 }, { id::pickupSel, 2 }, { id::transition, 3 }, { id::vibDepth, 35 }, { id::sustain, 140 },
+                                     { id::ampModel, 3 }, { id::cab, 3 }, { id::ampGain, 65 }, { id::ampMid, 60 },
+                                     { id::delayMix, 18 }, { id::delayTime, 420 }, { id::delayFeedback, 30 } } },
+        { "Chorus Clean",       2, { { id::mode, 1 }, { id::strumTime, 12 }, { id::room, 20 },
+                                     { id::ampModel, 1 }, { id::cab, 1 }, { id::ampGain, 30 },
+                                     { id::chorusMix, 45 }, { id::chorusRate, 0.7f } } },
+        { "Jazz Amp",           3, { { id::excitation, 2 }, { id::room, 15 },
+                                     { id::ampModel, 1 }, { id::cab, 2 }, { id::ampGain, 25 }, { id::ampBass, 60 }, { id::ampTreble, 35 }, { id::ampLevel, -4 } } },
     };
 
     const char* const kTransportIds[] = { id::seqPlay, id::seqSlot, id::metronome, id::bpm, id::power };
