@@ -302,9 +302,12 @@ void GuitarString::legato (const StringEvent& e)
     glideStep_ = steps > 0.0 ? (float) ((targetSemi - glideFrom_) / steps) : 0.f;
     if (steps <= 0.0) glidePos_ = targetSemi;
 
-    // A hammer-on is a stronger transient than a pull-off.
+    // A hammer-on is a fingertip striking the string; a pull-off is the
+    // finger snapping off it sideways, which plucks the string almost as hard
+    // as a light pick (about -6 to -12 dB). At 0.25 the pulled-off note sat
+    // ~25 dB under a picked one and vanished in a mix.
     const bool rising = newF0 > baseF0_;
-    const float scale = rising ? 0.35f : 0.25f;
+    const float scale = rising ? 0.35f : 0.6f;
 
     ExcitationRequest req {};
     req.f0          = baseF0_;

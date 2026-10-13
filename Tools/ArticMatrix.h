@@ -292,10 +292,11 @@ inline std::vector<Phrase> phrases()
         {
             const double a1 = pitchAt (x, fs, 2.3), a2 = pitchAt (x, fs, 4.8);
             const double sounding = db (energy (x, fs, 2.2, 2.5));
+            const double picked   = db (energy (x, fs, 0.6, 0.9));   // the same A3, picked
             const double hf = bandEnergy (x, fs, 2.0, 2.02, 4000, 12000), pickHF = bandEnergy (x, fs, 0.5, 0.52, 4000, 12000);
             Result r; r.pass = std::abs (a1 - 57) < 0.3 && std::abs (a2 - 57) < 0.3 && sounding > -50 && db (hf) < db (pickHF) - 3;
             r.evidence << "release of B3 pulls off to " << juce::String (a1, 2) << " still sounding at " << juce::String (sounding, 1)
-                       << " dBFS, attack >4 kHz " << juce::String (db (hf) - db (pickHF), 1) << " dB vs a pick; new lower note pulls off to "
+                       << " dBFS (" << juce::String (sounding - picked, 1) << " dB vs the picked A3), attack >4 kHz " << juce::String (db (hf) - db (pickHF), 1) << " dB vs a pick; new lower note pulls off to "
                        << juce::String (a2, 2);
             return r;
         };
