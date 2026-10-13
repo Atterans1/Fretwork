@@ -106,7 +106,9 @@ void ArticulationNoise::squeak (int string, int dir, float durSec, float velocit
     v.age = ++clock_;
     v.len = std::max (8, (int) (clampf (durSec, 0.06f, 0.15f) * fs_));
     v.raisedCosine = true;
-    v.amp = 0.06f * vel * (wound ? 1.f : 0.25f);
+    // A Q-7 band-pass keeps ~1 % of white noise's power, so the level is set
+    // for the filtered result: about 18 dB under a picked note on wound strings.
+    v.amp = 0.8f * vel * (wound ? 1.f : 0.25f);
     v.f0 = dir >= 0 ? 1200.f : 3800.f;
     v.f1 = dir >= 0 ? 3800.f : 1200.f;
     v.q  = 7.f;

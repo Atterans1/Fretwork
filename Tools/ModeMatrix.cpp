@@ -18,6 +18,8 @@
 
 #include <cstdio>
 
+#include "ArticMatrix.h"
+
 namespace
 {
 struct Ev { double t; int note; bool on; };
@@ -198,6 +200,122 @@ int main (int argc, char* argv[])
         }
         std::printf ("%s\n", juce::JSON::toString (arr, true).toRawUTF8());
         return 0;
+    }
+
+    // ---------------------------------------------------------- articulations
+    const auto phrases = artic::phrases();
+
+    if (cmd == "artic-list")
+    {
+        juce::Array<juce::var> arr;
+        for (const auto& p : phrases)
+        {
+            auto* o = new juce::DynamicObject();
+            o->setProperty ("name", p.name);
+            juce::StringArray lines;
+            auto ev = p.events;
+            std::stable_sort (ev.begin(), ev.end(), [] (const artic::AEv& a, const artic::AEv& b) { return a.t < b.t; });
+            for (const auto& e : ev)
+                lines.add (juce::String ((int) std::lround (e.t * 1000)) + (e.kind == 1 ? " on " : e.kind == 0 ? " off " : " pb ")
+                           + juce::String (e.a) + " " + juce::String (e.kind == 1 ? e.b : 0));
+            o->setProperty ("midisend", lines.joinIntoString ("\n"));
+            o->setProperty ("first", ev.empty() ? 0.0 : ev.front().t);
+            arr.add (juce::var (o));
+        }
+        std::printf ("%s\n", juce::JSON::toString (arr, true).toRawUTF8());
+        return 0;
+    }
+
+    if (cmd == "artic-analyze" && argc >= 5)
+    {
+        const juce::String name = argv[2];
+        for (const auto& p : phrases)
+            if (p.name == name)
+            {
+                std::vector<float> x; double fs = 0;
+                if (! readMono (juce::File (argv[3]), x, fs)) { std::printf ("cannot read %s\n", argv[3]); return 2; }
+                // Align the recording: its first attack (5 ms RMS above -50 dBFS) is the phrase's first note-on.
+                double first = 1e9; for (const auto& e : p.events) if (e.kind == 1) first = std::min (first, e.t);
+                const int hop = (int) (0.005 * fs);
+                long lead = -1;
+                for (size_t i = 0; i + (size_t) hop < x.size(); i += (size_t) hop)
+                {
+                    double e = 0; for (int k = 0; k < hop; ++k) e += (double) x[i + (size_t) k] * x[i + (size_t) k];
+                    if (10 * std::log10 (e / hop + 1e-24) > -50) { lead = (long) i; break; }
+                }
+                if (lead < 0) { std::printf ("%s\tFAIL\trecording is silent\n", name.toRawUTF8()); return 1; }
+                const long shift = lead - (long) (first * fs);
+                std::vector<float> y ((size_t) (artic::kLen * fs), 0.f);
+                for (size_t i = 0; i < y.size(); ++i) { const long j = (long) i + shift; if (j >= 0 && j < (long) x.size()) y[i] = x[(size_t) j]; }
+                const auto r = p.measure (y, fs);
+                artic::spectrogramPng (y, fs, p, juce::File (argv[4]));
+                std::printf ("%s\t%s\t%s (aligned: first attack at %.3f s in the capture)\n", name.toRawUTF8(), r.pass ? "PASS" : "FAIL",
+                             r.evidence.toRawUTF8(), (double) lead / fs);
+                return r.pass ? 0 : 1;
+            }
+        std::printf ("no phrase %s\n", name.toRawUTF8());
+        return 2;
+    }
+
+    if (cmd == "artic-vst3" && argc >= 4)
+    {
+        const juce::File plugin (argv[2]), outDir (argv[3]);
+        outDir.createDirectory();
+        juce::AudioPluginFormatManager fm;
+        fm.addFormat (std::make_unique<juce::VST3PluginFormat>());
+        juce::OwnedArray<juce::PluginDescription> types;
+        fm.getFormat (0)->findAllTypesForFile (types, plugin.getFullPathName());
+        if (types.isEmpty()) { std::printf ("no VST3 in %s\n", argv[2]); return 2; }
+        std::printf ("plugin %s %s (%s)\n", types[0]->name.toRawUTF8(), types[0]->version.toRawUTF8(), plugin.getFullPathName().toRawUTF8());
+        const double fs = 48000.0; const int blk = 512;
+        int fails = 0;
+        for (const auto& ph : phrases)
+        {
+            juce::String err;
+            auto p = fm.createPluginInstance (*types[0], fs, blk, err);
+            if (p == nullptr) { std::printf ("%s\tFAIL\tload: %s\n", ph.name.toRawUTF8(), err.toRawUTF8()); ++fails; continue; }
+            p->enableAllBuses();
+            p->prepareToPlay (fs, blk);
+            const int total = (int) (artic::kLen * fs), chans = std::max (2, p->getTotalNumOutputChannels());
+            juce::AudioBuffer<float> b (chans, blk);
+            std::vector<float> L, R;
+            for (int pos = 0; pos < total; pos += blk)
+            {
+                const int n = std::min (blk, total - pos);
+                b.setSize (chans, n, false, false, true); b.clear();
+                juce::MidiBuffer m;
+                for (const auto& e : ph.events)
+                {
+                    const int at = (int) std::lround (e.t * fs);
+                    if (at < pos || at >= pos + n) continue;
+                    if (e.kind == 1) m.addEvent (juce::MidiMessage::noteOn (1, e.a, (juce::uint8) e.b), at - pos);
+                    else if (e.kind == 0) m.addEvent (juce::MidiMessage::noteOff (1, e.a), at - pos);
+                    else m.addEvent (juce::MidiMessage::pitchWheel (1, e.a), at - pos);
+                }
+                p->processBlock (b, m);
+                L.insert (L.end(), b.getReadPointer (0), b.getReadPointer (0) + n);
+                R.insert (R.end(), b.getReadPointer (1), b.getReadPointer (1) + n);
+            }
+            p->releaseResources();
+            p.reset();
+            const auto base = outDir.getChildFile (ph.name.replaceCharacters (" ()", "___"));
+            {
+                const auto wav = base.withFileExtension ("wav");
+                wav.deleteFile();
+                juce::WavAudioFormat wf;
+                std::unique_ptr<juce::AudioFormatWriter> w (wf.createWriterFor (new juce::FileOutputStream (wav), fs, 2, 24, {}, 0));
+                const float* ch[] = { L.data(), R.data() };
+                w->writeFromFloatArrays (ch, 2, (int) L.size());
+            }
+            std::vector<float> mono (L.size());
+            for (size_t i = 0; i < L.size(); ++i) mono[i] = 0.5f * (L[i] + R[i]);
+            const auto r = ph.measure (mono, fs);
+            artic::spectrogramPng (mono, fs, ph, base.withFileExtension ("png"));
+            if (! r.pass) ++fails;
+            std::printf ("%s\t%s\t%s\n", ph.name.toRawUTF8(), r.pass ? "PASS" : "FAIL", r.evidence.toRawUTF8());
+        }
+        std::printf ("%d articulations, %d failed\n", (int) phrases.size(), fails);
+        return fails == 0 ? 0 : 1;
     }
 
     if (cmd == "analyze" && argc >= 4)

@@ -107,7 +107,6 @@ private:
 
     std::uint32_t seed_ = 0x1234567u;
     int stringIdx_ = 0;
-    int harmonicN_ = 0;
     bool prepared_ = false;
 
     std::array<float, kMaxBurst> clickBuf_ {};

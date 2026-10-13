@@ -473,7 +473,7 @@ void PerformanceEngine::noteOn (int pitch, float velocity, int offset)
         if (slide)
         {
             h.pitchFrom = (float) fromPitch;
-            emitSqueak (stringIdx, pitch > fromPitch ? 1 : -1, velocity, at);
+            emitSqueak (stringIdx, pitch > fromPitch ? 1 : -1, velocity, at, std::abs (pitch - fromPitch));
         }
     }
     else if (p_.art.trans == Transition::Slide && ! alreadyHeld)
@@ -487,7 +487,7 @@ void PerformanceEngine::noteOn (int pitch, float velocity, int offset)
     if (h.type == EventType::Pluck && ! inStrum && lastOnAbs_ >= 0 && lastFret_ >= 0
         && at - lastOnAbs_ < (long long) (kShiftWindowSec * sampleRate_)
         && std::abs (h.fret - lastFret_) >= kShiftMinFrets)
-        emitSqueak (stringIdx, h.fret > lastFret_ ? 1 : -1, velocity * 0.6f, at);
+        emitSqueak (stringIdx, h.fret > lastFret_ ? 1 : -1, velocity * 0.6f, at, std::abs (h.fret - lastFret_));
 
     noteStart_[pitch & 127]   = at;
     soundingPitch_[stringIdx] = pitch;
@@ -508,13 +508,13 @@ void PerformanceEngine::emitStrokeNoise (int dir, double durSec, float velocity,
     pushHit (n, at);
 }
 
-void PerformanceEngine::emitSqueak (int string, int dir, float velocity, long long at)
+void PerformanceEngine::emitSqueak (int string, int dir, float velocity, long long at, int frets)
 {
     StrumHit n {};
     n.type        = EventType::Squeak;
     n.stringIndex = string;
     n.dir         = dir;
-    n.durSec      = 0.09f;
+    n.durSec      = (float) (0.04 + 0.012 * std::clamp (frets, 1, 12));   // a longer shift drags longer
     n.velocity    = velocity;
     pushHit (n, at);
 }

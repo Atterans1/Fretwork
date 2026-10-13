@@ -188,7 +188,7 @@ private:
     double       autoVib_   = 0.0;           // automatic vibrato depth, 0..1 like the mod wheel
 
     void emitStrokeNoise (int dir, double durSec, float velocity, long long at);
-    void emitSqueak (int string, int dir, float velocity, long long at);
+    void emitSqueak (int string, int dir, float velocity, long long at, int frets = 5);
 };
 
 } // namespace fw

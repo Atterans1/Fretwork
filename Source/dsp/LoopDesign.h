@@ -6,7 +6,7 @@ namespace fw::dsp {
 //
 // One pass around the loop is
 //     [fractional delay D] -> [1-pole lowpass] -> [4 identical allpasses]
-//     -> [optional harmonic comb] -> [release gain]
+//     -> [release gain]
 // and the loop gain must fall from 1 to G(f) = 10^(-3 / (f * T60(f))) across
 // the band. Everything here is pure math: no allocation, no state, no JUCE.
 
@@ -22,8 +22,6 @@ struct LoopDesignParams
     double bodyLossScale  = 1.0;
     double stiffness01    = 1.0;
     double pickPos01      = 0.15;
-    bool   harmonicActive = false;
-    int    harmonicN      = 0;       // 2..5
 };
 
 struct LoopDesignResult
@@ -36,9 +34,8 @@ struct LoopDesignResult
     double lpG      = 0.0;   // 1-pole lowpass gain
     double dispA    = 0.0;   // allpass coefficient, <= 0
     double delay    = 0.0;   // total loop delay in samples
-    double loopPeriod = 0.0;  // period the LOOP is tuned to (openPeriod / n for harmonics)
+    double loopPeriod = 0.0;  // period the loop is tuned to
     double fracPart = 0.0;   // the fractional delay on its own
-    double combDelay= 0.0;   // harmonic comb group delay
     double inharmB  = 0.0;   // effective stiffness parameter B
     double loopGain = 0.0;   // per-pass gain at f0
 };
@@ -68,9 +65,6 @@ double loopGainAt (double f, double t60) noexcept;
 
 // Inharmonicity constant B for this string.
 double inharmonicityB (const LoopDesignParams& p) noexcept;
-
-// Harmonic comb group delay, (n-1)*(P/n)/2, or 0 when inactive.
-double harmonicCombDelay (double period, bool active, int harmonicN) noexcept;
 
 // Total phase delay of the loop at f: fractional delay + lowpass + allpasses.
 double totalLoopDelay (double f, double fs, double fracPart, double c, double a) noexcept;

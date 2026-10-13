@@ -168,12 +168,6 @@ double inharmonicityB (const LoopDesignParams& p) noexcept
     return base[s] * materialInharm (p.material) * clampd (p.stiffness01, 0.0, 4.0);
 }
 
-double harmonicCombDelay (double period, bool active, int harmonicN) noexcept
-{
-    if (! active || harmonicN < 2 || harmonicN > 5) return 0.0;
-    return (harmonicN - 1) * (period / (double) harmonicN) * 0.5;
-}
-
 double totalLoopDelay (double f, double fs, double fracPart, double c, double a) noexcept
 {
     return fracPart + onePolePhaseDelay (f, fs, c) + 4.0 * allpassPhaseDelay (f, fs, a);
@@ -241,16 +235,10 @@ void designLoop (const LoopDesignParams& p, int damping, LoopDesignResult& out) 
     out.t60Fund = computeT60Fund (p, damping);
     out.t60Harm = computeT60Harm (p, damping);
     out.inharmB = inharmonicityB (p);
-    out.combDelay = harmonicCombDelay (out.period, p.harmonicActive, p.harmonicN);
 
     solveLoopOnePole (f0, fs, out.t60Fund, out.t60Harm, out.lpC, out.lpG);
 
-    // A natural harmonic sounds the n-th partial, so the LOOP is tuned to the
-    // open period divided by n, while the comb that removes the fundamental
-    // still uses taps spaced by the open period / n.
-    const double loopPeriod = (p.harmonicActive && p.harmonicN >= 2)
-        ? out.period / (double) p.harmonicN
-        : out.period;
+    const double loopPeriod = out.period;
 
     const double loopF0 = fs / loopPeriod;
     const double tauLp = onePolePhaseDelay (loopF0, fs, out.lpC);
@@ -258,7 +246,7 @@ void designLoop (const LoopDesignParams& p, int damping, LoopDesignResult& out) 
     // The loop period is dLive plus the filter chain's own group delay, and
     // dLive already contains that group delay, so the fractional delay has to
     // pay for the chain twice for the mode to land on a whole cycle.
-    double frac = loopPeriod - tauLp - out.combDelay;
+    double frac = loopPeriod - tauLp;
 
     for (int iter = 0; iter < 2; ++iter)
     {
@@ -266,8 +254,7 @@ void designLoop (const LoopDesignParams& p, int damping, LoopDesignResult& out) 
 
         frac = loopPeriod
              - 2.0 * (onePolePhaseDelay (loopF0, fs, out.lpC)
-                    + 4.0 * allpassPhaseDelay (loopF0, fs, out.dispA))
-             - out.combDelay;
+                    + 4.0 * allpassPhaseDelay (loopF0, fs, out.dispA));
     }
 
     out.fracPart = frac;

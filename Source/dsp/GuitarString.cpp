@@ -184,9 +184,11 @@ float GuitarString::readBurst (std::array<float, kMaxBurst>& buf, int& len, int&
 //==============================================================================
 void GuitarString::design (const StringEvent& e)
 {
-    baseF0_ = midiToHz ((double) e.pitch);
-
-    harmonicN_ = (e.harmonicN >= 2 && e.harmonicN <= 5) ? e.harmonicN : 0;
+    // A natural harmonic: the string touched at its 1/n node vibrates in n
+    // segments, so it sounds exactly n times the open pitch (e.pitch is the
+    // open string). The loop is designed at that frequency.
+    const int harmonicN = (e.harmonicN >= 2 && e.harmonicN <= 5) ? e.harmonicN : 1;
+    baseF0_ = midiToHz ((double) e.pitch) * (double) harmonicN;
 
     LoopDesignParams lp {};
     lp.f0             = baseF0_;
@@ -198,8 +200,8 @@ void GuitarString::design (const StringEvent& e)
     lp.bodyLossScale  = model_.bodyLossScale;
     lp.stiffness01    = (double) clampf (model_.stiffness, 0.f, 400.f) * 0.01;
     lp.pickPos01      = (double) clampf (model_.pickPos,   0.f,  50.f) * 0.01;
-    lp.harmonicActive = harmonicN_ >= 2;
-    lp.harmonicN      = harmonicN_;
+    // The touching finger also drains the upper partials while the harmonic rings.
+    if (harmonicN >= 2) lp.age01 = 1.0;
 
     designLoop (lp, (int) e.art.damp, design_);
 
@@ -246,8 +248,23 @@ void GuitarString::pluck (const StringEvent& e, int stringIdx)
     ExcitationResult info {};
     renderExcitation (req, excite_, info);
 
+    // Natural harmonic: the touching finger damps the upper partials and the
+    // note speaks softer than a fretted one. Low-pass the burst at 1.5 x the
+    // sounding pitch (three passes of a one-pole) and inject it at -5 dB.
+    const bool harmonic = e.harmonicN >= 2;
+    if (harmonic)
+    {
+        const float a = (float) (1.0 - std::exp (-6.283185307179586 * 1.5 * baseF0_ / fs_));
+        for (int pass = 0; pass < 3; ++pass)
+        {
+            float y = 0.f;
+            for (int i = 0; i < excite_.length(); ++i) { y += (excite_[i] - y) * a; excite_[i] = y; }
+        }
+        info.clickAmp *= 0.5f;
+    }
+
     // Superpose rather than replace, so re-plucking a ringing string works.
-    inject (1.f);
+    inject (harmonic ? 0.56f : 1.f);
 
     const double vel01 = clampd ((double) e.velocity, 0.0, 1.0);
     startBurst (clickBuf_, clickLen_, clickPos_,
@@ -370,19 +387,6 @@ float GuitarString::tick (float sympatheticIn, float coupling)
 
     const float bridge = readInterp (writePos_ - dLive);
     float x = bridge;
-
-    // Natural harmonic: n-tap comb across the fractional delay.
-    if (harmonicN_ >= 2)
-    {
-        const int n = harmonicN_;
-        const double p = design_.period;
-
-        float acc = 0.f;
-        for (int k = 0; k < n; ++k)
-            acc += readInterp (writePos_ - (double) k * p / (double) n);
-
-        x = acc / (float) n;
-    }
 
     // Loop lowpass: y[n] = k*x[n] + c*y[n-1], k = g*(1-c).
     {
