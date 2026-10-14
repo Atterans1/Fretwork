@@ -102,7 +102,7 @@ int ArpEngine::advance (double ppqStart,
     long long       emittedTo = lastStep_;
     const int    n     = poolCount_;
     const float  h     = p.humanize01 < 0.f ? 0.f : (p.humanize01 > 1.f ? 1.f : p.humanize01);
-    const double jitS  = 4.0 * (double) h * sampleRate * 0.001;
+    const double jitS  = 9.0 * (double) h * sampleRate * 0.001;
 
     for (long long step = firstStep; step <= endStep && written < cap; ++step)
     {
@@ -160,6 +160,8 @@ int ArpEngine::advance (double ppqStart,
         h2.stringIndex  = pe.stringIndex;
         h2.delaySamples = delay;
         h2.velocity     = (stringVel != nullptr ? stringVel[pe.stringIndex] : 0.f) * p.strokeVol;
+        // Beat accents and a little random weight, like a picking hand.
+        h2.velocity    *= ((step & 1LL) ? (1.f - 0.2f * h) : 1.f) * (1.f + jitterRng.range (-0.15f * h, 0.15f * h));
         if (h2.velocity < 0.f) h2.velocity = 0.f;
         h2.pitch        = (partial > 0) ? open[pe.stringIndex] : pe.pitch;
         h2.pitchFrom    = -1.f;

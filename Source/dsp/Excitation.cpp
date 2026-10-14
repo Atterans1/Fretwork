@@ -119,7 +119,7 @@ void renderExcitation (const ExcitationRequest& r,
     out.setLength (n);
 
     // ---- one-shot transients ---------------------------------------------
-    info.clickAmp     = (float) (0.014 * pickHard * vel);   // was 0.03: the transient was a separate click
+    info.clickAmp     = (float) (0.009 * pickHard * vel);   // was 0.03: the transient was a separate click
     info.thumpAmp     = r.damp == 2 ? (float) (0.25 * vel) : 0.0f;
     info.fretNoiseAmp = (float) (0.02 * clampd (r.fretNoise01, 0.0, 1.0));
 }

@@ -53,6 +53,7 @@ private:
         float  f0 = 1000.f, f1 = 1000.f, q = 1.f;
         float  pl0 = 0.7f, pr0 = 0.7f, pl1 = 0.7f, pr1 = 0.7f;
         bool   raisedCosine = false;
+        bool   rough = false;         // squeak: stick-slip amplitude pulse
         Biquad bp;
         std::uint32_t age = 0;
     };

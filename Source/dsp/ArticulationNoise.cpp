@@ -110,10 +110,13 @@ void ArticulationNoise::squeak (int string, int dir, float durSec, float velocit
     v.raisedCosine = true;
     // A Q-7 band-pass keeps ~1 % of white noise's power, so the level is set
     // for the filtered result: about 18 dB under a picked note on wound strings.
+    // A finger dragging a wound string is stick-slip: a rough, broad band that
+    // pulses at ~100 Hz, not a swept whistle. Q 3.2 passes ~2x the power of Q 7.
     v.amp = 0.8f * vel * (wound ? 1.f : 0.25f);
-    v.f0 = dir >= 0 ? 1200.f : 3800.f;
-    v.f1 = dir >= 0 ? 3800.f : 1200.f;
-    v.q  = 7.f;
+    v.f0 = dir >= 0 ? 1000.f : 3000.f;
+    v.f1 = dir >= 0 ? 3000.f : 1000.f;
+    v.q  = 3.2f;
+    v.rough = true;
     v.pl0 = v.pl1 = panL;
     v.pr0 = v.pr1 = panR;
     v.bp.setBandPass (fs_, v.f0, v.q);
@@ -138,7 +141,8 @@ void ArticulationNoise::render (float* left, float* right, int n) noexcept
             else if (v.pos > v.len - v.decay) env = (float) (v.len - v.pos) / (float) v.decay;
             else env = 1.f;
 
-            const float y = v.bp.process (white()) * env * v.amp;
+            const float stick = v.rough ? 0.55f + 0.45f * std::sin (6.2831853f * 105.f * (float) v.pos / (float) fs_) : 1.f;
+            const float y = v.bp.process (white()) * env * v.amp * stick;
             left[i]  += y * (v.pl0 + (v.pl1 - v.pl0) * u);
             right[i] += y * (v.pr0 + (v.pr1 - v.pr0) * u);
         }

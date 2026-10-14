@@ -268,7 +268,7 @@ void GuitarString::pluck (const StringEvent& e, int stringIdx)
 
     const double vel01 = clampd ((double) e.velocity, 0.0, 1.0);
     startBurst (clickBuf_, clickLen_, clickPos_,
-                (int) (0.0025 * fs_), info.clickAmp, true, 1200.0 + 2300.0 * vel01);
+                (int) (0.0025 * fs_), info.clickAmp, true, 900.0 + 1800.0 * vel01);
 
     if (info.thumpAmp > 0.f)
         startBurst (thumpBuf_, thumpLen_, thumpPos_,
@@ -347,7 +347,8 @@ void GuitarString::release (float releaseSec)
     // Finger-lift squeak scales with how hard the note was played.
     const float amp = 0.006f * lastVel_ * clampf (model_.fretNoise, 0.f, 100.f) * 0.01f;
     if (amp > 0.f)
-        startBurst (fretBuf_, fretLen_, fretPos_, (int) (0.008 * fs_), amp, true, 4000.0);
+        // A finger leaving the string is a short low rustle, not a 4 kHz hiss.
+        startBurst (fretBuf_, fretLen_, fretPos_, (int) (0.022 * fs_), amp * 1.4f, true, 2000.0);
 }
 
 //==============================================================================

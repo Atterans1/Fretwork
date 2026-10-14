@@ -126,7 +126,7 @@ int StrumEngine::stroke (bool up,
     // at a fraction of its gap to the next string. Independent per-string
     // jitter could land a later string before an earlier one, reversing the
     // sweep, which no strum does.
-    const double strokeShiftMs = (double) rng.range (-8.f * h, 8.f * h);
+    const double strokeShiftMs = (double) rng.range (-16.f * h, 16.f * h);
     constexpr double kJitterOfGap = 0.35;
     double prevMs = -1.0e9;
 

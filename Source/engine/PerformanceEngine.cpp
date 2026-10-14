@@ -680,7 +680,14 @@ void PerformanceEngine::noteOn (int pitch, float velocity, int offset)
     lastFret_  = h.fret;
 
     sounding_[(size_t) stringIdx] = true;
-    pushHit (h, at);
+
+    // A chord is never struck at one instant: notes after the first inside the
+    // strum window land 0-6 ms apart (scaled by Humanization). A single note
+    // keeps zero added latency.
+    long long hitAt = at;
+    if (h.type == EventType::Pluck && ! alreadyHeld && clusterCount_ >= 2 && p_.humanize > 0.f)
+        hitAt += (long long) ((double) rng_.unit() * 0.006 * (double) std::clamp (p_.humanize * 0.01f, 0.f, 1.f) * sampleRate_);
+    pushHit (h, hitAt);
 }
 
 void PerformanceEngine::emitStrokeNoise (int dir, double durSec, float velocity, long long at)
