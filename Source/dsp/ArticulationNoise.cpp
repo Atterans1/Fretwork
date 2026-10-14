@@ -72,10 +72,12 @@ void ArticulationNoise::stroke (int dir, float durSec, float velocity, const flo
     v.attack = std::max (1, (int) (0.002 * fs_));
     v.decay  = std::max (1, (int) (0.018 * fs_));
     v.len    = (int) (dur * fs_) + v.decay;
-    v.amp    = 0.035f * vel * (0.4f + 0.6f * vel);
-    v.f0 = down ? 1600.f : 3400.f;
-    v.f1 = down ? 3400.f : 1600.f;
-    v.q  = 1.2f;
+    // Pick across wound and plain strings is mostly 0.6-2.5 kHz, not hiss:
+    // a darker, slightly narrower sweep at a lower level reads as strings.
+    v.amp    = 0.022f * vel * (0.4f + 0.6f * vel);
+    v.f0 = down ? 900.f : 2300.f;
+    v.f1 = down ? 2300.f : 900.f;
+    v.q  = 1.6f;
     v.pl0 = panL[first]; v.pr0 = panR[first];
     v.pl1 = panL[last];  v.pr1 = panR[last];
     v.bp.setBandPass (fs_, v.f0, v.q);
@@ -87,10 +89,10 @@ void ArticulationNoise::stroke (int dir, float durSec, float velocity, const flo
         t = Tick {};
         t.on = true;
         t.delay = (int) (dur * fs_ * (float) k / (float) (kNumStrings - 1));
-        t.len = std::max (2, (int) (0.003 * fs_));
-        t.amp = 0.05f * vel * (s < 3 ? 1.f : 0.8f);
+        t.len = std::max (2, (int) (0.005 * fs_));
+        t.amp = 0.03f * vel * (s < 3 ? 1.f : 0.8f);
         t.pl = panL[s]; t.pr = panR[s];
-        t.hp.setHighPass (fs_, 2500.0, 0.7071);
+        t.hp.setHighPass (fs_, 1100.0, 0.7071);   // a soft tick, not a 2.5 kHz click
     }
 }
 

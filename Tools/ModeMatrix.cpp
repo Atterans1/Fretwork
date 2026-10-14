@@ -636,9 +636,19 @@ int main (int argc, char* argv[])
             // Hammer-on: hold A3, add B3 at 1.0 s: the pitch must step to B3 with no gap.
             {
                 const auto x = render (mode, { { 0.1, true, 57, 90 }, { 1.0, true, 59, 90 } }, 2.0);
-                const double before = artic::pitchAt (x, fs, 0.7), after = artic::pitchAt (x, fs, 1.3);
-                report (mode, "hammer-on", std::abs (before - 57) < 0.3 && std::abs (after - 59) < 0.3,
-                        "pitch " + juce::String (before, 2) + " -> " + juce::String (after, 2) + " (A3 57, B3 59)");
+                // Seq and Arp keep re-striking, so a single probe can land on a pick transient
+                // (unvoiced): sample 0.1-0.5 s after the hammer-on and use the voiced frames. A strummed
+                // Seq pattern leaves only ~3 trackable frames; every one must be B3, none A3.
+                const double before = artic::pitchAt (x, fs, 0.7);
+                int onB = 0, onA = 0, voiced = 0;
+                for (double a = 1.1; a <= 1.5; a += 0.04)
+                {
+                    const double m = artic::pitchAt (x, fs, a);
+                    if (m <= 0) continue;
+                    ++voiced; onB += std::abs (m - 59) < 0.3; onA += std::abs (m - 57) < 0.3;
+                }
+                report (mode, "hammer-on", std::abs (before - 57) < 0.3 && voiced >= 3 && onB * 10 >= voiced * 8 && onA == 0,
+                        "pitch " + juce::String (before, 2) + " -> B3 in " + juce::String (onB) + "/" + juce::String (voiced) + " voiced frames, A3 in " + juce::String (onA) + " (A3 57, B3 59)");
             }
             // Natural harmonic: velocity 127 on E3 sounds the 12th-fret harmonic, quieter than a fretted E3.
             {

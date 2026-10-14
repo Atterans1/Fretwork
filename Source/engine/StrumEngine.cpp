@@ -153,7 +153,7 @@ int StrumEngine::stroke (bool up,
 
         const float gain = up ? upGain (s) : downGain (s);
         const float vel  = bnorm * p.strokeVol * gain
-                         * (1.f + rng.range (-0.12f * h, 0.12f * h));
+                         * (1.f + rng.range (-0.2f * h, 0.2f * h));
 
         StrumHit& h = out[written];
         h.delaySamples = tMs * sampleRate_ * 0.001;

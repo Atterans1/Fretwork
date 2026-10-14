@@ -594,7 +594,9 @@ FW_TEST ("modes: Strum strokes sound the held chord, Strum Time spreads it")
     const auto riseTime = [] (float strumMs)
     {
         fwtest::Plugin p;
-        p.set ("mode", 1.f).set ("strumTime", strumMs);
+        // Room and Humanization off: the reverb tail and random shift move the
+        // half-energy point and are not what this test measures.
+        p.set ("mode", 1.f).set ("strumTime", strumMs).set ("room", 0.f).set ("humanize", 0.f);
         p.chord (0.01, { 52, 56, 59, 64 }, 0.9f);
         p.keyOn (0.5, 28, 0.9f).keyOff (0.6, 28);           // Strum Down keyswitch
         const auto t = p.render (1.2);
@@ -1047,12 +1049,13 @@ FW_TEST ("undo: UI edits step back and forward; host automation is not recorded"
     auto& patches = p.processor().getPatches();
     EXPECT_MSG (! patches.canUndo(), "a fresh instance has nothing to undo");
 
+    const float roomDefault = real (p, "room");
     uiSet (p, "drive", 30.f);
     uiSet (p, "room", 50.f);
     EXPECT_MSG (patches.canUndo(), "UI edits are recorded");
 
     patches.undo();
-    EXPECT_MSG (std::fabs (real (p, "room") - 12.f) < 0.5f && std::fabs (real (p, "drive") - 30.f) < 0.5f, "undo reverts the last edit only");
+    EXPECT_MSG (std::fabs (real (p, "room") - roomDefault) < 0.5f && std::fabs (real (p, "drive") - 30.f) < 0.5f, "undo reverts the last edit only");
     patches.undo();
     EXPECT_MSG (std::fabs (real (p, "drive")) < 0.5f, "a second undo reverts the edit before it");
     patches.redo();

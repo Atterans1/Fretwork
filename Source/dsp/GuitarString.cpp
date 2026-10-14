@@ -268,7 +268,7 @@ void GuitarString::pluck (const StringEvent& e, int stringIdx)
 
     const double vel01 = clampd ((double) e.velocity, 0.0, 1.0);
     startBurst (clickBuf_, clickLen_, clickPos_,
-                (int) (0.0015 * fs_), info.clickAmp, true, 2500.0 + 3500.0 * vel01);
+                (int) (0.0025 * fs_), info.clickAmp, true, 1200.0 + 2300.0 * vel01);
 
     if (info.thumpAmp > 0.f)
         startBurst (thumpBuf_, thumpLen_, thumpPos_,

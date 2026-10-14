@@ -74,7 +74,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout createLayout()
     add (floatParam  (id::timeOffset, "Time",        -50.f, 50.f,  0.f,    "ms", 0.5f));
     add (floatParam  (id::separation, "Separation",    0.f, 100.f, 0.f,    "%",  0.5f));
     add (intParam    (id::velOffset,  "Velocity",     -64,  63,   0));
-    add (floatParam  (id::humanize,   "Humanization",  0.f, 100.f, 0.f,    "%",  0.5f));
+    add (floatParam  (id::humanize,   "Humanization",  0.f, 100.f, 40.f,    "%",  0.5f));
     add (choiceParam (id::quantize,   "Quantize",   { "1/8", "1/16", "1/32" }, 1));
     add (choiceParam (id::signature,  "Signature",  { "2/4", "3/4", "4/4", "5/4", "6/8", "7/8", "12/8", "8/4", "9/8" }, 2));
     add (floatParam  (id::bpm,        "Tempo",        40.f, 240.f, 100.f,  "BPM", 0.5f));
@@ -156,7 +156,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout createLayout()
     // actually sounded; the range reaches 1000 Hz so every old setting maps in.
     add (floatParam  (id::tone,       "Tone",     1000.f, 16000.f, 2811.f, "Hz", 0.5f));
     add (floatParam  (id::drive,      "Drive",    0.f, 100.f, 0.f,       "%",  0.5f));
-    add (floatParam  (id::room,       "Room",     0.f, 100.f, 12.f,      "%",  0.5f));
+    add (floatParam  (id::room,       "Room",     0.f, 100.f, 20.f,      "%",  0.5f));
     add (floatParam  (id::width,      "Width",    0.f, 100.f, 60.f,      "%",  0.5f));
     add (floatParam  (id::output,     "Output",   -24.f, 6.f,  -6.f,      "dB", 0.5f));
 
