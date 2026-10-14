@@ -270,3 +270,20 @@ FW_TEST ("mode matrix: bend follows the wheel in every mode")
         cell ("Bend", m, std::fabs (b - 2.f) < 0.05f, why);
     }
 }
+
+FW_TEST ("mode matrix: a hammered-over note is not lost after the pedal lets go")
+{
+    for (auto m : { fw::PlayMode::Strum, fw::PlayMode::Arp })
+    {
+        // Hold A3, hammer B3 (A3 is now covered), pedal down, lift both keys,
+        // pedal up (drops both), then play an A minor chord containing A3.
+        std::vector<In> s = { { 0.05, 0x90, w (57), 90 }, { 1.0, 0x90, w (59), 90 }, { 1.2, 0xB0, 64, 127 },
+                              { 1.4, 0x80, w (57), 0 }, { 1.4, 0x80, w (59), 0 }, { 1.6, 0xB0, 64, 0 } };
+        add (s, chord (2.0, { 57, 60, 64 }, 100));
+        sortIn (s);
+        const auto e = run (m, s, 3.0);
+        bool a3 = false;
+        for (auto& x : e) if (x.t >= 2.0 && x.e.type == fw::EventType::Pluck && std::lround (x.e.pitch) == 57) a3 = true;
+        cell ("Pedal clean-up", m, a3, a3 ? "A3 sounds in the next chord" : "A3 stayed covered and is silent");
+    }
+}

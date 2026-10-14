@@ -128,6 +128,11 @@ void PerformanceEngine::setParams (const PerfParams& p)
     {
         if (p_.mode == PlayMode::Arp) arp_.seed (rng_.next());
         if (p_.mode == PlayMode::Seq) seq_.reset();
+        // Finger state belongs to the chord modes' voicing: start clean.
+        std::fill (std::begin (coveredBy_), std::end (coveredBy_), 0);
+        std::fill (std::begin (legatoString_), std::end (legatoString_), 0);
+        frettedMask_ = 0;
+        autoStrumAt_ = -1;
         lastMode_ = (int) p_.mode;
     }
 
@@ -169,6 +174,14 @@ int PerformanceEngine::heldPitchOnString (int s) const
 
 void PerformanceEngine::refreshVoicing()
 {
+    // Drop chord-mode finger state for notes that are no longer held (pedal
+    // release, all-notes-off, or a covered note whose cover left): a stale
+    // entry would keep that pitch out of every later chord.
+    for (int q = 0; q < 128; ++q)
+        if ((coveredBy_[q] != 0 || legatoString_[q] != 0) && ! chord_.contains (q))
+            coveredBy_[q] = legatoString_[q] = 0;
+    for (int q = 0; q < 128; ++q)
+        if (coveredBy_[q] != 0 && ! chord_.contains (coveredBy_[q] - 1)) coveredBy_[q] = 0;
     int n = chord_.size() < ChordState::kCapacity ? chord_.size()
                                                         : ChordState::kCapacity;
 
@@ -434,6 +447,9 @@ void PerformanceEngine::noteOn (int pitch, float velocity, int offset)
     // is a hammer-on / slide on that string, not a new chord tone.
     if (p_.mode != PlayMode::Poly && ! alreadyHeld)
     {
+        // A new chord starts from no fretted strings (the let-go release reads
+        // the mask after the last note leaves, so it is cleared here, not there).
+        if (chord_.size() == 0) frettedMask_ = 0;
         refreshVoicing();
         if (chordModeLegato (pitch, velocity, nowAbs))
         {
