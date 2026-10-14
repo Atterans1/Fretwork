@@ -155,10 +155,6 @@ air resonance rings at about -75 dBFS for ~0.4 s T60. The 0.15 s reference was
 written for the string alone. Left as a recorded Fail.
 
 ### Cells not tested
-- **Standalone Windows**: Blocked. The capture records the shared speaker output, and
-  other apps (Discord, Edge, limusic) measured -11 to -35 dBFS in an idle
-  10 s capture, so a capture cannot prove what Fretwork played. Needs an
-  isolated output device (or other audio muted) to run.
 - **Standalone macOS, VST3 macOS**: Untested, no Mac available. Not inferred from CI.
 
 ### Swing and time signatures (2026-10-13)
@@ -166,3 +162,20 @@ written for the string alone. Left as a recorded Fail.
 - **Signatures** 8/4 and 9/8 were added after the existing seven (saved projects keep their meaning); a bar holds 32 and 18 sixteenths.
 - The metronome now clicks eighths in x/8 meters (6/8 gives six clicks a bar, not six quarters).
 - Dead notes now also stop the body resonance: dead-note decay 0.153 s -> 0.072 s, timing table 10/10 within the real-guitar ranges.
+
+### Standalone Windows (2026-10-13, code `41bbcf2`)
+Run with the other audio apps (Discord, Edge, limusic: 38 processes) suspended and
+resumed afterwards, as the user chose. The output was verified digitally silent
+(-240 dBFS) before and after. MIDI went through loopMIDI to the real
+Standalone, audio was captured from the speaker output by WASAPI loopback, and
+the same fixed criteria scored it.
+
+- Modes and factory presets: **22/22 Pass** (C4 +0.6 c in Poly; Seq 7 attacks; every preset holds C-E-G).
+- Articulations: **13/13 Pass** (strum down +24.0 ms, up -36.5 ms; palm mute -24.3 dB vs -5.9 open;
+  dead -42.2 dB; hammer-on A3 to B3 with no glide; pull-off -10.5 dB under a pick; harmonic -0.3 c / 0.0 c;
+  vibrato 7.8 c at 5.5 Hz; bend +192 c wheel-up, 51.90 on release).
+- A first attempt with a 4.5 s start-up wait read silent for most rows: a quiet output device
+  needs about 8 s before the first note is heard. That is the capture timing, not the plugin;
+  with a 9 s wait the full run was clean and 3/3 repeat takes of one row agreed within 0.8 c.
+- Not re-run on the Standalone: the chord-mode audio check and swing/signature rows (VST3 and unit tests only).
+- **macOS (Standalone and VST3): Untested, no Mac.**
