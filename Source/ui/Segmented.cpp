@@ -107,6 +107,12 @@ void Segmented::addFlag (juce::AudioProcessorValueTreeState& state, const char* 
     resized();
 }
 
+void Segmented::setSegmentTooltip (int index, const juce::String& text)
+{
+    if (index >= 0 && index < (int) segments.size())
+        segments[(size_t) index]->setTooltip (text);
+}
+
 void Segmented::refresh()
 {
     if (choiceParam != nullptr)

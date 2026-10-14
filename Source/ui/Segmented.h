@@ -28,6 +28,9 @@ public:
     /** A single two-state segment bound to an AudioParameterBool. */
     void addFlag (juce::AudioProcessorValueTreeState& state, const char* paramId);
 
+    /** Hover text for one segment (no-op if the index is out of range). */
+    void setSegmentTooltip (int index, const juce::String& text);
+
     /** Re-reads the bound parameter; call from the editor timer. */
     void refresh();
 

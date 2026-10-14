@@ -62,6 +62,7 @@ private:
 
     // ---- region F: articulation bar
     std::array<std::unique_ptr<fw::ui::Segmented>, 8> articulation;
+    juce::TooltipWindow tooltips { this, 600 };   // hover help (Import, Undo, Mode ...)
     std::unique_ptr<fw::ui::GuitarBodyView> guitarView;
 
     // ---- attachment-backed proxy for the eight slot buttons

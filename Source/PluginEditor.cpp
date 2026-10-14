@@ -241,6 +241,13 @@ PluginEditor::PluginEditor (FretworkAudioProcessor& p)
             articulation[(std::size_t) i]->addFlag (processor.getState(), fw::id::hold);
     }
 
+    // Mode group: how each mode plays without any setup.
+    articulation[5]->setSegmentTooltip (0, "Poly: each key plays its own string. Hammer-ons, slides, mutes and harmonics follow how you play.");
+    articulation[5]->setSegmentTooltip (1, "Strum: hold a chord and it strums. Keys 28-35 strum by hand instead.");
+    articulation[5]->setSegmentTooltip (2, "Arp: hold a chord and it arpeggiates.");
+    articulation[5]->setSegmentTooltip (3, "Seq: hold a chord and the pattern in the selected slot plays. Slots 1-4 hold Pop, Folk, Rock and Funk.");
+    articulation[7]->setSegmentTooltip (0, "Hold: keep the chord ringing after you let go of the keys.");
+
     setResizable (false, false);
     setSize (1120, 700);
 
