@@ -585,6 +585,86 @@ int main (int argc, char* argv[])
         return 2;
     }
 
+    // Chord modes from RENDERED audio: single-note articulations the engine
+    // routes through Strum / Arp / Seq, checked on the real VST3 output.
+    if (cmd == "modes-audio" && argc >= 3)
+    {
+        juce::AudioPluginFormatManager fm;
+        fm.addFormat (std::make_unique<juce::VST3PluginFormat>());
+        juce::OwnedArray<juce::PluginDescription> types;
+        fm.getFormat (0)->findAllTypesForFile (types, argv[2]);
+        if (types.isEmpty()) { std::printf ("no VST3 in %s\n", argv[2]); return 2; }
+        const double fs = 48000.0; const int blk = 512;
+        struct N { double t; bool on; int note; int vel; };
+        const auto render = [&] (const char* mode, const std::vector<N>& ev, double secs)
+        {
+            Row r; r.name = "x"; r.params.add (juce::String ("Mode=") + mode);
+            juce::String err;
+            auto p = fm.createPluginInstance (*types[0], fs, blk, err);
+            std::vector<float> mono;
+            if (p == nullptr) return mono;
+            p->enableAllBuses();
+            if (configure (*p, r).isNotEmpty()) return mono;
+            p->prepareToPlay (fs, blk);
+            const int total = (int) (secs * fs), chans = std::max (2, p->getTotalNumOutputChannels());
+            juce::AudioBuffer<float> b (chans, blk);
+            for (int pos = 0; pos < total; pos += blk)
+            {
+                const int n = std::min (blk, total - pos);
+                b.setSize (chans, n, false, false, true); b.clear();
+                juce::MidiBuffer m;
+                for (const auto& e : ev)
+                {
+                    const int at = (int) std::lround (e.t * fs);
+                    if (at >= pos && at < pos + n)
+                        m.addEvent (e.on ? juce::MidiMessage::noteOn (1, written (e.note), (juce::uint8) e.vel) : juce::MidiMessage::noteOff (1, written (e.note)), at - pos);
+                }
+                p->processBlock (b, m);
+                for (int i = 0; i < n; ++i) mono.push_back (0.5f * (b.getSample (0, i) + b.getSample (1, i)));
+            }
+            p->releaseResources();
+            return mono;
+        };
+        int fails = 0;
+        const auto report = [&] (const char* mode, const char* what, bool ok, const juce::String& ev)
+        {
+            std::printf ("%-6s %-10s %s  %s\n", mode, what, ok ? "PASS" : "FAIL", ev.toRawUTF8());
+            fails += ok ? 0 : 1;
+        };
+        for (const char* mode : { "Strum", "Arp", "Seq" })
+        {
+            // Hammer-on: hold A3, add B3 at 1.0 s: the pitch must step to B3 with no gap.
+            {
+                const auto x = render (mode, { { 0.1, true, 57, 90 }, { 1.0, true, 59, 90 } }, 2.0);
+                const double before = artic::pitchAt (x, fs, 0.7), after = artic::pitchAt (x, fs, 1.3);
+                report (mode, "hammer-on", std::abs (before - 57) < 0.3 && std::abs (after - 59) < 0.3,
+                        "pitch " + juce::String (before, 2) + " -> " + juce::String (after, 2) + " (A3 57, B3 59)");
+            }
+            // Natural harmonic: velocity 127 on E3 sounds the 12th-fret harmonic, quieter than a fretted E3.
+            {
+                const auto h = render (mode, { { 0.1, true, 52, 127 } }, 1.5), fr = render (mode, { { 0.1, true, 52, 126 } }, 1.5);
+                const double ph = artic::pitchAt (h, fs, 0.6), dBh = artic::db (artic::energy (h, fs, 0.4, 0.8)), dBf = artic::db (artic::energy (fr, fs, 0.4, 0.8));
+                report (mode, "harmonic", std::abs (ph - 52) < 0.2 && dBh < dBf - 3,
+                        "pitch " + juce::String (ph, 2) + " (E3 52), " + juce::String (dBh - dBf, 1) + " dB vs fretted");
+            }
+        }
+        // Palm mute, Strum mode (no retrigger): the muted chord chokes much faster than an open one.
+        {
+            const auto decay = [&] (int vel)
+            {
+                const auto x = render ("Strum", { { 0.1, true, 48, vel }, { 0.104, true, 55, vel }, { 0.108, true, 64, vel } }, 2.5);
+                double pk = -200, tp = 0;
+                for (double a = 0.1; a < 0.4; a += 0.002) { const double d = artic::db (artic::energy (x, fs, a, a + 0.01)); if (d > pk) { pk = d; tp = a; } }
+                for (double a = tp; a < 2.4; a += 0.002) if (artic::db (artic::energy (x, fs, a, a + 0.01)) < pk - 20) return a - tp;
+                return 9.0;
+            };
+            const double open = decay (70), palm = decay (35);
+            report ("Strum", "palm mute", palm < open * 0.6, "to -20 dB: palm-muted " + juce::String (palm, 2) + " s vs open " + juce::String (open, 2) + " s");
+        }
+        std::printf ("%d chord-mode audio checks failed\n", fails);
+        return fails == 0 ? 0 : 1;
+    }
+
     if (cmd == "vst3" && argc >= 4)
     {
         const juce::File plugin (argv[2]), outDir (argv[3]);
