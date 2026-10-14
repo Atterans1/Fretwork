@@ -201,3 +201,9 @@ deficit for the "thin" remark (94 % of energy under 500 Hz), so only Room was ra
 Not re-listened after the fixes: Legato and Pitch groups (still "Mostly, with flaws" from round 1; no details were given,
 and none of the changes touched them). The unit suite (2542 checks), VST3 rows (22/22), articulations (13/13) and
 timing (10/10) pass on the final build.
+
+### Listening test, Legato and Pitch re-listen (2026-10-14, Windows VST3, user)
+Round 1: "Mostly, with flaws". After round 2 the user named hammer-on/pull-off and more than one pitch item as off.
+Changes: louder hammer-on/pull-off body with a softer 1.8 kHz fret contact, bend smoothing 5 -> 25 ms, harmonic fundamental level
+raised, automatic vibrato depth 0.5 -> 0.3, sustain lengthened (see PIANOTEQ_STUDY.md), acoustic stereo spread. Re-rendered from
+the committed build (4c8273d plus e15274d). Rating: Legato Pass, Pitch Pass. The vibrato gate moved from >0.30 to >0.25 with the depth.
