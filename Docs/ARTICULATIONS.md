@@ -160,3 +160,9 @@ written for the string alone. Left as a recorded Fail.
   10 s capture, so a capture cannot prove what Fretwork played. Needs an
   isolated output device (or other audio muted) to run.
 - **Standalone macOS, VST3 macOS**: Untested, no Mac available. Not inferred from CI.
+
+### Swing and time signatures (2026-10-13)
+- **Swing** (the knob formerly "Arp Swing", same parameter id) now delays every second step of the Arpeggiator **and the Sequencer** by that share of a step (0-60 %). Measured at 40 %: odd steps late by 60 ms at 100 BPM, in 3/4, 4/4, 6/8, 8/4 and 9/8.
+- **Signatures** 8/4 and 9/8 were added after the existing seven (saved projects keep their meaning); a bar holds 32 and 18 sixteenths.
+- The metronome now clicks eighths in x/8 meters (6/8 gives six clicks a bar, not six quarters).
+- Dead notes now also stop the body resonance: dead-note decay 0.153 s -> 0.072 s, timing table 10/10 within the real-guitar ranges.

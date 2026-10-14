@@ -51,7 +51,8 @@ public:
                  Articulation art,
                  Rng& rng,
                  StrumHit* out,
-                 int cap);
+                 int cap,
+                 float swing01 = 0.f);
 
     // Row to string index for rows 6..11, -1 for stroke rows and out of range.
     static int rowToString (int row) noexcept

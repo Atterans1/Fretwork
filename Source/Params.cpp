@@ -76,7 +76,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout createLayout()
     add (intParam    (id::velOffset,  "Velocity",     -64,  63,   0));
     add (floatParam  (id::humanize,   "Humanization",  0.f, 100.f, 0.f,    "%",  0.5f));
     add (choiceParam (id::quantize,   "Quantize",   { "1/8", "1/16", "1/32" }, 1));
-    add (choiceParam (id::signature,  "Signature",  { "2/4", "3/4", "4/4", "5/4", "6/8", "7/8", "12/8" }, 2));
+    add (choiceParam (id::signature,  "Signature",  { "2/4", "3/4", "4/4", "5/4", "6/8", "7/8", "12/8", "8/4", "9/8" }, 2));
     add (floatParam  (id::bpm,        "Tempo",        40.f, 240.f, 100.f,  "BPM", 0.5f));
     add (intParam    (id::transpose,  "Transpose",    -12, 12,   0));
     add (boolParam   (id::hold,       "Hold",         false));
@@ -117,7 +117,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout createLayout()
     add (choiceParam (id::arpOrder,   "Arp Order",    { "Up", "Down", "UpDown", "Random" }, 0));
     add (choiceParam (id::arpRate,    "Arp Rate",     { "1/4", "1/8", "1/8T", "1/16", "1/16T", "1/32" }, 3));
     add (floatParam  (id::arpGate,    "Arp Gate",     10.f, 100.f, 80.f,  "%",  0.5f));
-    add (floatParam  (id::arpSwing,   "Arp Swing",    0.f,  60.f,  0.f,   "%",  0.5f));
+    add (floatParam  (id::arpSwing,   "Swing",        0.f,  60.f,  0.f,   "%",  0.5f));
 
     // -------------------------------------------------------------- body/tuning
     add (choiceParam (id::body,       "Body",       { "Dreadnought Steel", "Classical Nylon", "Solid Electric", "Semi-Hollow" }, 0));

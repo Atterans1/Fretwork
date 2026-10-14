@@ -15,11 +15,11 @@ class Clock
 public:
     // Param indices, matching createLayout() exactly.
     enum Quantize  { Eighth = 0, Sixteenth, ThirtySecond, kNumQuantize };
-    enum Signature { Sig2x4 = 0, Sig3x4, Sig4x4, Sig5x4, Sig6x8, Sig7x8, Sig12x8, kNumSignature };
+    enum Signature { Sig2x4 = 0, Sig3x4, Sig4x4, Sig5x4, Sig6x8, Sig7x8, Sig12x8, Sig8x4, Sig9x8, kNumSignature };   // appended: saved indices keep their meaning
 
     static constexpr double kStepsPerQuarter[kNumQuantize]  = { 2.0, 4.0, 8.0 };
-    static constexpr int    kSignatureNum[kNumSignature]     = { 2, 3, 4, 5, 6, 7, 12 };
-    static constexpr int    kSignatureDen[kNumSignature]     = { 4, 4, 4, 4, 8, 8,  8 };
+    static constexpr int    kSignatureNum[kNumSignature]     = { 2, 3, 4, 5, 6, 7, 12, 8, 9 };
+    static constexpr int    kSignatureDen[kNumSignature]     = { 4, 4, 4, 4, 8, 8,  8, 4, 8 };
     static constexpr int    kMaxStepsPerBar                  = 32;
 
     void prepare (double sampleRate) noexcept;

@@ -1031,7 +1031,8 @@ void PerformanceEngine::emitArpAndSeq (double ppqStart, double ppqEnd)
                                 (double) clock_.stepsPerQuarterInt(),
                                 clock_.stepsPerBar(),
                                 &p_.seqSlots[slot], v, sp, strum_, p_.open,
-                                p_.release, art, rng_, scratch_, kMaxHits);
+                                p_.release, art, rng_, scratch_, kMaxHits,
+                                std::clamp (p_.arpSwing, 0.f, 60.f) * 0.01f);
 
     for (int i = 0; i < n; ++i)
         pushHit (scratch_[i], absCursor_ + (long long) scratch_[i].delaySamples);
@@ -1116,9 +1117,12 @@ void PerformanceEngine::pollMetronome (int numSamples, ClickEvent* clicks, int& 
                   ? lastSignature_ : 0;
     const int beatsPerBar = Clock::kSignatureNum[sig];
 
-    const double firstK = std::max (1.0, std::ceil (blockStart / spq));
+    // One click per beat of the signature: quarter notes in x/4, eighths in x/8
+    // (6/8 clicks six times a bar, not six quarters).
+    const double beatSamples = spq * 4.0 / (double) Clock::kSignatureDen[sig];
+    const double firstK = std::max (1.0, std::ceil (blockStart / beatSamples));
 
-    for (double beat = firstK * spq; beat < blockEnd && numClicks < kMaxClicks; beat += spq)
+    for (double beat = firstK * beatSamples; beat < blockEnd && numClicks < kMaxClicks; beat += beatSamples)
     {
         int off = (int) (beat - blockStart);
         if (off < 0) off = 0;

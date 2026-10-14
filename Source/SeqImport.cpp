@@ -12,8 +12,8 @@ int seqStepsPerQuarter (int quantizeIndex) noexcept
 
 int seqStepsPerBar (int quantizeIndex, int signatureIndex) noexcept
 {
-    static constexpr int kSignatures[7][2] = { { 2, 4 }, { 3, 4 }, { 4, 4 }, { 5, 4 }, { 6, 8 }, { 7, 8 }, { 12, 8 } };
-    const auto& sig = kSignatures[juce::jlimit (0, 6, signatureIndex)];
+    static constexpr int kSignatures[9][2] = { { 2, 4 }, { 3, 4 }, { 4, 4 }, { 5, 4 }, { 6, 8 }, { 7, 8 }, { 12, 8 }, { 8, 4 }, { 9, 8 } };
+    const auto& sig = kSignatures[juce::jlimit (0, 8, signatureIndex)];
     return juce::jmax (1, (int) std::lround ((double) sig[0] * 4.0 / (double) sig[1]
                                              * (double) seqStepsPerQuarter (quantizeIndex)));
 }

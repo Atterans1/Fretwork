@@ -7,6 +7,7 @@
 #include "Harness.h"
 #include "engine/PerformanceEngine.h"
 #include "SeqStore.h"
+#include "engine/Clock.h"
 
 #include <functional>
 #include <string>
@@ -310,4 +311,69 @@ FW_TEST ("articulation: a dead note's body ring stops, but never fades a ringing
     // chord may ring louder, but it must never be FADED by the dead-note body fade.
     EXPECT_MSG (rb > ra - 1.5, "a dead note does not fade the ringing chord");
     (void) lvl;
+}
+
+FW_TEST ("timing: Seq swing delays the off-beat steps, in every signature")
+{
+    // Straight 16ths in slot 0 (one down-stroke per step), 100 BPM: a step is 0.15 s.
+    struct Sig { int index, num, den; const char* name; };
+    for (const Sig sg : { Sig { 1, 3, 4, "3/4" }, Sig { 2, 4, 4, "4/4" }, Sig { 4, 6, 8, "6/8" }, Sig { 7, 8, 4, "8/4" }, Sig { 8, 9, 8, "9/8" } })
+        for (const float swing : { 0.f, 40.f })
+        {
+            static fw::SeqPattern slots[fw::kNumSeqSlots];
+            slots[0] = {};
+            for (int i = 0; i < 8; ++i) slots[0].notes[(size_t) slots[0].count++] = { 0, (std::uint8_t) i, 1, 100 };   // steps 0..7
+            fw::PerformanceEngine perf; perf.prepare (kFs);
+            fw::PerfParams p {}; p.mode = fw::PlayMode::Seq; p.seqPlay = true; p.seqSlots = slots; p.seqSlot = 0;
+            p.bpm = 100.f; p.signature = sg.index; p.arpSwing = swing; p.quantize = 1;
+            perf.setParams (p);
+            fw::StringEvent ev[256]; fw::ClickEvent ck[8]; int nc = 0;
+            std::vector<fw::MidiMsg> in;
+            for (int n : { 60, 64, 67 }) in.push_back ({ 0, 0x90, w (n), 100 });
+            std::vector<double> at;
+            for (int b = 0; b < 200; ++b)
+            {
+                const int n = perf.process (b == 0 ? in.data() : nullptr, b == 0 ? 3 : 0, fw::Transport {}, kBlock, ev, 256, ck, nc);
+                for (int i = 0; i < n; ++i)
+                    if (ev[i].type == fw::EventType::Pluck)
+                    {
+                        const double t = (b * kBlock + ev[i].sampleOffset) / kFs;
+                        if (at.empty() || t - at.back() > 0.08) at.push_back (t);
+                    }
+            }
+            const double step = 60.0 / 100.0 / 4.0;
+            bool ok = at.size() >= 6;
+            double lateBy = 0;
+            for (size_t i = 0; ok && i < 6; ++i)
+            {
+                const double want = (double) i * step + ((i & 1) ? swing * 0.01 * step : 0.0);
+                if (std::fabs (at[i] - at[0] - want) > 0.012) ok = false;
+                if (i == 1) lateBy = at[1] - at[0] - step;
+            }
+            char why[96]; std::snprintf (why, sizeof why, "%s swing %.0f%%: odd steps late by %.0f ms (want %.0f)", sg.name, swing, lateBy * 1000, swing * 0.01 * step * 1000);
+            std::printf ("    %s\n", why);
+            EXPECT_MSG (ok, why);
+        }
+}
+
+FW_TEST ("timing: every signature gives the right bar length and metronome beats")
+{
+    struct Sig { int index; int steps16; int clicksPerBar; const char* name; };
+    for (const Sig sg : { Sig { 1, 12, 3, "3/4" }, Sig { 4, 12, 6, "6/8" }, Sig { 7, 32, 8, "8/4" }, Sig { 8, 18, 9, "9/8" } })
+    {
+        fw::Clock c; c.prepare (kFs); c.setQuantize (1); c.setSignature (sg.index);
+        char why[96]; std::snprintf (why, sizeof why, "%s has %d sixteenths per bar (got %d)", sg.name, sg.steps16, c.stepsPerBar());
+        EXPECT_MSG (c.stepsPerBar() == sg.steps16, why);
+
+        fwtest::Plugin p;
+        p.set ("metronome", 1.f).set ("bpm", 120.f).set ("signature", (float) sg.index);
+        const auto t = p.render (4.0);
+        // Click count over one bar: eighths in x/8, quarters in x/4.
+        const double barSec = (double) sg.steps16 * 60.0 / 120.0 / 4.0;
+        int clicks = 0; double last = -1;
+        for (double a = 0.0; a < barSec - 0.02; a += 0.002) if (t.rms (a, a + 0.004) > 0.002 && a - last > 0.05) { ++clicks; last = a; }
+        std::snprintf (why, sizeof why, "%s: %d clicks in one bar (want %d)", sg.name, clicks, sg.clicksPerBar);
+        std::printf ("    %s\n", why);
+        EXPECT_MSG (clicks == sg.clicksPerBar || clicks == sg.clicksPerBar - 1, why);   // the bar's first click is at beat 1 = t > 0
+    }
 }

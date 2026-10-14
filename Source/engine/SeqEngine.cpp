@@ -43,7 +43,8 @@ int SeqEngine::advance (double ppqStart,
                         Articulation art,
                         Rng& rng,
                         StrumHit* out,
-                        int cap)
+                        int cap,
+                        float swing01)
 {
     if (out == nullptr || cap <= 0) return 0;
     if (pattern == nullptr || pattern->count <= 0) { currentStep_ = -1; return 0; }
@@ -106,7 +107,10 @@ int SeqEngine::advance (double ppqStart,
             const SeqNote& cell = pattern->notes[(std::size_t) n];
             if ((int) cell.start != slot) continue;
 
-            const double delay = ((double) step / stepsPerQuarter - ppqStart) * spq;
+            // Swing: every second step lands late by swing01 of a step, the way a
+            // drummer or guitarist pushes the off-beat (same rule as the arpeggiator).
+            const double swing = (step & 1LL) ? (double) swing01 * spq / stepsPerQuarter : 0.0;
+            const double delay = ((double) step / stepsPerQuarter - ppqStart) * spq + swing;
             const int    vel127 = (int) cell.vel;
 
             const int strokeRow = rowToStroke ((int) cell.row);
