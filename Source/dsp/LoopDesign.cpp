@@ -35,7 +35,7 @@ double baseT60 (int stringIndex) noexcept
 
 double materialScale (int material) noexcept
 {
-    static constexpr double s[4] = { 1.0, 1.1, 0.6, 0.9 };
+    static constexpr double s[4] = { 1.0, 1.1, 0.9, 0.9 };   // nylon 0.6 -> 0.9: it rang 3x shorter than steel
     return s[clampi (material, 0, 3)];
 }
 
@@ -47,7 +47,7 @@ double materialInharm (int material) noexcept
 
 double harmonicRatio (int material) noexcept
 {
-    static constexpr double r[4] = { 0.12, 0.12, 0.06, 0.05 };
+    static constexpr double r[4] = { 0.12, 0.12, 0.10, 0.05 };
     return r[clampi (material, 0, 3)];
 }
 

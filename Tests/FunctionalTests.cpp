@@ -604,10 +604,12 @@ FW_TEST ("modes: Strum strokes sound the held chord, Strum Time spreads it")
         // moves it later whatever the waveforms do; peak-based rise times do
         // not, because each string's own attack is nearly as loud as the sum.
         double total = 0;
-        for (size_t k = t.at (0.5); k < t.at (0.9); ++k) total += (double) t.left[k] * t.left[k];
+        // Mid channel: the acoustic stereo spread moves strings between L and R, not the total.
+        const auto mid = [&] (size_t k) { const double m = 0.5 * ((double) t.left[k] + t.right[k]); return m * m; };
+        for (size_t k = t.at (0.5); k < t.at (0.9); ++k) total += mid (k);
         double acc = 0;
         size_t k = t.at (0.5);
-        for (; k < t.at (0.9) && acc < 0.5 * total; ++k) acc += (double) t.left[k] * t.left[k];
+        for (; k < t.at (0.9) && acc < 0.5 * total; ++k) acc += mid (k);
         return std::make_pair ((double) (k - t.at (0.5)) / t.fs, t.rms (0.5, 0.9));
     };
     const auto fast = riseTime (0.f), slow = riseTime (200.f);

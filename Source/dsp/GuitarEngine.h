@@ -157,6 +157,9 @@ private:
     // Scratch, sized once in prepare().
     std::vector<std::vector<float>> debug_;
     std::vector<float> bridgeSum_ {};
+    std::vector<float> bridgeSide_ {};   // string-position difference (L-R pan weighted), acoustic stereo
+    float sideLp_ = 0.f;                 // one-pole state: the side signal is high-passed ~500 Hz
+    float sideCoef_ = 0.f;
     std::vector<float> piezo_     {};
     std::vector<float> mic_       {};
     std::vector<float> el_        {};

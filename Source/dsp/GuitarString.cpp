@@ -40,7 +40,7 @@ void GuitarString::prepare (double sampleRate)
     design_.lpG    = 0.99;
 
     // 5 ms one-pole smoothing on the bend/vibrato offset.
-    semiIncCoeff_ = (float) (1.0 - std::exp (-1.0 / (fs_ * 0.005)));
+    semiIncCoeff_ = (float) (1.0 - std::exp (-1.0 / (fs_ * 0.025)));   // 25 ms: a wheel bend glides, 5 ms stepped
 
     prepared_ = true;
     reset();
@@ -254,8 +254,8 @@ void GuitarString::pluck (const StringEvent& e, int stringIdx)
     const bool harmonic = e.harmonicN >= 2;
     if (harmonic)
     {
-        const float a = (float) (1.0 - std::exp (-6.283185307179586 * 1.5 * baseF0_ / fs_));
-        for (int pass = 0; pass < 3; ++pass)
+        const float a = (float) (1.0 - std::exp (-6.283185307179586 * 2.2 * baseF0_ / fs_));
+        for (int pass = 0; pass < 2; ++pass)
         {
             float y = 0.f;
             for (int i = 0; i < excite_.length(); ++i) { y += (excite_[i] - y) * a; excite_[i] = y; }
@@ -264,7 +264,7 @@ void GuitarString::pluck (const StringEvent& e, int stringIdx)
     }
 
     // Superpose rather than replace, so re-plucking a ringing string works.
-    inject (harmonic ? 0.56f : 1.f);
+    inject (harmonic ? 1.0f : 1.f);
 
     const double vel01 = clampd ((double) e.velocity, 0.0, 1.0);
     startBurst (clickBuf_, clickLen_, clickPos_,
@@ -307,7 +307,7 @@ void GuitarString::legato (const StringEvent& e)
     // as a light pick (about -6 to -12 dB). At 0.25 the pulled-off note sat
     // ~25 dB under a picked one and vanished in a mix.
     const bool rising = newF0 > baseF0_;
-    const float scale = rising ? 0.35f : 0.6f;
+    const float scale = rising ? 0.55f : 0.9f;
 
     ExcitationRequest req {};
     req.f0          = baseF0_;
@@ -328,7 +328,7 @@ void GuitarString::legato (const StringEvent& e)
 
     if (info.fretNoiseAmp > 0.f)
         startBurst (fretBuf_, fretLen_, fretPos_,
-                    (int) (0.008 * fs_), info.fretNoiseAmp, true, 4000.0);
+                    (int) (0.012 * fs_), info.fretNoiseAmp, true, 1800.0);   // soft finger contact, not a pick-like 4 kHz tick
 }
 
 void GuitarString::release (float releaseSec)

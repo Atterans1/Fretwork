@@ -45,6 +45,9 @@ void GuitarEngine::prepare (double sampleRate, int maxBlockSize)
 
     debug_.assign (kNumStrings, std::vector<float> ((std::size_t) maxBlock, 0.f));
     bridgeSum_.assign ((std::size_t) maxBlock, 0.f);
+    bridgeSide_.assign((std::size_t) maxBlock, 0.f);
+    sideLp_ = 0.f;
+    sideCoef_ = (float) (1.0 - std::exp (-6.283185307179586 * 500.0 / fs_));
     piezo_.assign     ((std::size_t) maxBlock, 0.f);
     mic_.assign       ((std::size_t) maxBlock, 0.f);
     el_.assign        ((std::size_t) maxBlock, 0.f);
@@ -306,7 +309,7 @@ void GuitarEngine::render (float* left, float* right, int n)
         // extra decay on E3, ~-2 dB/s at the default 30%.
         const float couple = sSympathetic_.value * 0.004f;
 
-        float el = 0.f, er = 0.f, bridgeSum = 0.f, mixSum = 0.f;
+        float el = 0.f, er = 0.f, bridgeSum = 0.f, mixSum = 0.f, side = 0.f;
 
         for (int s = 0; s < kNumStrings; ++s)
         {
@@ -329,6 +332,7 @@ void GuitarEngine::render (float* left, float* right, int n)
 
             mixSum += b;
             bridgeSum += b;
+            side += b * (panL_[(std::size_t) s] - panR_[(std::size_t) s]);
 
             debug_[(std::size_t) s][(std::size_t) i] = b;
 
@@ -342,6 +346,7 @@ void GuitarEngine::render (float* left, float* right, int n)
         el_[(std::size_t) i] = el * electricLevel_;
         er_[(std::size_t) i] = er * electricLevel_;
         bridgeSum_[(std::size_t) i] = bridgeSum;
+        bridgeSide_[(std::size_t) i] = side;
     }
 
     // Body modes are a parallel bank, so they work on the summed block.
@@ -363,8 +368,15 @@ void GuitarEngine::render (float* left, float* right, int n)
         const float acoustic = ((1.f - mb) * 0.6f * piezo_[(std::size_t) i]
                               + mb * mic_[(std::size_t) i]) * acousticLevel_ * bodyFade_;
 
-        left[i]  = el_[(std::size_t) i] + acoustic;
-        right[i] = er_[(std::size_t) i] + acoustic;
+        // A recorded acoustic is stereo: each string sits at its own position, so
+        // the high part of the string difference goes L-R (Width scales it). The
+        // body stays mono underneath, so the sum is unchanged.
+        const float d = bridgeSide_[(std::size_t) i];
+        sideLp_ += (d - sideLp_) * sideCoef_;
+        const float spread = (d - sideLp_) * 0.9f * sWidth_.value * acousticLevel_ * (1.f - mb * 0.3f);
+
+        left[i]  = el_[(std::size_t) i] + acoustic + spread;
+        right[i] = er_[(std::size_t) i] + acoustic - spread;
     }
 
     // Pick scrape, string ticks and squeaks join the instrument before the amp.

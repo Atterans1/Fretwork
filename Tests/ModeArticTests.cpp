@@ -202,7 +202,7 @@ FW_TEST ("mode matrix: automatic vibrato on a held note in every mode")
             if (b == 150) late = perf.ui().modWheel;    // 1.5 s
         }
         char why[64]; std::snprintf (why, sizeof why, "depth %.2f at 0.4 s, %.2f at 1.5 s", early, late);
-        cell ("Vibrato", m, early < 0.05f && late > 0.3f, why);
+        cell ("Vibrato", m, early < 0.05f && late > 0.25f, why);
     }
 }
 

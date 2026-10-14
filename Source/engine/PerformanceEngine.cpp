@@ -31,7 +31,7 @@ namespace {
     constexpr int    kShiftMinFrets   = 5;
     constexpr double kAutoVibDelaySec = 0.6;
     constexpr double kAutoVibRiseSec  = 0.4;
-    constexpr double kAutoVibDepth    = 0.5;
+    constexpr double kAutoVibDepth    = 0.3;
     // Strum mode: note-ons within kChordGatherSec are one chord, strummed down
     // once; skipped while stroke keys were used in the last kStrokeKeyHoldSec.
     constexpr double kChordGatherSec   = 0.020;

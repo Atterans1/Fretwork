@@ -142,7 +142,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout createLayout()
     add (floatParam  (id::pickHard,   "Pick Hardness", 0.f, 100.f, 50.f, "%", 0.5f));
     add (floatParam  (id::sympathetic,"Sympathetic", 0.f, 100.f, 30.f,   "%", 0.5f));
     add (floatParam  (id::fretNoise,  "Fret Noise",  0.f, 100.f, 30.f,   "%", 0.5f));
-    add (floatParam  (id::sustain,    "Sustain",     25.f, 200.f, 100.f, "%", 0.5f));
+    add (floatParam  (id::sustain,    "Sustain",     25.f, 200.f, 130.f, "%", 0.5f));
 
     // ----------------------------------------------------------------- pickups
     add (choiceParam (id::pickupType, "Pickup Type", { "Single-Coil", "Humbucker", "P90" }, 0));
