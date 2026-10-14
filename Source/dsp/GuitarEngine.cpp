@@ -32,6 +32,8 @@ void GuitarEngine::prepare (double sampleRate, int maxBlockSize)
 {
     fs_ = sampleRate > 0.0 ? sampleRate : 44100.0;
     const int maxBlock = maxBlockSize > 0 ? maxBlockSize : 512;
+    deadFadeCoef_ = (float) (1.0 - std::exp (-1.0 / (0.012 * fs_)));
+    deadOnly_ = false; sinceLive_ = 1000000000LL; sinceDead_ = 0; bodyFade_ = 1.f;
 
     for (auto& s : strings_) s.prepare (fs_);
 
@@ -176,6 +178,16 @@ void GuitarEngine::handle (const StringEvent& e)
     switch (e.type)
     {
         case EventType::Pluck:
+            if (e.art.damp == Damping::Dead)
+            {
+                if (sinceLive_ > (long long) (2.0 * fs_)) deadOnly_ = true;
+                sinceDead_ = 0;
+            }
+            else
+            {
+                deadOnly_ = false;
+                sinceLive_ = 0;
+            }
             strings_[(std::size_t) s].pluck (e, s);
             // Bend transition: the note is picked Bend Amount below and bent
             // up INTO the played pitch, so it always ends in tune.
@@ -343,8 +355,13 @@ void GuitarEngine::render (float* left, float* right, int n)
 
     for (int i = 0; i < n; ++i)
     {
+        // Dead-note body fade: hold 60 ms (the thump), then ~12 ms time constant.
+        ++sinceLive_; ++sinceDead_;
+        const bool fading = deadOnly_ && sinceDead_ > (long long) (0.060 * fs_);
+        bodyFade_ += ((fading ? 0.f : 1.f) - bodyFade_) * (fading ? deadFadeCoef_ : 0.01f);
+
         const float acoustic = ((1.f - mb) * 0.6f * piezo_[(std::size_t) i]
-                              + mb * mic_[(std::size_t) i]) * acousticLevel_;
+                              + mb * mic_[(std::size_t) i]) * acousticLevel_ * bodyFade_;
 
         left[i]  = el_[(std::size_t) i] + acoustic;
         right[i] = er_[(std::size_t) i] + acoustic;

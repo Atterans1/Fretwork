@@ -143,6 +143,15 @@ private:
     float prevBridgeSum_ = 0.f;
 
     float electricLevel_ = 1.f;
+    // A dead (fully damped) note leaves the body resonance ringing long after
+    // the string has stopped; a hand on the strings stops that too. While only
+    // dead notes have sounded, the acoustic body is faded after kDeadHoldSec.
+    bool  deadOnly_       = false;
+    long long sinceLive_  = 1000000000LL;   // samples since a non-dead pluck
+    long long sinceDead_  = 0;              // samples since the last dead pluck
+    float bodyFade_       = 1.f;
+    float deadFadeCoef_   = 0.002f;         // set in prepare: 1 - exp(-1 / (0.012 fs))
+
     float acousticLevel_ = 1.f;
 
     // Scratch, sized once in prepare().

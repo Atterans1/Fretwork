@@ -287,3 +287,27 @@ FW_TEST ("mode matrix: a hammered-over note is not lost after the pedal lets go"
         cell ("Pedal clean-up", m, a3, a3 ? "A3 sounds in the next chord" : "A3 stayed covered and is silent");
     }
 }
+
+FW_TEST ("articulation: a dead note's body ring stops, but never fades a ringing open chord")
+{
+    const auto lvl = [] (fwtest::Plugin& p, double a, double b) { return 20 * std::log10 (p.render (b).rms (a, b) + 1e-9); };
+    // A dead note alone: well down 0.4 s later.
+    fwtest::Plugin d; d.set ("room", 0.f); d.noteOn (0.1, 40, 12.f / 127.f);
+    const auto td = d.render (1.0);
+    const double deadTail = 20 * std::log10 (td.rms (0.5, 0.6) + 1e-9), deadHead = 20 * std::log10 (td.rms (0.1, 0.15) + 1e-9);
+    std::printf ("    dead note: %.1f dBFS at 0-50 ms, %.1f dBFS at 0.4 s\n", deadHead, deadTail);
+    EXPECT_MSG (deadTail < deadHead - 40, "the dead note is gone by 0.4 s");
+
+    // An open chord with a dead note added keeps ringing at the same level.
+    fwtest::Plugin a, b; a.set ("room", 0.f); b.set ("room", 0.f);
+    a.chord (0.1, { 52, 59, 64 }, 0.8f, 0.01);
+    b.chord (0.1, { 52, 59, 64 }, 0.8f, 0.01);
+    b.noteOn (0.4, 40, 12.f / 127.f);
+    const auto ta = a.render (1.2), tb = b.render (1.2);
+    const double ra = 20 * std::log10 (ta.rms (0.9, 1.1) + 1e-9), rb = 20 * std::log10 (tb.rms (0.9, 1.1) + 1e-9);
+    std::printf ("    open chord ring at 0.9 s: %.1f dBFS alone, %.1f dBFS with a dead note added\n", ra, rb);
+    // One-sided: the dead note re-voices the chord (it takes the low string), so the
+    // chord may ring louder, but it must never be FADED by the dead-note body fade.
+    EXPECT_MSG (rb > ra - 1.5, "a dead note does not fade the ringing chord");
+    (void) lvl;
+}
