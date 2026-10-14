@@ -179,3 +179,25 @@ the same fixed criteria scored it.
   with a 9 s wait the full run was clean and 3/3 repeat takes of one row agreed within 0.8 c.
 - Not re-run on the Standalone: the chord-mode audio check and swing/signature rows (VST3 and unit tests only).
 - **macOS (Standalone and VST3): Untested, no Mac.**
+
+### Listening test (2026-10-13, Windows VST3, user)
+Clips rendered from the VST3 and played through the speakers with a spoken label before each;
+the user rated each group. Tester for the clips: Claude; listener: the user. macOS not tested.
+
+| Group | Round 1 | Round 2 | Round 3 |
+|---|---|---|---|
+| Strums and mutes (strum down/up, palm mute, dead note) | Mostly, with flaws | Yes, convincing | |
+| Legato (slide, hammer-on, pull-off) | Mostly, with flaws | not replayed | |
+| Pitch (bend, harmonics, vibrato) | Mostly, with flaws | not replayed | |
+| Noises (fret noise, squeak, pick attack) | Sounds fake | Better but still fake | **Natural now** |
+| Play modes (Poly, Strum, Arp, Seq) | No, not musical (stiff, thin) | Better, still stiff | **Yes, musical** |
+| Presets (pop, rock, folk) | Mostly, some are off | Yes, usable | |
+
+Changes made from the listening: softer pick click and darker strum scrape; Humanization default 40 %
+and Room 20 %; fret noise as a short low rustle; squeak as a rough stick-slip band; wider Strum and
+Arp timing with Arp beat accents; Poly chords get a 0-6 ms spread. Spectrum measurements showed no low-end
+deficit for the "thin" remark (94 % of energy under 500 Hz), so only Room was raised; the user later rated the modes musical.
+
+Not re-listened after the fixes: Legato and Pitch groups (still "Mostly, with flaws" from round 1; no details were given,
+and none of the changes touched them). The unit suite (2542 checks), VST3 rows (22/22), articulations (13/13) and
+timing (10/10) pass on the final build.
