@@ -268,6 +268,149 @@ int main (int argc, char* argv[])
         return 2;
     }
 
+    // Measures response times from real VST3 renders and scores them against
+    // the fixed real-guitar ranges in artic::kTiming.
+    if (cmd == "timing" && argc >= 3)
+    {
+        juce::AudioPluginFormatManager fm;
+        fm.addFormat (std::make_unique<juce::VST3PluginFormat>());
+        juce::OwnedArray<juce::PluginDescription> types;
+        fm.getFormat (0)->findAllTypesForFile (types, argv[2]);
+        if (types.isEmpty()) { std::printf ("no VST3 in %s\n", argv[2]); return 2; }
+        const double fs = 48000.0; const int blk = 512;
+
+        // Renders plain MIDI (sounding pitches) through a fresh instance, mono.
+        const auto render = [&] (const std::vector<artic::AEv>& evs, double secs)
+        {
+            juce::String err;
+            auto p = fm.createPluginInstance (*types[0], fs, blk, err);
+            std::vector<float> mono;
+            if (p == nullptr) return mono;
+            p->enableAllBuses(); p->prepareToPlay (fs, blk);
+            const int total = (int) (secs * fs), chans = std::max (2, p->getTotalNumOutputChannels());
+            juce::AudioBuffer<float> b (chans, blk);
+            for (int pos = 0; pos < total; pos += blk)
+            {
+                const int n = std::min (blk, total - pos);
+                b.setSize (chans, n, false, false, true); b.clear();
+                juce::MidiBuffer m;
+                for (const auto& e : evs)
+                {
+                    const int at = (int) std::lround (e.t * fs);
+                    if (at < pos || at >= pos + n) continue;
+                    if (e.kind == 1) m.addEvent (juce::MidiMessage::noteOn (1, written (e.a), (juce::uint8) e.b), at - pos);
+                    else if (e.kind == 0) m.addEvent (juce::MidiMessage::noteOff (1, written (e.a)), at - pos);
+                    else m.addEvent (juce::MidiMessage::pitchWheel (1, e.a), at - pos);
+                }
+                p->processBlock (b, m);
+                for (int i = 0; i < n; ++i) mono.push_back (0.5f * (b.getSample (0, i) + b.getSample (1, i)));
+            }
+            p->releaseResources();
+            return mono;
+        };
+        // 1 ms RMS envelope in dB from t0.
+        const auto envDb = [&] (const std::vector<float>& x, double t0, double t1)
+        {
+            std::vector<double> e;
+            const int hop = (int) (0.001 * fs);
+            for (size_t i = (size_t) (t0 * fs); i + (size_t) hop < x.size() && i < (size_t) (t1 * fs); i += (size_t) hop)
+            {
+                double a = 0; for (int k = 0; k < hop; ++k) a += (double) x[i + (size_t) k] * x[i + (size_t) k];
+                e.push_back (10 * std::log10 (a / hop + 1e-24));
+            }
+            return e;
+        };
+        // Decay envelope: 10 ms RMS (longer than a period at guitar pitches) every 1 ms.
+        // A 1 ms window is shorter than one cycle of E3 and reads waveform dips as decay.
+        const auto decayTo = [&] (const std::vector<float>& x, double t0, double dropDb)
+        {
+            std::vector<double> e;
+            const int win = (int) (0.010 * fs), hop = (int) (0.001 * fs);
+            for (size_t i = (size_t) (t0 * fs); i + (size_t) win < x.size() && i < (size_t) ((t0 + 2.0) * fs); i += (size_t) hop)
+            {
+                double acc = 0; for (int k = 0; k < win; ++k) acc += (double) x[i + (size_t) k] * x[i + (size_t) k];
+                e.push_back (10 * std::log10 (acc / win + 1e-24));
+            }
+            size_t pk = 0; for (size_t i = 0; i < e.size() && i < 50; ++i) if (e[i] > e[pk]) pk = i;
+            for (size_t i = pk; i < e.size(); ++i) if (e[i] < e[pk] - dropDb) return (double) i * 0.001;
+            return 99.0;
+        };
+
+        struct Row { const char* what; double v; };
+        std::vector<Row> rows;
+
+        // Latency: first sample above -60 dBFS after a note-on at exactly 0.5 s.
+        {
+            const auto x = render ({ { 0.5, 1, 52, 90 } }, 1.0);
+            double t = 99; for (size_t i = (size_t) (0.5 * fs); i < x.size(); ++i) if (std::abs (x[i]) > 0.001f) { t = (double) i / fs - 0.5; break; }
+            rows.push_back ({ "note-on to sound (ms)", t * 1000 });
+        }
+        // Pick transient: how long the >4 kHz band stays within 10 dB of its attack peak.
+        {
+            const auto x = render ({ { 0.5, 1, 52, 100 } }, 1.0);
+            juce::dsp::IIR::Filter<float> hp; hp.coefficients = juce::dsp::IIR::Coefficients<float>::makeHighPass (fs, 4000.0);
+            std::vector<float> y (x.size()); for (size_t i = 0; i < x.size(); ++i) y[i] = hp.processSample (x[i]);
+            const auto e = envDb (y, 0.5, 0.6);
+            size_t pk = 0; for (size_t i = 0; i < e.size() && i < 20; ++i) if (e[i] > e[pk]) pk = i;
+            size_t end = pk; while (end + 1 < e.size() && e[end + 1] > e[pk] - 10) ++end;
+            rows.push_back ({ "pick transient length (ms)", (double) (end + 1) }); // 1 ms frames from the onset
+        }
+        // Strum sweep: first-to-last string arrival in the down-stroke phrase.
+        const auto P = artic::phrases();
+        const auto find = [&] (const char* n) -> const artic::Phrase& { for (auto& p : P) if (p.name == n) return p; return P[0]; };
+        {
+            const auto x = render (find ("Strum down").events, artic::kLen);
+            const int chord[] = { 40, 45, 51, 56, 61, 66 };
+            double lo = 99, hi = -99;
+            for (int n : chord) { const double t = artic::onsetOf (x, fs, n, 0.95, 1.3); if (t > 0) { lo = std::min (lo, t); hi = std::max (hi, t); } }
+            rows.push_back ({ "strum sweep, 6 strings (ms)", (hi - lo) * 1000 });
+        }
+        // Hammer-on: time from the second note-on (1.5 s) until the pitch reads B3.
+        {
+            const auto x = render (find ("Hammer-on").events, 3.0);
+            double t = 99; for (double a = 1.5; a < 1.7; a += 0.001) { const double m = artic::pitchAt (x, fs, a); if (std::abs (m - 59) < 0.3) { t = a - 1.5; break; } }
+            rows.push_back ({ "hammer-on pitch change (ms)", t * 1000 });
+        }
+        // Slide: time the pitch spends strictly between E3 and A3.
+        {
+            const auto x = render (find ("Slide").events, 3.0);
+            double first = -1, last = -1;
+            for (double a = 1.45; a < 1.9; a += 0.001) { const double m = artic::pitchAt (x, fs, a); if (m > 52.3 && m < 56.7) { if (first < 0) first = a; last = a; } }
+            rows.push_back ({ "slide glide (ms)", first < 0 ? 0.0 : (last - first) * 1000 + 46 });   // + the 46 ms YIN window
+        }
+        // Vibrato: onset, rate and depth on a held A3.
+        {
+            const auto x = render (find ("Vibrato").events, artic::kLen);
+            std::vector<double> c; std::vector<double> ts;
+            for (double a = 0.35; a < 5.4; a += 0.01) { const double m = artic::pitchAt (x, fs, a); if (m > 0) { c.push_back ((m - 57) * 100); ts.push_back (a); } }
+            double mean = 0; for (double v : c) mean += v; mean /= std::max<size_t> (1, c.size());
+            double onset = 99; for (size_t i = 0; i < c.size(); ++i) if (std::abs (c[i] - mean) > 3) { onset = ts[i] - 0.3; break; }
+            int cross = 0; double sq = 0; int nLate = 0;
+            for (size_t i = 1; i < c.size(); ++i) if (ts[i] > 2.0) { if ((c[i] - mean) * (c[i - 1] - mean) < 0) ++cross; sq += (c[i] - mean) * (c[i] - mean); ++nLate; }
+            rows.push_back ({ "vibrato onset (s)", onset });
+            rows.push_back ({ "vibrato rate (Hz)", cross / 2.0 / 3.4 });
+            rows.push_back ({ "vibrato depth (cents)", 2.0 * std::sqrt (2.0) * std::sqrt (sq / std::max (1, nLate)) });   // peak-to-peak of a sine
+        }
+        // Mutes: decay times on the picked attack.
+        {
+            const auto x = render ({ { 0.5, 1, 52, 35 } }, 2.5);
+            rows.push_back ({ "palm-mute decay to -20 dB (s)", decayTo (x, 0.5, 20) });
+            const auto y = render ({ { 0.5, 1, 52, 10 } }, 2.5);
+            rows.push_back ({ "dead-note decay to -30 dB (s)", decayTo (y, 0.5, 30) });
+        }
+
+        int fails = 0;
+        for (const auto& r : rows)
+        {
+            const auto& ref = artic::timing (r.what);
+            const bool ok = artic::within (r.what, r.v);
+            fails += ok ? 0 : 1;
+            std::printf ("%-32s %8.3f  real guitar %g..%g  %s  (%s)\n", r.what, r.v, ref.lo, ref.hi, ok ? "PASS" : "FAIL", ref.why);
+        }
+        std::printf ("%d timing checks, %d outside the real-guitar range\n", (int) rows.size(), fails);
+        return fails == 0 ? 0 : 1;
+    }
+
     if (cmd == "artic-vst3" && argc >= 4)
     {
         const juce::File plugin (argv[2]), outDir (argv[3]);
