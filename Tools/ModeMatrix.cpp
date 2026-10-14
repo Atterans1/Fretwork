@@ -99,7 +99,7 @@ Score score (const Row& row, const std::vector<float>& x, double fs)
     s.peakDb = 20 * std::log10 (pk + 1e-12);
     s.rmsDb = 10 * std::log10 (ss / std::max<size_t> (1, n) + 1e-24);
 
-    // Attacks: 10 ms RMS envelope rising 6 dB over 30 ms, above -45 dBFS, 80 ms apart.
+    // Attacks: 10 ms RMS envelope rising 4 dB over 30 ms (6 dB before the sustain was lengthened: a stroke on a longer-ringing chord adds less), above -45 dBFS, 80 ms apart.
     {
         const int hop = (int) (0.01 * fs);
         std::vector<double> env;
@@ -110,7 +110,7 @@ Score score (const Row& row, const std::vector<float>& x, double fs)
         }
         int last = -100;
         for (int i = 3; i < (int) env.size(); ++i)
-            if (env[(size_t) i] > -45 && env[(size_t) i] - env[(size_t) i - 3] > 6 && i - last >= 8) { ++s.onsets; last = i; }
+            if (env[(size_t) i] > -45 && env[(size_t) i] - env[(size_t) i - 3] > 4 && i - last >= 8) { ++s.onsets; last = i; }
     }
 
     // Pitch-class energy over 0.5..2.0 s (16k FFT frames).

@@ -70,7 +70,7 @@ double computeT60Fund (const LoopDesignParams& p, int damping) noexcept
              * (1.0 + (0.35 - 1.0) * age)
              * p.bodyLossScale;
 
-    if (damping == 1) t *= 0.22;     // PalmMute
+    if (damping == 1) t *= 0.14;     // PalmMute (0.22 before the base T60 table grew 1.6x)
     return t > 0.001 ? t : 0.001;
 }
 
