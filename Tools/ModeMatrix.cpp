@@ -411,6 +411,27 @@ int main (int argc, char* argv[])
         return fails == 0 ? 0 : 1;
     }
 
+    // Lists a plugin's programs and parameters (black-box study of other instruments).
+    if (cmd == "probe" && argc >= 3)
+    {
+        juce::AudioPluginFormatManager fm;
+        fm.addFormat (std::make_unique<juce::VST3PluginFormat>());
+        juce::OwnedArray<juce::PluginDescription> types;
+        fm.getFormat (0)->findAllTypesForFile (types, argv[2]);
+        if (types.isEmpty()) { std::printf ("no VST3 in %s\n", argv[2]); return 2; }
+        juce::String err;
+        auto p = fm.createPluginInstance (*types[0], 48000.0, 512, err);
+        if (p == nullptr) { std::printf ("load failed: %s\n", err.toRawUTF8()); return 2; }
+        std::printf ("%s %s by %s, %d in / %d out, midi in %d\n", types[0]->name.toRawUTF8(), types[0]->version.toRawUTF8(), types[0]->manufacturerName.toRawUTF8(),
+                     p->getTotalNumInputChannels(), p->getTotalNumOutputChannels(), (int) p->acceptsMidi());
+        std::printf ("programs: %d\n", p->getNumPrograms());
+        for (int i = 0; i < p->getNumPrograms(); ++i) std::printf ("  [%d] %s\n", i, p->getProgramName (i).toRawUTF8());
+        std::printf ("parameters: %d\n", p->getParameters().size());
+        int n = 0;
+        for (auto* q : p->getParameters()) { if (argc >= 4 && ! q->getName (64).containsIgnoreCase (argv[3])) continue; if (argc < 4 && n++ >= 160) break; std::printf ("  %s = %s\n", q->getName (64).toRawUTF8(), q->getText (q->getValue(), 32).toRawUTF8()); }
+        return 0;
+    }
+
     if (cmd == "artic-vst3" && argc >= 4)
     {
         const juce::File plugin (argv[2]), outDir (argv[3]);
@@ -673,6 +694,59 @@ int main (int argc, char* argv[])
         }
         std::printf ("%d chord-mode audio checks failed\n", fails);
         return fails == 0 ? 0 : 1;
+    }
+
+    // render <plugin> <midisend.txt> <out.wav> <seconds> [Param=Value ...]: plays timed MIDI
+    // (lines: ms on|off note vel; notes are SOUNDING pitches) through any VST3.
+    if (cmd == "render" && argc >= 6)
+    {
+        juce::AudioPluginFormatManager fm;
+        fm.addFormat (std::make_unique<juce::VST3PluginFormat>());
+        juce::OwnedArray<juce::PluginDescription> types;
+        fm.getFormat (0)->findAllTypesForFile (types, argv[2]);
+        if (types.isEmpty()) { std::printf ("no VST3 in %s\n", argv[2]); return 2; }
+        juce::String err;
+        auto p = fm.createPluginInstance (*types[0], 48000.0, 512, err);
+        if (p == nullptr) { std::printf ("load failed: %s\n", err.toRawUTF8()); return 2; }
+        p->enableAllBuses();
+        for (int i = 6; i < argc; ++i)   // Name=text, set from the parameter's own text (no readback check)
+        {
+            const juce::String kv (argv[i]), name = kv.upToFirstOccurrenceOf ("=", false, false), text = kv.fromFirstOccurrenceOf ("=", false, false);
+            juce::AudioProcessorParameter* q = nullptr;
+            for (auto* c : p->getParameters()) if (c->getName (64) == name) q = c;
+            if (q == nullptr) { std::printf ("no parameter %s\n", name.toRawUTF8()); return 2; }
+            q->setValueNotifyingHost (q->getValueForText (text));
+        }
+        p->prepareToPlay (48000.0, 512);
+        struct E { int at; bool on; int note; int vel; };
+        std::vector<E> ev;
+        for (const auto& line : juce::StringArray::fromLines (juce::File (argv[3]).loadFileAsString()))
+        {
+            const auto t = juce::StringArray::fromTokens (line, " ", "");
+            if (t.size() >= 4 && (t[1] == "on" || t[1] == "off"))
+                ev.push_back ({ (int) std::lround (t[0].getDoubleValue() * 48.0), t[1] == "on", t[2].getIntValue(), t[3].getIntValue() });
+        }
+        const int total = (int) (juce::String (argv[5]).getDoubleValue() * 48000.0), chans = std::max (2, p->getTotalNumOutputChannels());
+        juce::AudioBuffer<float> b (chans, 512);
+        std::vector<float> L, R;
+        for (int pos = 0; pos < total; pos += 512)
+        {
+            const int n = std::min (512, total - pos);
+            b.setSize (chans, n, false, false, true); b.clear();
+            juce::MidiBuffer m;
+            for (const auto& e : ev)
+                if (e.at >= pos && e.at < pos + n)
+                    m.addEvent (e.on ? juce::MidiMessage::noteOn (1, written (e.note), (juce::uint8) e.vel) : juce::MidiMessage::noteOff (1, written (e.note)), e.at - pos);
+            p->processBlock (b, m);
+            L.insert (L.end(), b.getReadPointer (0), b.getReadPointer (0) + n);
+            R.insert (R.end(), b.getReadPointer (1), b.getReadPointer (1) + n);
+        }
+        const juce::File wav (argv[4]); wav.deleteFile();
+        juce::WavAudioFormat wf;
+        std::unique_ptr<juce::AudioFormatWriter> w (wf.createWriterFor (new juce::FileOutputStream (wav), 48000.0, 2, 24, {}, 0));
+        const float* ch[] = { L.data(), R.data() };
+        w->writeFromFloatArrays (ch, 2, (int) L.size());
+        return 0;
     }
 
     if (cmd == "vst3" && argc >= 4)
