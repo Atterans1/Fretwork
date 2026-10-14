@@ -29,7 +29,8 @@ namespace {
 //==============================================================================
 double baseT60 (int stringIndex) noexcept
 {
-    static constexpr double t[6] = { 9.0, 8.0, 7.0, 6.0, 5.0, 4.5 };
+    // Measured against Pianoteq's guitar (Docs/PIANOTEQ_STUDY.md): at the old table a held A3 fell 15 dB/s, 2-3x faster.
+    static constexpr double t[6] = { 14.0, 12.5, 11.0, 9.5, 8.0, 7.0 };
     return t[clampi (stringIndex, 0, 5)];
 }
 

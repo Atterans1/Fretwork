@@ -603,14 +603,26 @@ FW_TEST ("modes: Strum strokes sound the held chord, Strum Time spreads it")
         // When half of the stroke's energy has arrived. Spreading the strings
         // moves it later whatever the waveforms do; peak-based rise times do
         // not, because each string's own attack is nearly as loud as the sum.
-        double total = 0;
-        // Mid channel: the acoustic stereo spread moves strings between L and R, not the total.
+        // The chord was held before the stroke and is still ringing, so its
+        // power (measured just before the keyswitch) is subtracted per 10 ms slice.
         const auto mid = [&] (size_t k) { const double m = 0.5 * ((double) t.left[k] + t.right[k]); return m * m; };
-        for (size_t k = t.at (0.5); k < t.at (0.9); ++k) total += mid (k);
-        double acc = 0;
-        size_t k = t.at (0.5);
-        for (; k < t.at (0.9) && acc < 0.5 * total; ++k) acc += mid (k);
-        return std::make_pair ((double) (k - t.at (0.5)) / t.fs, t.rms (0.5, 0.9));
+        double ring = 0;
+        const size_t r0 = t.at (0.4), r1 = t.at (0.5);
+        for (size_t j = r0; j < r1; ++j) ring += mid (j);
+        ring /= (double) (r1 - r0);
+        const size_t slice = (size_t) (0.01 * t.fs), s0 = t.at (0.5), s1 = t.at (0.9);
+        std::vector<double> e;
+        for (size_t j = s0; j + slice <= s1; j += slice)
+        {
+            double sum = 0;
+            for (size_t q = j; q < j + slice; ++q) sum += mid (q);
+            e.push_back (std::max (0.0, sum - ring * (double) slice));
+        }
+        double total = 0, acc = 0;
+        for (const double v : e) total += v;
+        size_t k = 0;
+        for (; k < e.size() && acc < 0.5 * total; ++k) acc += e[k];
+        return std::make_pair ((double) (k * slice) / t.fs, t.rms (0.5, 0.9));
     };
     const auto fast = riseTime (0.f), slow = riseTime (200.f);
     std::printf ("    stroke rise: strum 0 ms %.3f s, strum 200 ms %.3f s\n", fast.first, slow.first);
