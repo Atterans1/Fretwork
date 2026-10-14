@@ -106,7 +106,7 @@ macOS CI workflow, unit tests or auval.
 ## Playability update (2026-10-13, code `f2d1bf2` + timing tool `0d03fbf`)
 
 Tester: Claude (omp agent). VST3 `C:\Program Files\Common Files\VST3\Fretwork.vst3`
-(SHA-256 `DFA7EBCF...7D3C08`, built 2026-10-13 19:52). Unit suite 2514 checks, 0 failures.
+(SHA-256 `DFA7EBCF...7D3C08`, built 2026-10-13 19:52). Unit suite 2516 checks, 0 failures (after `4c7144d`, which clears stale hammer-on state on pedal release and mode change; VST3 22/22, articulations 13/13).
 
 ### Out of the box
 - MIDI is guitar notation: it sounds an octave below the written note.
