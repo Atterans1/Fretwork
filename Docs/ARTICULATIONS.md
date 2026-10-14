@@ -92,7 +92,7 @@ low partial of another's. All other criteria are as first written.
 | Slide | Pass: 7 pitch frames between E3 and A3, lands 57.00 | Pass: 13 frames, lands 57.00 | Untested [no Mac] | Untested [no Mac] |
 | Hammer-on | Pass: A3 -> 59.01, no glide, attack >4 kHz -14.3 dB vs pick | Pass: 59.01, -14.1 dB | Untested [no Mac] | Untested [no Mac] |
 | Pull-off | Pass: B3 -> 56.92 still sounding, -17.6 dB vs pick | Pass: 56.90, -17.2 dB | Untested [no Mac] | Untested [no Mac] |
-| Bend | Pass: 52.00 -> 54.08 (+208 c) -> 52.06 | Pass: 52.00 -> 54.05 -> 52.08 | Untested [no Mac] | Untested [no Mac] |
+| Bend | Pass: 52.00 -> 54.08 (+208 c) -> 52.06 (release returns within +6 c) | Pass: 52.00 -> 54.05 -> 52.08 | Untested [no Mac] | Untested [no Mac] |
 | Harmonic | Pass: 12th -0.5 c, 19th +0.1 c; partials 3+ -11.6 dB vs -4.2 fretted | Pass: -0.6 c, 0.0 c; -11.6 vs -3.9 dB | Untested [no Mac] | Untested [no Mac] |
 | Vibrato | Pass: 0.2 c wobble before 0.6 s, 7.8 c after at 5.5 Hz | Pass: same | Untested [no Mac] | Untested [no Mac] |
 | Fret noise | Pass: note-off 2.5-8 kHz burst +9.4 dB | Pass: +14.9 dB | Untested [no Mac] | Untested [no Mac] |
@@ -101,3 +101,62 @@ low partial of another's. All other criteria are as first written.
 
 macOS cells: no Mac machine is available. They are not inferred from the
 macOS CI workflow, unit tests or auval.
+
+
+## Playability update (2026-10-13, code `f2d1bf2` + timing tool `0d03fbf`)
+
+Tester: Claude (omp agent). VST3 `C:\Program Files\Common Files\VST3\Fretwork.vst3`
+(SHA-256 `DFA7EBCF...7D3C08`, built 2026-10-13 19:52). Unit suite 2514 checks, 0 failures.
+
+### Out of the box
+- MIDI is guitar notation: it sounds an octave below the written note.
+- Strum mode strums a pressed chord by itself (one down-stroke 19 ms after the first key); stroke keys still work and suppress it for 4 s.
+- Seq plays while a chord is held (Seq Play not required); slots 1-4 ship with Pop, Folk, Rock and Funk patterns.
+- Every factory preset sounds a held chord with no other input and without clipping (18/18, peaks -3.4 to -13.1 dBFS). Style starters: **Pop Strum**, **Rock Rhythm**, **Campfire Strum** / **Fingerstyle Folk** (folk).
+- Drive is saturation, not volume; all bodies play at the same loudness.
+
+### Every articulation in every mode (engine events, `Tests/ModeArticTests.cpp`)
+
+| Articulation | Poly | Strum | Arp | Seq | How it is triggered outside Poly |
+|---|---|---|---|---|---|
+| Strum down / up | Pass | Pass | Pass | Pass | stroke keys; Strum mode auto-strums; Seq pattern rows |
+| Palm mute | Pass | Pass | Pass | Pass | chord velocity 20-45 |
+| Dead note | Pass | Pass | Pass | Pass | chord velocity 1-19 |
+| Hammer-on | Pass | Pass | Pass | Pass | second note 1-4 st over a single held note |
+| Pull-off | Pass | Pass | Pass | Pass | release the hammered note |
+| Slide | Pass | Pass | Pass | Pass | second note 5-12 st (or vel >= 110) over a single held note |
+| Harmonic | Pass | Pass | Pass | Pass | chord velocity 127; notes move to their 12/19/24th-fret harmonic |
+| Vibrato | Pass | Pass | Pass | Pass | automatic after 0.6 s with 1-2 notes held |
+| Bend | Pass | Pass | Pass | Pass | pitch wheel |
+| Fret noise | Pass | Pass | Pass | Pass | letting the chord go releases every fretted string |
+| String squeak | Pass | Pass | Pass | Pass | voicing lands 5+ frets away within 0.4 s of letting go |
+| Pick attack | Pass | Pass | Pass | Pass (pattern accents) | key velocity |
+
+Limit: in Strum/Arp/Seq, hammer-on/pull-off/slide apply over a single held note.
+Notes added to a held chord are treated as chord-building.
+
+### Response times vs a real guitar (`ModeMatrix timing`, VST3 render)
+
+| Measure | Fretwork | Real guitar | Result |
+|---|---|---|---|
+| Note-on to sound | 0.19 ms | 0-10 ms | Pass |
+| Pick transient | 7 ms | 0.5-8 ms | Pass |
+| Strum sweep, 6 strings | 30 ms | 10-80 ms | Pass |
+| Hammer-on pitch change | 0 ms | 0-10 ms | Pass |
+| Slide glide | 161 ms | 40-250 ms | Pass |
+| Vibrato onset | 0.71 s | 0.3-1.2 s | Pass |
+| Vibrato rate | 5.4 Hz | 4-7.5 Hz | Pass |
+| Vibrato depth | 22 c | 5-50 c | Pass |
+| Palm mute to -20 dB | 0.26 s | 0.1-0.6 s | Pass |
+| Dead note to -30 dB | 0.153 s | 0.01-0.15 s | **Fail** |
+
+Dead note: the first 20 dB fall in ~0.12 s; below that the dreadnought's ~100 Hz
+air resonance rings at about -75 dBFS for ~0.4 s T60. The 0.15 s reference was
+written for the string alone. Left as a recorded Fail.
+
+### Cells not tested
+- **Standalone Windows**: Blocked. The capture records the shared speaker output, and
+  other apps (Discord, Edge, limusic) measured -11 to -35 dBFS in an idle
+  10 s capture, so a capture cannot prove what Fretwork played. Needs an
+  isolated output device (or other audio muted) to run.
+- **Standalone macOS, VST3 macOS**: Untested, no Mac available. Not inferred from CI.
