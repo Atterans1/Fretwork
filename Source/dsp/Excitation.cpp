@@ -1,4 +1,5 @@
 #include "dsp/Excitation.h"
+#include <array>
 #include "dsp/Rng.h"
 
 #include <cmath>
@@ -63,27 +64,25 @@ void renderExcitation (const ExcitationRequest& r,
 
     // Two-pole lowpass (12 dB/octave), in place. The pick's width rounds the
     // triangle's corner; a single pole let too much of the edge through.
+    // The buffer is one period that the string loop repeats, so the filter must
+    // be continuous across the wrap: two warm-up passes settle its state, the
+    // third writes. Started cold, the lag left a step at the wrap that added
+    // broadband energy, most of all at a low cutoff, so soft touches came out
+    // brighter than hard ones.
     {
         const double a = std::exp (-2.0 * 3.14159265358979323846 * fc / fs);
         double z1 = 0.0, z2 = 0.0;
 
-        for (int i = 0; i < n; ++i)
-        {
-            z1 = z1 * a + (double) buf[i] * (1.0 - a);
-            z2 = z2 * a + z1 * (1.0 - a);
-            buf[i] = (float) z2;
-        }
-    }
+        std::array<float, kMaxExcite> src;
+        for (int i = 0; i < n; ++i) src[(size_t) i] = buf[i];
 
-    // Fingerstyle needs a soft attack so it reads as a fingertip, not a pick.
-    if (r.exc == 1)
-    {
-        const int attack = (int) (0.006 * fs);
-        for (int i = 0; i < n && i < attack; ++i)
-        {
-            const double x = (double) i / (double) (attack > 1 ? attack - 1 : 1);
-            buf[i] = (float) ((double) buf[i] * 0.5 * (1.0 - std::cos (3.14159265358979323846 * x)));
-        }
+        for (int pass = 0; pass < 3; ++pass)
+            for (int i = 0; i < n; ++i)
+            {
+                z1 = z1 * a + (double) src[(size_t) i] * (1.0 - a);
+                z2 = z2 * a + z1 * (1.0 - a);
+                if (pass == 2) buf[i] = (float) z2;
+            }
     }
 
     // Thumb hits are simply louder.

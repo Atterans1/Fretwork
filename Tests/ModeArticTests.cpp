@@ -9,6 +9,8 @@
 #include "SeqStore.h"
 #include "engine/Clock.h"
 
+#include <algorithm>
+#include <cmath>
 #include <functional>
 #include <string>
 #include <vector>
@@ -375,5 +377,38 @@ FW_TEST ("timing: every signature gives the right bar length and metronome beats
         std::snprintf (why, sizeof why, "%s: %d clicks in one bar (want %d)", sg.name, clicks, sg.clicksPerBar);
         std::printf ("    %s\n", why);
         EXPECT_MSG (clicks == sg.clicksPerBar || clicks == sg.clicksPerBar - 1, why);   // the bar's first click is at beat 1 = t > 0
+    }
+}
+
+FW_TEST ("poly: keys struck together each sound at their own pitch on their own string")
+{
+    // Used to pluck the first key's pitch twice (C4+E4 sounded C4 on two strings): a new
+    // pitch took the cheapest voicing slot whatever its pitch.
+    const int sets[][3] = { { 60, 64, 0 }, { 64, 67, 0 }, { 52, 64, 0 }, { 48, 55, 0 }, { 45, 52, 57 }, { 60, 64, 67 } };
+    for (const auto& set : sets)
+    {
+        const int count = set[2] == 0 ? 2 : 3;
+        fw::PerformanceEngine perf; perf.prepare (kFs);
+        fw::SeqStore store; store.refresh();
+        static fw::SeqPattern slots[fw::kNumSeqSlots];
+        for (int sl = 0; sl < fw::kNumSeqSlots; ++sl) slots[sl] = store.snapshot (sl);
+        fw::PerfParams p {}; p.mode = fw::PlayMode::Poly; p.seqSlots = slots; perf.setParams (p);
+        fw::StringEvent ev[256]; fw::ClickEvent ck[8]; int nc = 0;
+        std::vector<int> pitches, strings;
+        for (int b = 0; b < 10; ++b)
+        {
+            std::vector<fw::MidiMsg> in;
+            if (b == 1) for (int k = 0; k < count; ++k) in.push_back ({ 0, 0x90, w (set[k]), 80 });
+            const int n = perf.process (in.empty() ? nullptr : in.data(), (int) in.size(), fw::Transport {}, kBlock, ev, 256, ck, nc);
+            for (int i = 0; i < n; ++i)
+                if (ev[i].type == fw::EventType::Pluck) { pitches.push_back ((int) std::lround (ev[i].pitch)); strings.push_back (ev[i].string); }
+        }
+        std::sort (pitches.begin(), pitches.end());
+        std::sort (strings.begin(), strings.end());
+        const bool samePitches = (int) pitches.size() == count && std::equal (pitches.begin(), pitches.end(), set);
+        const bool distinct = std::adjacent_find (strings.begin(), strings.end()) == strings.end();
+        char msg[96];
+        std::snprintf (msg, sizeof msg, "keys %d+%d%s sound their own pitches on separate strings", set[0], set[1], count == 3 ? "+.." : "");
+        EXPECT_MSG (samePitches && distinct, msg);
     }
 }

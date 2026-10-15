@@ -587,9 +587,12 @@ void PerformanceEngine::noteOn (int pitch, float velocity, int offset)
         float bestCost = 0.f;
         bool  haveBest = false;
 
+        // This pitch's own slot in the voicing. Scoring every slot picked the
+        // cheapest one whatever its pitch, so a second chord note took the first
+        // note's slot and sounded that pitch again (C4+E4 played C4 twice).
         for (int vi = 0; vi < voicing_.count; ++vi)
         {
-            if (! chord_.contains ((int) voicing_.pitch[vi])) continue;
+            if ((int) std::lround (voicing_.pitch[vi]) != pitch) continue;
 
             const int   s    = voicing_.stringIndex[vi];
             const float fret = voicing_.fretFloat[vi];
@@ -606,10 +609,28 @@ void PerformanceEngine::noteOn (int pitch, float velocity, int offset)
             }
         }
 
+        // The note that sounded first was placed alone, before the rest of the
+        // chord arrived, so its string can be the one this note's slot wants.
+        // Use the free string where the pitch fits and the hand moves least.
+        if (! haveBest || chord_.stringIsHeld (stringIdx))
+        {
+            int   free = -1;
+            float freeCost = 0.f;
+            for (int str = 0; str < kNumStrings; ++str)
+            {
+                float fretOut = 0.f;
+                if (chord_.stringIsHeld (str) || ! voicing::fits ((float) pitch, p_.open[str], p_.maxFret, fretOut)) continue;
+                const float c = std::fabs (fretOut - handPos);
+                if (free < 0 || c < freeCost) { free = str; freeCost = c; }
+            }
+            if (free >= 0) { stringIdx = free; haveBest = true; }
+        }
+
         if (! haveBest || stringIdx < 0 || stringIdx >= kNumStrings) return;
 
-        const int vi = voicingStringIndexOf (stringIdx);
-        chord_.setString (pitch, stringIdx, vi >= 0 ? voicing_.fretFloat[vi] : 0.f);
+        float fretNow = 0.f;
+        voicing::fits ((float) pitch, p_.open[stringIdx], p_.maxFret, fretNow);
+        chord_.setString (pitch, stringIdx, fretNow);
     }
 
     const bool manualLegato = p_.art.trans == Transition::Legato && alreadyHeld;
@@ -630,10 +651,16 @@ void PerformanceEngine::noteOn (int pitch, float velocity, int offset)
         h.pitch = (float) pitch;
         h.fret  = pitch - (int) std::lround (p_.open[stringIdx]);
     }
-    else if (const int vi = voicingStringIndexOf (stringIdx); vi >= 0)
+    else
     {
-        h.pitch = voicing_.pitch[vi];
-        h.fret  = voicing_.fret[vi];
+        // The played pitch on the chosen string. The voicing slot on that string can
+        // belong to another note when the first chord note was placed alone.
+        float fretNow = 0.f;
+        if (voicing::fits ((float) pitch, p_.open[stringIdx], p_.maxFret, fretNow))
+        {
+            h.pitch = (float) pitch;
+            h.fret  = (int) std::lround (fretNow);
+        }
 
         if (art.harm == Harmonic::Natural)
         {
