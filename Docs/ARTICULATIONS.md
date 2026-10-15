@@ -207,3 +207,8 @@ Round 1: "Mostly, with flaws". After round 2 the user named hammer-on/pull-off a
 Changes: louder hammer-on/pull-off body with a softer 1.8 kHz fret contact, bend smoothing 5 -> 25 ms, harmonic fundamental level
 raised, automatic vibrato depth 0.5 -> 0.3, sustain lengthened (see PIANOTEQ_STUDY.md), acoustic stereo spread. Re-rendered from
 the committed build (4c8273d plus e15274d). Rating: Legato Pass, Pitch Pass. The vibrato gate moved from >0.30 to >0.25 with the depth.
+
+### Listening test, nylon velocity, Poly chords and sustain (2026-10-14, Windows VST3, user)
+Build 1d57e83. Clips: nylon A3 at velocity 35/75/120, C major (nylon), A minor and an E+G third struck together in Poly, a single E4 held 2 s.
+Changes under test: base T60 x2.2, excitation lowpass continuous across the loop wrap with no finger ramp, Poly chord keys each sounding their own pitch.
+Ratings: nylon velocity Pass, Poly chords Pass (all notes clear), sustain Natural. The earlier Poly chord ratings predate the chord fix and are superseded.
