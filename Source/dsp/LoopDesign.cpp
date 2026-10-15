@@ -30,7 +30,7 @@ namespace {
 double baseT60 (int stringIndex) noexcept
 {
     // Measured against Pianoteq's guitar (Docs/PIANOTEQ_STUDY.md): at the old table a held A3 fell 15 dB/s, 2-3x faster.
-    static constexpr double t[6] = { 14.0, 12.5, 11.0, 9.5, 8.0, 7.0 };
+    static constexpr double t[6] = { 19.6, 17.5, 15.4, 13.3, 11.2, 9.8 };
     return t[clampi (stringIndex, 0, 5)];
 }
 
@@ -70,7 +70,7 @@ double computeT60Fund (const LoopDesignParams& p, int damping) noexcept
              * (1.0 + (0.35 - 1.0) * age)
              * p.bodyLossScale;
 
-    if (damping == 1) t *= 0.14;     // PalmMute (0.22 before the base T60 table grew 1.6x)
+    if (damping == 1) t *= 0.10;     // PalmMute (0.22 before the base T60 table grew 2.2x in total)
     return t > 0.001 ? t : 0.001;
 }
 
