@@ -412,3 +412,35 @@ FW_TEST ("poly: keys struck together each sound at their own pitch on their own 
         EXPECT_MSG (samePitches && distinct, msg);
     }
 }
+
+// =====================================================================
+// Upstroke coverage: a full-velocity upstroke catches at most four of six
+// strings; a full-velocity downstroke sweeps all six.
+// =====================================================================
+namespace { const float kStrumOpen[fw::kNumStrings] = { 40.f, 45.f, 50.f, 55.f, 59.f, 64.f }; }
+
+FW_TEST ("strum: upstroke catches fewer strings than downstroke at full velocity")
+{
+    auto count = [] (bool up)
+    {
+        fw::StrumEngine e;
+        e.prepare (44100.0);
+        fw::StrumEngine::StrokeParams sp;
+        fw::Voicing v;
+        v.count = 6;
+        for (int i = 0; i < 6; ++i)
+        {
+            v.stringIndex[i] = i;
+            v.fret[i] = 0;
+            v.pitch[i] = 40.f + 5.f * i;
+        }
+        fw::StrumHit hits[8];
+        fw::Rng rng;
+        return up ? e.stroke (true, fw::StrokeKind::Normal, 127, sp, v, kStrumOpen, {}, rng, hits, 8)
+                  : e.stroke (false, fw::StrokeKind::Normal, 127, sp, v, kStrumOpen, {}, rng, hits, 8);
+    };
+    const int down = count (false);
+    const int upHits = count (true);
+    EXPECT_MSG (down == 6, ("downstroke sweeps all six: " + std::to_string (down)).c_str());
+    EXPECT_MSG (upHits >= 3 && upHits <= 4, ("full-velocity upstroke catches 3-4 strings: " + std::to_string (upHits)).c_str());
+}

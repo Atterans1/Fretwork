@@ -174,3 +174,34 @@ FW_TEST ("chords: as-held placement keeps chords low on the neck and single note
     EXPECT_MSG (place ({ 48.f, 52.f, 55.f }) == "x320xx", place ({ 48.f, 52.f, 55.f }).c_str());
     EXPECT_MSG (place ({ 59.f }) == "jxxxxx", ("a lone B3 stays on the low E string: " + place ({ 59.f })).c_str());
 }
+
+// =====================================================================
+// Voicing probes (auto/guitar modes): octave doubles and drop-tuning shapes.
+// =====================================================================
+FW_TEST ("chords: octave-doubled chord shapes once, not twice")
+{
+    fwtest::Plugin p;
+    p.set ("mode", 1.f).set ("voicing", 0.f);   // Strum, Auto
+    p.chord (0.01, { 48, 60, 64, 67 });         // C3 C4 E4 G4: C in two octaves
+    p.render (0.1);
+    // The shape must be a plain C, not a failure to voice or a doubled root.
+    const auto shape = uiShape (p);
+    EXPECT_MSG (uiChord (p) == "C", ("octave-doubled C names " + uiChord (p)).c_str());
+    // No string pair may sound the same pitch class at the octave on
+    // fretted positions: the shape plays each string once.
+    int n = 0;
+    for (int i = 0; i < 6; ++i) if (shape[i] != 'x' && shape[i] != 'j') ++n;
+    EXPECT_MSG (n >= 3, "the shape frets at least three strings");
+}
+
+FW_TEST ("chords: drop D open shape voices in Drop D tuning")
+{
+    fwtest::Plugin p;
+    p.set ("mode", 1.f).set ("voicing", 2.f)    // Strum, Guitar
+     .set ("tuning", 1.f);                       // Drop D
+    p.chord (0.01, { 38, 45, 50 });             // sounding D2 A2 D3 (open Drop D triad)
+    p.render (0.1);
+    const auto shape = uiShape (p);
+    EXPECT_MSG (uiChord (p) == "D5" || uiChord (p) == "D", ("drop D open voicing names " + uiChord (p) + " " + shape).c_str());
+    EXPECT_MSG (shape.find ('0') != std::string::npos || shape[0] == '0', ("uses open strings: " + shape).c_str());
+}

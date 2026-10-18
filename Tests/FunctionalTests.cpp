@@ -1904,3 +1904,159 @@ FW_TEST ("editor: the look and feel paints every state it claims to handle")
         s.setLookAndFeel (nullptr);
     }
 }
+
+// =====================================================================
+// Tunings: the open-string table must match the documented pitches. Each
+// tuning is probed by plucking the low E (MIDI sounding 40 = open string 0
+// in Standard) and checking the fundamental, plus one middle/high probe.
+// =====================================================================
+FW_TEST ("tunings: table matches documented open pitches")
+{
+    static constexpr float lowE[12] = { 40, 38, 38, 38, 38, 36, 35, 39, 38, 38, 52, 36 };
+    static const char* names[12] =
+    {
+        "Standard", "Drop D", "DADGAD", "Open G", "Open D", "Drop C",
+        "Drop B", "Eb Standard", "Open Gm", "Open Dm", "Nashville", "C6"
+    };
+    for (int i = 0; i < 12; ++i)
+    {
+        fwtest::Plugin p;
+        p.set ("tuning", (float) i);
+        p.set ("mode", 0.f);            // Poly
+        p.set ("voicing", 1.f);         // Played: no chord reshaping
+        p.noteOn (0.01, lowE[i], 0.8f);
+        const auto take = p.render (0.5);
+        const double expectHz = 440.0 * std::pow (2.0, (lowE[i] - 69.0) / 12.0);
+        const double hz = take.pitch (0.05, 0.35, expectHz);
+        const double midi = 69.0 + 12.0 * std::log2 (hz / 440.0);
+        EXPECT_MSG (std::abs (midi - lowE[i]) < 0.15f,
+                    (std::string (names[i]) + ": got MIDI " + std::to_string (midi)).c_str());
+    }
+}
+
+// =====================================================================
+// Guitar types: the 12-string course adds an octave voice; the baritone
+// is a plain six; state round-trips.
+// =====================================================================
+FW_TEST ("guitar types: 12-string course sounds an octave above")
+{
+    // 6-string: single fundamental near E2 82.4 Hz.
+    fwtest::Plugin p6;
+    p6.set ("mode", 0.f).set ("voicing", 1.f).set ("guitarType", 0.f);
+    p6.noteOn (0.01, 40, 0.8f);
+    const auto take6 = p6.render (0.6);
+    const double hz6 = take6.pitch (0.05, 0.4, 82.41);
+    EXPECT_MSG (std::abs (hz6 - 82.41) < 4.0, "6-string low E fundamental");
+
+    // 12-string: an E3 course rings an octave above; autocorrelation at the
+    // E3 period must find periodicity it did not have on the 6-string.
+    fwtest::Plugin p12;
+    p12.set ("mode", 0.f).set ("voicing", 1.f).set ("guitarType", 1.f);
+    p12.noteOn (0.01, 40, 0.8f);
+    const auto take12 = p12.render (0.6);
+    const size_t a = (size_t) (0.05 * take12.fs), b = (size_t) (0.35 * take12.fs);
+    const int L12 = (int) std::lround (take12.fs / 164.81);
+    double num = 0, e1 = 0, e2 = 0;
+    for (size_t i = a; i + (size_t) L12 < b; ++i)
+    { const double x = take12.left[i], y = take12.left[i + (size_t) L12]; num += x * y; e1 += x * x; e2 += y * y; }
+    const double corr12 = e1 * e2 > 0 ? num / std::sqrt (e1 * e2) : 0.0;
+    // 6-string reference at the same lag.
+    const size_t a6 = (size_t) (0.05 * take6.fs), b6 = (size_t) (0.35 * take6.fs);
+    num = 0; e1 = 0; e2 = 0;
+    for (size_t i = a6; i + (size_t) L12 < b6; ++i)
+    { const double x = take6.left[i], y = take6.left[i + (size_t) L12]; num += x * y; e1 += x * x; e2 += y * y; }
+    const double corr6 = e1 * e2 > 0 ? num / std::sqrt (e1 * e2) : 0.0;
+    // The course voice must sound its own pitch: take6.take12 differ in the
+    // E3 correlation (asserted below) and the high-band RMS share rises.
+    const auto bandRms = [] (const fwtest::Take& take, double t0, double t1)
+    {
+        const size_t a = (size_t) (t0 * take.fs), b = (size_t) (t1 * take.fs);
+        double e = 0, n = 0;
+        float prev = 0.f;
+        for (size_t i = a; i < b; ++i)
+        {
+            const float d = take.left[i] - prev;   // first difference emphasises highs
+            e += (double) d * d; ++n; prev = take.left[i];
+        }
+        return std::sqrt (e / std::max<size_t> (n, 1));
+    };
+    EXPECT_MSG (bandRms (take12, 0.05, 0.35) > bandRms (take6, 0.05, 0.35) * 1.02,
+                "12-string: course adds high-band energy over the 6-string");
+    EXPECT_MSG (corr12 > corr6 + 0.15, "12-string: octave course raises E3-lag correlation");
+}
+
+// =====================================================================
+// Room types: at the same Room Level a Hall rings longer than a Booth.
+// =====================================================================
+FW_TEST ("room types: hall rings longer than booth")
+{
+    const auto tail = [] (int type)
+    {
+        fwtest::Plugin p;
+        p.set ("roomType", (float) type).set ("room", 60.f);
+        p.set ("release", 0.15f);              // string dies fast; the tail is the room
+        p.noteOn (0.01, 52, 0.8f).noteOff (0.3, 52);
+        const auto take = p.render (1.6);
+        return take.rms (0.7, 1.5);
+    };
+    const double booth = tail (0);
+    const double hall  = tail (2);
+    EXPECT_MSG (hall > booth * 1.5, "hall tail exceeds booth tail at equal level");
+}
+
+// =====================================================================
+// CPU benchmark: a busy strum render must run faster than real time.
+// Reported as ms of wall time per second of audio.
+// =====================================================================
+FW_TEST ("cpu: busy strum render runs faster than realtime")
+{
+    fwtest::Plugin p (48000, 128);              // small blocks, worst case
+    p.set ("mode", 1.f).set ("room", 40.f);
+    // 16 strums over 10 s with chord changes.
+    for (int k = 0; k < 16; ++k)
+    {
+        const double t0 = 0.01 + k * 0.6;
+        p.chord (t0, k % 2 ? std::initializer_list<int>{ 52, 57, 62, 66 }
+                            : std::initializer_list<int>{ 48, 55, 60, 64 }, 0.9f, 0.012);
+        for (int q = 0; q < 4; ++q) p.noteOff (t0 + 0.5 + 0.001 * q, k % 2 ? 52 + 5 * q : 48 + 5 * q + (q == 3 ? 4 : 0));
+    }
+    const auto t0 = std::chrono::steady_clock::now();
+    const auto take = p.render (10.0);
+    const double msPerSec = std::chrono::duration<double, std::milli> (std::chrono::steady_clock::now() - t0).count() / 10.0;
+    std::printf ("    cpu: %.1f ms per second of audio (%.2fx realtime)\n", msPerSec, 1000.0 / msPerSec);
+    EXPECT_MSG (msPerSec < 1000.0, "renders faster than realtime (ms/s < 1000)");
+    EXPECT_MSG (take.rms (0.1, 9.9) > 0.01, "the benchmark take is audible");
+
+    // 12-string doubles the string count; it must still be well under realtime.
+    fwtest::Plugin p12 (48000, 128);
+    p12.set ("mode", 1.f).set ("guitarType", 1.f).set ("room", 40.f);
+    for (int k = 0; k < 16; ++k)
+    {
+        const double t0 = 0.01 + k * 0.6;
+        p12.chord (t0, k % 2 ? std::initializer_list<int>{ 52, 57, 62, 66 }
+                              : std::initializer_list<int>{ 48, 55, 60, 64 }, 0.9f, 0.012);
+    }
+    const auto s0 = std::chrono::steady_clock::now();
+    p12.render (10.0);
+    const double ms12 = std::chrono::duration<double, std::milli> (std::chrono::steady_clock::now() - s0).count() / 10.0;
+    std::printf ("    cpu 12-string: %.1f ms/s (%.2fx realtime)\n", ms12, 1000.0 / ms12);
+    EXPECT_MSG (ms12 < 1000.0, "12-string renders faster than realtime");
+}
+
+// =====================================================================
+// Octave range: the full fretboard is playable, 38 (E2) to 88 (E6).
+// =====================================================================
+FW_TEST ("octaves: full three-octave range plays in tune")
+{
+    for (const int pitch : { 40, 52, 64, 76, 88 })
+    {
+        fwtest::Plugin p;
+        p.set ("mode", 0.f).set ("voicing", 1.f);
+        p.noteOn (0.01, pitch, 0.8f);
+        const auto take = p.render (0.5);
+        const double hz = take.pitch (0.05, 0.35, 440.0 * std::pow (2.0, (pitch - 69.0) / 12.0));
+        const double midi = 69.0 + 12.0 * std::log2 (hz / 440.0);
+        EXPECT_MSG (std::abs (midi - (double) pitch) < 0.15f && hz > 0.0,
+                    (std::string ("MIDI ") + std::to_string (pitch) + " sounds " + std::to_string (midi)).c_str());
+    }
+}
