@@ -181,3 +181,21 @@ if (WIN32)
     add_executable(loopcap Tools/loopcap.cpp)
     add_executable(midisend Tools/midisend.cpp)
 endif()
+
+# Renders the plugin and writes the acoustic features a listener judges by, as
+# JSON for a model to score. See Docs/EVALUATION.md.
+juce_add_console_app(SoundJudge PRODUCT_NAME "SoundJudge")
+# PluginProcessor's vtable references createEditor, so the editor sources
+# have to be in the link, exactly as FretworkTests does it.
+target_sources(SoundJudge PRIVATE
+    Tools/SoundJudge.cpp
+    Source/PluginEditor.cpp
+    ${FRETWORK_UI_SOURCES})
+target_include_directories(SoundJudge PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/Source"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Source/ui")
+target_link_libraries(SoundJudge PRIVATE
+    FretworkCore
+    FretworkAssets
+    juce::juce_audio_processors juce::juce_audio_formats juce::juce_dsp juce::juce_gui_basics
+    juce::juce_recommended_config_flags)

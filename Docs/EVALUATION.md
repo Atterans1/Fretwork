@@ -61,3 +61,51 @@ The measurements that came out of them are in `Docs/PIANOTEQ_STUDY.md` and
 3. Compare against a reference at a matched loudness, not at a matched level.
 4. Write down what you heard before you change anything. The gates will catch
    the measurable part afterward.
+
+## AI review
+
+The gates assert physics; a model reads the same measurements and commits to a
+verdict about whether the result sounds like an instrument. The review runs on
+the features from the `SoundJudge` tool (`Tools/SoundJudge.cpp`, built as its
+own target), which renders four low-E cases through the real processBlock and
+writes `features-*.json`:
+
+    cmake --build build --config Release --target SoundJudge
+    build/SoundJudge_artefacts/Release/SoundJudge.exe <outdir>
+
+The feature set is what a listener judges by: body/mid/tail envelope, decay
+slope in dB/s, onset count and span, attack-versus-body brightness, and pitch
+deviation. The reviewer is given those numbers plus published reference ranges
+for a real plucked electric low E and must answer five questions: overall
+verdict, decay plausibility, attack brighter than body, intonation, and
+whether the 12-string octave course shows up the way physics says it should.
+
+### Verdict recorded 2026-10-18
+
+Input: the four feature sets from `SoundJudge` (standard soft, standard hard,
+pure-nickel hard, 12-string hard; all low E, 3.4 s renders), with reference
+ranges stated as decay -6 to -12 dB/s, attack 1.5-2x body brightness,
+intonation drift 2-8 cents.
+
+- **VERDICT: close** — mostly matches, one dimension slightly off
+- **DECAY: too_slow** — measured -4.8 to -5.0 dB/s against the -6 to -12 band
+- **ATTACK_BRIGHTER: yes** — 1.7x attack-to-body ratio
+- **INTONATION: in_tune** — 2.9 cents of drift
+- **TWELVE_STRING_COURSE: course_present** — attack 371 Hz vs 280 Hz, body
+  219 Hz vs 162 Hz, pitch deviation 1.46 vs 2.94 cents, exactly the direction
+  an octave course should move every one of them
+
+The reviewer's own summary: "The attack-to-body brightness ratio (~1.7x),
+cent-level intonation drift, and correct octave-course behaviour in Case C
+(attack 371 Hz, body 219 Hz, lower pitch deviation) all match real
+plucked-string physics. The only flaw is the ~-4.8 to -5.0 dB/s decay, which
+is slightly slower than the -6 to -12 dB/s of a real low E, keeping this just
+short of convincing."
+
+Actionable: the decay is the one dimension the model flagged, so it is the
+next thing to tune. A slower-than-real decay also matches what the held-note
+gate measures (still 17% of body amplitude at 3.8 s), so both the objective
+gate and the AI review point at the same knob.
+
+Limits: the reviewer sees numbers, not waveforms. A spectrogram review would
+be the next step if a judge model that accepts images is available.
