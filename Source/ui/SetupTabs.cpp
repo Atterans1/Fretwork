@@ -249,11 +249,14 @@ void SetupTabs::buildStrings (juce::Component& page, juce::AudioProcessorValueTr
     };
 
     combo (0, 0, fw::id::material, "MATERIAL", 2);
+    combo (2, 0, fw::id::stringSet, "GAUGE", 2);
+    combo (4, 0, fw::id::guitarType, "GUITAR");
     knob (2, 0, fw::id::stringAge, "AGE");
     knob (3, 0, fw::id::stiffness, "STIFF");
     knob (4, 0, fw::id::pickPos, "PICK POS");
 
-    knob (0, 1, fw::id::pickHard, "PICK HARD");
+    knob (0, 1, fw::id::courseLevel, "COURSE");
+    knob (1, 1, fw::id::pickHard, "PICK HARD");
     knob (1, 1, fw::id::sympathetic, "SYMP");
     knob (2, 1, fw::id::fretNoise, "FRETS");
     knob (3, 1, fw::id::sustain, "SUSTAIN");
@@ -296,10 +299,20 @@ void SetupTabs::buildTone (juce::Component& page, juce::AudioProcessorValueTreeS
         page.addAndMakeVisible (cell);
     };
 
+    const auto combo = [&state, &page] (int col, int row, const char* id, const char* cap, int colSpan = 1)
+    {
+        auto* cell = new ComboCell (state, id, cap);
+        cell->setBounds (cellRect (col, row, colSpan));
+        page.addAndMakeVisible (cell);
+    };
+
     knob (0, 0, fw::id::tone, "TONE", false);
     knob (1, 0, fw::id::drive, "DRIVE", false);
     knob (2, 0, fw::id::room, "ROOM", false);
     knob (3, 0, fw::id::width, "WIDTH", false);
+    knob (4, 0, fw::id::output, "OUTPUT", false);
+
+    combo (0, 2, fw::id::roomType, "ROOM TYPE", 2);
     knob (4, 0, fw::id::output, "OUTPUT", false);
 
     knob (0, 1, fw::id::vibRate, "VIB RATE", false);
