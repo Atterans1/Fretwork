@@ -36,6 +36,10 @@ void GuitarEngine::prepare (double sampleRate, int maxBlockSize)
     deadOnly_ = false; sinceLive_ = 1000000000LL; sinceDead_ = 0; bodyFade_ = 1.f;
 
     for (auto& s : strings_) s.prepare (fs_);
+    for (auto& c : course_)
+        if (c == nullptr) c = std::make_unique<GuitarString>();
+    for (auto& c : course_)
+        if (c != nullptr) c->prepare (fs_);
 
     pickup_.prepare (fs_);
     body_.prepare   (fs_);
@@ -77,6 +81,8 @@ void GuitarEngine::prepare (double sampleRate, int maxBlockSize)
 void GuitarEngine::reset()
 {
     for (auto& s : strings_) s.reset();
+    for (auto& c : course_)
+        if (c != nullptr) c->reset();
     pickup_.reset();
     body_.reset();
     noise_.reset();
@@ -100,7 +106,25 @@ void GuitarEngine::updatePan()
 void GuitarEngine::refreshModel()
 {
     for (int s = 0; s < kNumStrings; ++s)
+    {
         strings_[(std::size_t) s].setModel (p_.strings[(std::size_t) s]);
+        if (course_[(std::size_t) s] != nullptr) course_[(std::size_t) s]->setModel (p_.strings[(std::size_t) s]);
+    }
+
+    // Courses: 12-string configs octave the lower four courses and pair the
+    // top two in unison; NylonTwelve octaves only the three bass courses.
+    const int type = (int) clampf ((float) p_.guitarType, 0.f, 3.f);
+    courseLevel_ = clampf (p_.courseLevel, 0.f, 100.f) * 0.01f;
+    for (int s = 0; s < kNumStrings; ++s)
+    {
+        bool on = false;
+        int  semis = 12;
+        if (type == 1)      { on = true; semis = s <= 3 ? 12 : 0; }        // 12-string: EADG octaved, BE unison
+        else if (type == 3) { on = s <= 2; semis = 12; }                    // Nylon 12: bass three octaved
+        else if (type == 2) { on = false; }                                 // Baritone: plain six
+        courseOn_[(std::size_t) s] = on;
+        courseSemis_[(std::size_t) s] = (float) semis;
+    }
 
     const int bi = (int) clampf ((float) p_.body, 0.f, 3.f);
     const BodyTable& bt = kBodyTables[bi];
@@ -192,6 +216,14 @@ void GuitarEngine::handle (const StringEvent& e)
                 sinceLive_ = 0;
             }
             strings_[(std::size_t) s].pluck (e, s);
+            if (courseOn_[(std::size_t) s])
+            {
+                StringEvent c = e;
+                c.pitch += courseSemis_[(std::size_t) s];
+                if (c.pitchFrom >= 0.f) c.pitchFrom += courseSemis_[(std::size_t) s];
+                c.velocity = juce::jlimit (0.f, 1.f, e.velocity * 0.6f);
+                course_[(std::size_t) s]->pluck (c, s);
+            }
             // Bend transition: the note is picked Bend Amount below and bent
             // up INTO the played pitch, so it always ends in tune.
             bendNow_[(std::size_t) s]    = (e.art.trans == Transition::Bend)
@@ -201,11 +233,20 @@ void GuitarEngine::handle (const StringEvent& e)
 
         case EventType::Legato:
             strings_[(std::size_t) s].legato (e);
+            if (courseOn_[(std::size_t) s])
+            {
+                StringEvent c = e;
+                c.pitch += courseSemis_[(std::size_t) s];
+                if (c.pitchFrom >= 0.f) c.pitchFrom += courseSemis_[(std::size_t) s];
+                c.velocity = juce::jlimit (0.f, 1.f, e.velocity * 0.6f);
+                course_[(std::size_t) s]->legato (c);
+            }
             bendTarget_[(std::size_t) s] = 0.f;
             break;
 
         case EventType::Release:
             strings_[(std::size_t) s].release (e.releaseSec);
+            if (courseOn_[(std::size_t) s] && course_[(std::size_t) s] != nullptr) course_[(std::size_t) s]->release (e.releaseSec);
             bendTarget_[(std::size_t) s] = 0.f;
             break;
 
@@ -330,15 +371,27 @@ void GuitarEngine::render (float* left, float* right, int n)
             const float b = strings_[(std::size_t) s].tick (couple * others, couple);
             prevBridge_[(std::size_t) s] = b;
 
-            mixSum += b;
-            bridgeSum += b;
-            side += b * (panL_[(std::size_t) s] - panR_[(std::size_t) s]);
+            // The course string rings alongside its main string; its bridge
+            // signal joins the pickup sum at Course Level with a small pan
+            // offset, the way the paired course sits slightly off the main.
+            float courseOut = 0.f;
+            if (courseOn_[(std::size_t) s] && course_[(std::size_t) s] != nullptr)
+                courseOut = course_[(std::size_t) s]->tick (0.f, 0.f);
+            prevBridge_[(std::size_t) s] += courseOut;   // couples through the bridge too
 
-            debug_[(std::size_t) s][(std::size_t) i] = b;
+            const float total = b + courseOut;
+            mixSum += total;
+            bridgeSum += total;
+            side += total * (panL_[(std::size_t) s] - panR_[(std::size_t) s]);
+
+            debug_[(std::size_t) s][(std::size_t) i] = total;
 
             const float v = pickup_.processString (s, b, strings_[(std::size_t) s].periodSamples());
-            el += v * panL_[(std::size_t) s];
-            er += v * panR_[(std::size_t) s];
+            const float vc = courseOut != 0.f
+                ? pickup_.processString (s, courseOut, course_[(std::size_t) s]->periodSamples())
+                : 0.f;
+            el += (v + vc * courseLevel_) * panL_[(std::size_t) s];
+            er += (v + vc * courseLevel_) * panR_[(std::size_t) s];
         }
 
         prevBridgeSum_ = mixSum;
@@ -390,6 +443,7 @@ void GuitarEngine::render (float* left, float* right, int n)
     outParams_.toneHz  = sTone_.value;
     outParams_.drive01 = sDrive_.value;
     outParams_.room01  = sRoom_.value;
+    outParams_.roomType = p_.roomType;
     outParams_.outDb   = sOutput_.value;
     outParams_.power   = p_.power;
     out_.setParams (outParams_);

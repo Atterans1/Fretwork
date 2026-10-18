@@ -49,9 +49,25 @@ void OutputStage::setParams (const OutputParams& p)
 
     const float room = clampf (p_.room01, 0.f, 1.f);
 
-    reverbParams_.roomSize = 0.2f + 0.4f * room;
-    reverbParams_.damping  = 0.5f;
-    reverbParams_.wetLevel = 0.60f * room;
+    // Room types: size, damping and brightness from a small measured-style set.
+    // Booth: tiny and dead. Room: mid room. Hall: big and long. Plate: bright
+    // and dense with almost no early-reflection colour.
+    switch (std::clamp (p_.roomType, 0, 3))
+    {
+        case 0:  reverbParams_.roomSize = 0.10f + 0.15f * room; reverbParams_.damping = 0.85f; break;   // Booth
+        case 1:  reverbParams_.roomSize = 0.25f + 0.30f * room; reverbParams_.damping = 0.55f; break;   // Room
+        case 2:  reverbParams_.roomSize = 0.60f + 0.35f * room; reverbParams_.damping = 0.35f; break;   // Hall
+        default: reverbParams_.roomSize = 0.50f + 0.30f * room; reverbParams_.damping = 0.15f; break;   // Plate
+    }
+    float wetScale = 1.0f;
+    switch (std::clamp (p_.roomType, 0, 3))
+    {
+        case 0: wetScale = 0.6f; break;    // Booth: dry-ish
+        case 1: wetScale = 1.0f; break;    // Room
+        case 2: wetScale = 1.6f; break;    // Hall: big and washy
+        default: wetScale = 1.3f; break;   // Plate
+    }
+    reverbParams_.wetLevel = 0.60f * room * wetScale;
     reverbParams_.dryLevel = 1.0f - 0.30f * room;
     // Width also narrows the room: a full-width reverb made "Width 0" stereo.
     reverbParams_.width    = clampf (p_.width01, 0.f, 1.f);

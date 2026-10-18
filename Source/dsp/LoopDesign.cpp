@@ -1,5 +1,7 @@
 #include "dsp/LoopDesign.h"
 
+#include "dsp/ModelTables.h"
+
 #include <cmath>
 
 namespace fw::dsp {
@@ -36,20 +38,29 @@ double baseT60 (int stringIndex) noexcept
 
 double materialScale (int material) noexcept
 {
-    static constexpr double s[4] = { 1.0, 1.1, 0.9, 0.9 };   // nylon 0.6 -> 0.9: it rang 3x shorter than steel
-    return s[clampi (material, 0, 3)];
+    static constexpr double legacy[4] = { 1.0, 1.1, 0.9, 0.9 };   // nylon 0.6 -> 0.9: it rang 3x shorter than steel
+    if (material < 0) return legacy[0];
+    if (material < 4) return legacy[clampi (material, 0, 3)];
+    const int n = (int) (sizeof (kMaterialSets) / sizeof (kMaterialSets[0]));
+    return kMaterialSets[clampi (material, 0, n - 1)].t60Scale;
 }
 
 double materialInharm (int material) noexcept
 {
-    static constexpr double b[4] = { 1.0, 1.4, 0.25, 1.6 };
-    return b[clampi (material, 0, 3)];
+    static constexpr double legacy[4] = { 1.0, 1.4, 0.25, 1.6 };
+    if (material < 0) return legacy[0];
+    if (material < 4) return legacy[clampi (material, 0, 3)];
+    const int n = (int) (sizeof (kMaterialSets) / sizeof (kMaterialSets[0]));
+    return kMaterialSets[clampi (material, 0, n - 1)].inharm;
 }
 
 double harmonicRatio (int material) noexcept
 {
-    static constexpr double r[4] = { 0.12, 0.12, 0.10, 0.05 };
-    return r[clampi (material, 0, 3)];
+    static constexpr double legacy[4] = { 0.12, 0.12, 0.10, 0.05 };
+    if (material < 0) return legacy[0];
+    if (material < 4) return legacy[clampi (material, 0, 3)];
+    const int n = (int) (sizeof (kMaterialSets) / sizeof (kMaterialSets[0]));
+    return kMaterialSets[clampi (material, 0, n - 1)].harmRatio;
 }
 
 //==============================================================================
