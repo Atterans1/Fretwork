@@ -97,10 +97,6 @@ public:
     void render (float* left, float* right, int numSamples);
     void reset();
 
-    // Test taps: the most recently rendered block's per-string bridge signal.
-    const float* debugStringOutput (int stringIndex) const noexcept;
-    int debugStringOutputSize() const noexcept;
-
 private:
     void refreshModel();
     void updatePan();
@@ -169,7 +165,6 @@ private:
     float acousticLevel_ = 1.f;
 
     // Scratch, sized once in prepare().
-    std::vector<std::vector<float>> debug_;
     std::vector<float> bridgeSum_ {};
     std::vector<float> bridgeSide_ {};   // string-position difference (L-R pan weighted), acoustic stereo
     float sideLp_ = 0.f;                 // one-pole state: the side signal is high-passed ~500 Hz
@@ -179,7 +174,6 @@ private:
     std::vector<float> el_        {};
     std::vector<float> er_        {};
 
-    int debugCount_ = 0;
     int pendingClickOffset_ = 0;
     bool pendingClickAccent_ = false;
     bool hasPendingClick_ = false;

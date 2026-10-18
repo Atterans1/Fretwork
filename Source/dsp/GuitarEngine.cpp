@@ -47,7 +47,6 @@ void GuitarEngine::prepare (double sampleRate, int maxBlockSize)
     amp_.prepare    (fs_, maxBlock);
     out_.prepare    (fs_, maxBlock);
 
-    debug_.assign (kNumStrings, std::vector<float> ((std::size_t) maxBlock, 0.f));
     bridgeSum_.assign ((std::size_t) maxBlock, 0.f);
     bridgeSide_.assign((std::size_t) maxBlock, 0.f);
     sideLp_ = 0.f;
@@ -72,7 +71,6 @@ void GuitarEngine::prepare (double sampleRate, int maxBlockSize)
     lfoPhase_ = 0.0;
     prevBridge_.fill (0.f);
     prevBridgeSum_ = 0.f;
-    debugCount_ = 0;
 
     prepared_ = true;
     refreshModel();
@@ -90,7 +88,6 @@ void GuitarEngine::reset()
     out_.reset();
     prevBridge_.fill (0.f);
     prevBridgeSum_ = 0.f;
-    debugCount_ = 0;
 }
 
 void GuitarEngine::updatePan()
@@ -191,7 +188,7 @@ void GuitarEngine::setParams (const EngineParams& p)
     outParams_.outDb   = sOutput_.target;
     outParams_.power   = p_.power;
 
-    if (! prepared_) prepare (fs_, (int) debug_.empty() ? 512 : (int) debug_[0].size());
+    if (! prepared_) prepare (fs_, 512);
     else               refreshModel();
 
     out_.setParams (outParams_);
@@ -278,17 +275,6 @@ void GuitarEngine::clickAt (int sampleOffset, bool accent)
     hasPendingClick_ = true;
 }
 
-const float* GuitarEngine::debugStringOutput (int stringIndex) const noexcept
-{
-    if (stringIndex < 0 || stringIndex >= kNumStrings) return nullptr;
-    return debug_[(std::size_t) stringIndex].data();
-}
-
-int GuitarEngine::debugStringOutputSize() const noexcept
-{
-    return debugCount_;
-}
-
 //==============================================================================
 void GuitarEngine::render (float* left, float* right, int n)
 {
@@ -314,9 +300,6 @@ void GuitarEngine::render (float* left, float* right, int n)
     if (! on)
     {
         for (int i = 0; i < n; ++i) { left[i] = 0.f; right[i] = 0.f; }
-        debugCount_ = n;
-        for (int s = 0; s < kNumStrings; ++s)
-            std::fill (debug_[(std::size_t) s].begin(), debug_[(std::size_t) s].begin() + n, 0.f);
         return;
     }
 
@@ -384,8 +367,6 @@ void GuitarEngine::render (float* left, float* right, int n)
             bridgeSum += total;
             side += total * (panL_[(std::size_t) s] - panR_[(std::size_t) s]);
 
-            debug_[(std::size_t) s][(std::size_t) i] = total;
-
             const float v = pickup_.processString (s, b, strings_[(std::size_t) s].periodSamples());
             const float vc = courseOut != 0.f
                 ? pickup_.processString (s, courseOut, course_[(std::size_t) s]->periodSamples())
@@ -449,8 +430,6 @@ void GuitarEngine::render (float* left, float* right, int n)
     out_.setParams (outParams_);
 
     out_.process (left, right, n);
-
-    debugCount_ = n;
 }
 
 } // namespace fw::dsp

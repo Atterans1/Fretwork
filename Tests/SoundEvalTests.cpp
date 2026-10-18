@@ -194,3 +194,45 @@ FW_TEST ("sound: a loud strum stays finite and unclipped")
     EXPECT_MSG (take.rms (0.1, 4.4) > 0.01, "the passage is audible throughout");
 }
 
+// CPU profile: isolates what each feature costs, so an optimisation has a
+// baseline judged against one number rather than an aggregate. Same busy
+// passage at 128-sample blocks, the worst case a host hands us.
+FW_TEST ("cpu profile: cost per feature")
+{
+    const auto msPerSecond = [] (const std::function<void ()>& fn, double seconds)
+    {
+        const auto t0 = std::chrono::steady_clock::now();
+        fn ();
+        return std::chrono::duration<double, std::milli> (std::chrono::steady_clock::now () - t0).count () / seconds;
+    };
+
+    const auto busy = [] (float guitarType, float room, float body)
+    {
+        fwtest::Plugin p (48000, 128);
+        p.set ("guitarType", guitarType).set ("room", room).set ("body", body);
+        const int notes[] = { 40, 47, 52, 56, 59, 64 };
+        for (int k = 0; k < 16; ++k)
+        {
+            const double t = 0.05 + 0.5 * k;
+            for (int n : notes) p.noteOn (t, n, 0.85f);
+            p.noteOff (t + 0.45, notes[0]);
+        }
+        p.render (5.0);
+    };
+
+    const double secs = 5.0;
+    const double six     = msPerSecond ([&] { busy (0.f, 40.f, 0.f); }, secs);
+    const double twelve  = msPerSecond ([&] { busy (1.f, 40.f, 0.f); }, secs);
+    const double noRoom  = msPerSecond ([&] { busy (0.f,  0.f, 0.f); }, secs);
+    const double solid   = msPerSecond ([&] { busy (0.f, 40.f, 2.f); }, secs);
+
+    std::printf ("    6-string       %.1f ms/s (%.2fx)\n", six, 1000.0 / six);
+    std::printf ("    12-string      %.1f ms/s (%.2fx)\n", twelve, 1000.0 / twelve);
+    std::printf ("    6-string dry   %.1f ms/s (%.2fx)\n", noRoom, 1000.0 / noRoom);
+    std::printf ("    6-string solid %.1f ms/s (%.2fx)\n", solid, 1000.0 / solid);
+
+    // The octave course doubles the sounding strings, so up to 2x is expected;
+    // the guard only catches a runaway where the courses render twice over.
+    EXPECT_MSG (twelve < six * 2.0, "the 12-string course costs under 2x the 6-string");
+    EXPECT_MSG (six > 0.0 && noRoom > 0.0, "every configuration measured a real number");
+}
