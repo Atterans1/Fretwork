@@ -1,6 +1,8 @@
 
 #include "engine/StrumEngine.h"
 
+#include <algorithm>
+
 #include <cmath>
 #include <cstddef>
 
@@ -110,7 +112,14 @@ int StrumEngine::stroke (bool up,
         order[m++] = vi;
     }
 
-    const int struck = struckCount (m, bnorm);
+    int struck = struckCount (m, bnorm);
+    // A hand pushing back up catches only the top three or four strings: an
+    // upstroke never sweeps all six the way a downstroke does.
+    if (up && m >= 4)
+    {
+        const int maxUp = std::max (3, (int) std::floor ((float) m * 0.67f));
+        struck = std::min (struck, maxUp);
+    }
     const int limit = struck < cap ? struck : cap;
     int written = 0;
 

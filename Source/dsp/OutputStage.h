@@ -13,6 +13,7 @@ struct OutputParams
     float toneHz  = 9000.f;
     float drive01 = 0.f;
     float room01  = 0.12f;
+    int   roomType = 0;     // 0 Booth, 1 Room, 2 Hall, 3 Plate
     float outDb   = -6.f;
     int   power   = 1;
 };

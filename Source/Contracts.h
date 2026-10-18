@@ -10,6 +10,9 @@ enum class Damping    : int { Open, PalmMute, Dead };
 enum class Transition : int { Normal, Slide, Legato, Bend };
 enum class Harmonic   : int { Off, Natural };
 enum class PlayMode   : int { Poly, Strum, Arp, Seq };
+// 12-string pairs: the four lower courses (E A D G, indices 0..3) carry an
+// octave course; B and high E (indices 4,5) pair in unison. 0 = no courses.
+enum class GuitarType : int { SixString, TwelveString, Baritone, NylonTwelve };
 // Legato = hammer-on / pull-off / slide target (no full pluck).
 // StrokeNoise = pick scraping across the strings in a strum (dir, durSec).
 // Squeak = fingertip sliding along a string (string, dir, durSec).

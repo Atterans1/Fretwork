@@ -121,7 +121,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout createLayout()
 
     // -------------------------------------------------------------- body/tuning
     add (choiceParam (id::body,       "Body",       { "Dreadnought Steel", "Classical Nylon", "Solid Electric", "Semi-Hollow" }, 0));
-    add (choiceParam (id::tuning,     "Tuning",     { "Standard", "Drop D", "Half-Step Down", "DADGAD", "Open G" }, 0));
+    add (choiceParam (id::tuning,     "Tuning",
+    {
+        "Standard", "Drop D", "DADGAD", "Open G", "Open D",
+        "Drop C", "Drop B", "Eb Standard", "Open Gm", "Open Dm", "Nashville", "C6"
+    }, 0));
     add (intParam    (id::capo,       "Capo",       0, 7, 0));
     add (floatParam  (id::tune0,      "String 6 Fine", -50.f, 50.f, 0.f, "c", 0.5f));
     add (floatParam  (id::tune1,      "String 5 Fine", -50.f, 50.f, 0.f, "c", 0.5f));
@@ -135,7 +139,15 @@ juce::AudioProcessorValueTreeState::ParameterLayout createLayout()
     add (floatParam  (id::micBlend,   "Mic Blend",   0.f, 100.f, 70.f,  "%",  0.5f));
 
     // ------------------------------------------------------------------ strings
-    add (choiceParam (id::material,   "Material",    { "Steel Light", "Steel Medium", "Nylon", "Flatwound" }, 0));
+    add (choiceParam (id::material,   "Material",
+    {
+        "Steel Light", "Steel Medium", "Nylon", "Flatwound",
+        "Pure Nickel Slinky", "Nickel Plated Steel", "Stainless Steel",
+        "80/20 Bronze", "Phosphor Bronze", "Flatwound Jazz", "Silk & Steel"
+    }, 0));
+    add (choiceParam (id::stringSet,  "String Gauge", { "Standard 10s", "Pure Nickel Slinky", "Super Slinky 9s", "Power Slinky 11s", "Heavy 12s", "Classical Tension" }, 1));
+    add (choiceParam (id::guitarType, "Guitar Type",  { "6-String", "12-String", "Baritone", "Nylon 12-String" }, 0));
+    add (floatParam  (id::courseLevel,"Course Level", 0.f, 100.f, 55.f, "%", 0.5f));
     add (floatParam  (id::stringAge,  "String Age",  0.f, 100.f, 20.f,   "%", 0.5f));
     add (floatParam  (id::stiffness,  "Stiffness",   0.f, 200.f, 100.f,  "%", 0.5f));
     add (floatParam  (id::pickPos,    "Pick Position", 5.f, 50.f, 15.f, "%", 0.5f));
@@ -156,7 +168,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout createLayout()
     // actually sounded; the range reaches 1000 Hz so every old setting maps in.
     add (floatParam  (id::tone,       "Tone",     1000.f, 16000.f, 2811.f, "Hz", 0.5f));
     add (floatParam  (id::drive,      "Drive",    0.f, 100.f, 0.f,       "%",  0.5f));
-    add (floatParam  (id::room,       "Room",     0.f, 100.f, 20.f,      "%",  0.5f));
+    add (choiceParam (id::roomType,   "Room Type", { "Booth", "Room", "Hall", "Plate" }, 1));
+    add (floatParam  (id::room,       "Room Level", 0.f, 100.f, 20.f,    "%",  0.5f));
     add (floatParam  (id::width,      "Width",    0.f, 100.f, 60.f,      "%",  0.5f));
     add (floatParam  (id::output,     "Output",   -24.f, 6.f,  -6.f,      "dB", 0.5f));
 

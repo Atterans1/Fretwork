@@ -77,6 +77,9 @@ inline constexpr const char* topDamp     = "topDamp";
 inline constexpr const char* micBlend    = "micBlend";
 
 inline constexpr const char* material    = "material";
+inline constexpr const char* stringSet   = "stringSet";
+inline constexpr const char* guitarType  = "guitarType";
+inline constexpr const char* courseLevel = "courseLevel";
 inline constexpr const char* stringAge   = "stringAge";
 inline constexpr const char* stiffness   = "stiffness";
 inline constexpr const char* pickPos     = "pickPos";
@@ -94,6 +97,7 @@ inline constexpr const char* pickupOut   = "pickupOut";
 inline constexpr const char* tone        = "tone";
 inline constexpr const char* drive       = "drive";
 inline constexpr const char* room        = "room";
+inline constexpr const char* roomType    = "roomType";
 inline constexpr const char* width       = "width";
 inline constexpr const char* output      = "output";
 inline constexpr const char* ampModel    = "ampModel";

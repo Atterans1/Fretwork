@@ -5,7 +5,8 @@ namespace fw::dsp {
 // string model (Slice A) and the body/pickup engine (Slice B) cannot disagree.
 struct StringModelParams
 {
-    int   material      = 0;      // 0 Steel Light, 1 Steel Medium, 2 Nylon, 3 Flatwound
+    int   material      = 0;      // index into fw::dsp::kMaterialSets
+    int   stringSet     = 0;      // index into fw::dsp::kStringSets (gauge/type set)
     float age           = 20.f;   // %
     float stiffness     = 100.f;  // %
     float pickPos       = 15.f;   // % of scale length from the bridge

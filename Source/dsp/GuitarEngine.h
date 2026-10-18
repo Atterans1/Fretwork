@@ -8,6 +8,7 @@
 #include "dsp/PickupModel.h"
 
 #include <array>
+#include <memory>
 #include <vector>
 
 namespace fw::dsp {
@@ -38,6 +39,7 @@ struct EngineParams
     float tone        = 2811.f;   // Hz
     float drive       = 0.f;      // %
     float room        = 12.f;     // %
+    int   roomType    = 0;        // OutputParams room type
     float width       = 60.f;     // %
     float output      = -6.f;     // dB
     int   power       = 1;
@@ -55,6 +57,9 @@ struct EngineParams
     float delayMix      = 0.f;    // %
     float delayTime     = 380.f;  // ms
     float delayFeedback = 30.f;   // %
+
+    int   guitarType  = 0;        // fw::GuitarType
+    float courseLevel = 55.f;     // % of the main string the course plays at
 };
 
 // Exponential smoother stepped once per sample.
@@ -101,6 +106,15 @@ private:
     void updatePan();
 
     std::array<GuitarString, kNumStrings> strings_ {};
+
+    // Octave/unison course strings for 12-string configurations. Heap-owned
+    // (each GuitarString is several hundred KB of delay-line arrays; a second
+    // inline array of six blew the stack in the test binary). Created in
+    // prepare(); empty for GuitarType::SixString.
+    std::unique_ptr<GuitarString> course_ [kNumStrings] {};
+    std::array<bool, kNumStrings> courseOn_ {};
+    std::array<float, kNumStrings> courseSemis_ {};
+    float courseLevel_ = 0.55f;
 
     PickupModel pickup_ {};
     BodyModel   body_ {};

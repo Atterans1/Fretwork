@@ -72,7 +72,9 @@ inline constexpr BodyTable kBodyTables[4] =
 inline constexpr float kBodyLossScale[4] = { 1.0f, 0.9f, 1.5f, 1.2f };
 
 // Highest fret reachable for each body.
-inline constexpr int kBodyMaxFret[4] = { 20, 19, 22, 21 };
+// 24 frets everywhere: a 6-string already spans three octaves; the per-body
+// variation (19-22) dropped high notes the model can actually render.
+inline constexpr int kBodyMaxFret[4] = { 24, 24, 24, 24 };
 
 // Pickup placement, as a fraction of the scale length from the bridge. These
 // fractions are what turn the bridge signal into a comb-filtered pickup
@@ -107,3 +109,72 @@ inline constexpr PickupTone kPickupTone[3] =
 inline constexpr float kScaleLengthM[6] = { 0.648f, 0.628f, 0.648f, 0.648f, 0.628f, 0.648f };
 
 } // namespace fw::dsp
+
+namespace fw::dsp {
+
+// Extended material list. Indices 0-3 are the original four (Steel Light,
+// Steel Medium, Nylon, Flatwound) and must keep their meaning for saved state.
+// 4+ are named string sets; each entry overrides the physical tables per string.
+struct MaterialSet
+{
+    const char* name;
+    double      t60Scale;      // sustain multiplier on baseT60
+    double      inharm;        // inharmonicity B multiplier
+    double      harmRatio;     // T60(higher partials)/T60(fundamental)
+    const char* bodyDefault;   // UI hint only, not used by DSP
+};
+
+inline constexpr MaterialSet kMaterialSets[] =
+{
+    { "Steel Light",        1.00, 1.00, 0.12, "Dreadnought"   },
+    { "Steel Medium",       1.10, 1.40, 0.12, "Dreadnought"   },
+    { "Nylon",              0.90, 0.25, 0.10, "Classical"     },
+    { "Flatwound",          0.90, 1.60, 0.05, "Solid Electric"},
+    // Named sets. Pure Nickel: round-wound feel but softer attack and a
+    // darker, sweeter top than nickel-plated steel; slightly longer sustain
+    // than plain steel because pure nickel is less elastic (higher internal
+    // damping) but its lower stiffness keeps inharmonicity low.
+    { "Pure Nickel Slinky", 1.05, 0.85, 0.10, "Solid Electric"},
+    { "Nickel Plated Steel",1.00, 1.10, 0.12, "Dreadnought"   },
+    { "Stainless Steel",    0.98, 1.20, 0.13, "Dreadnought"   },
+    { "80/20 Bronze",       1.00, 0.90, 0.11, "Dreadnought"   },
+    { "Phosphor Bronze",    1.08, 0.95, 0.11, "Dreadnought"   },
+    { "Flatwound Jazz",     0.88, 1.70, 0.05, "Semi-Hollow"   },
+    { "Silk & Steel",       0.85, 0.70, 0.09, "Classical"     },
+};
+
+inline constexpr int kNumMaterials = (int) (sizeof (kMaterialSets) / sizeof (kMaterialSets[0]));
+
+// Named-gauge string sets. Gauges in inches, index 5 = high E ... index 0 =
+// low E, matching every other per-string array (see Contracts.h). Wound flags
+// use the same order. Gauge sets the per-string sustain/attack character
+// through the loop design (heavier strings sustain longer, are less bright).
+struct StringGaugeSet
+{
+    const char* name;
+    float       gauges[6];
+    bool        wound[6];
+    double      sustainPerGauge;  // T60 multiplier per 0.001 inch above 0.010
+    double      brightness;       // excitation lowpass shift (1 = neutral)
+};
+
+// Gauges are real product data. Ernie Ball Slinky Classic Rock n Roll Pure
+// Nickel, 9-42: .009 .011 .016 .024w .032 .042 (ernieball.com P02253).
+inline constexpr StringGaugeSet kStringSets[] =
+{
+    { "Standard 10s",       { 0.046f, 0.036f, 0.026f, 0.017f, 0.013f, 0.010f }, { true, true, true,false,false,false }, 0.9,  1.00 },
+    { "Pure Nickel Slinky", { 0.042f, 0.032f, 0.024f, 0.016f, 0.011f, 0.009f }, { true, true, true,false,false,false }, 0.90, 0.88 },
+    { "Super Slinky 9s",    { 0.042f, 0.032f, 0.024f, 0.016f, 0.011f, 0.009f }, { true, true, true,false,false,false }, 0.90, 1.05 },
+    { "Power Slinky 11s",   { 0.048f, 0.038f, 0.028f, 0.018f, 0.014f, 0.011f }, { true, true, true,false,false,false }, 1.00, 0.95 },
+    { "Heavy 12s",          { 0.054f, 0.042f, 0.032f, 0.020f, 0.016f, 0.012f }, { true, true, true,false,false,false }, 1.05, 0.90 },
+    { "Classical Tension",  { 0.043f, 0.033f, 0.028f, 0.040f, 0.032f, 0.028f }, { false,false,false,true, true, true  }, 0.90, 0.75 },
+};
+
+inline constexpr int kNumStringSets = (int) (sizeof (kStringSets) / sizeof (kStringSets[0]));
+
+} // namespace fw::dsp
+
+// Compile-time guards: array order is low E first, so the low E must be the
+// heaviest (or wound) string and the high E the lightest (or plain).
+static_assert (fw::dsp::kStringSets[1].gauges[0] >= fw::dsp::kStringSets[1].gauges[5], "gauge order: string 0 must be the low E");
+static_assert (fw::dsp::kStringSets[1].wound[0] && ! fw::dsp::kStringSets[1].wound[5], "wound flags follow the same order");

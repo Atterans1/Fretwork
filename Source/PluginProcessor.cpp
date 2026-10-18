@@ -7,15 +7,22 @@
 
 namespace
 {
-    // Base open-string pitch per tuning preset: Standard, Drop D, DADGAD,
-    // Open G, Open D. Transpose, capo and fine tune are folded in on top.
-    constexpr float kTunings[5][6] =
+    // Base open-string pitch per tuning preset (low E first). Transpose, capo
+    // and fine tune are folded in on top.
+    constexpr float kTunings[12][6] =
     {
         { 40.f, 45.f, 50.f, 55.f, 59.f, 64.f },   // Standard
         { 38.f, 45.f, 50.f, 55.f, 59.f, 64.f },   // Drop D
         { 38.f, 45.f, 50.f, 55.f, 57.f, 62.f },   // DADGAD
         { 38.f, 43.f, 50.f, 55.f, 59.f, 62.f },   // Open G
-        { 38.f, 50.f, 54.f, 57.f, 62.f, 66.f }    // Open D
+        { 38.f, 50.f, 54.f, 57.f, 62.f, 66.f },   // Open D
+        { 36.f, 43.f, 48.f, 53.f, 57.f, 62.f },   // Drop C: C2 G2 C3 F3 A3 D4
+        { 35.f, 42.f, 47.f, 52.f, 56.f, 61.f },   // Drop B: B1 F#2 B2 E3 G#3 C#4
+        { 39.f, 44.f, 49.f, 54.f, 58.f, 63.f },   // Eb Standard: half step below standard
+        { 38.f, 43.f, 50.f, 55.f, 58.f, 62.f },   // Open Gm: D G D G Bb D
+        { 38.f, 45.f, 50.f, 53.f, 57.f, 62.f },   // Open Dm: D A D F A D
+        { 52.f, 57.f, 62.f, 55.f, 59.f, 64.f },   // Nashville: EAD courses up an octave, GBE standard
+        { 36.f, 43.f, 48.f, 55.f, 57.f, 64.f }    // C6: C2 G2 C3 G3 A3 E4
     };
 
     constexpr const char* tuningIds[6] =
@@ -139,7 +146,7 @@ void FretworkAudioProcessor::buildPerfParams (fw::PerfParams& p)
 
     p.tremRate = getScaled (fw::id::tremRate);
 
-    const int tuning = std::clamp (getChoiceParam (fw::id::tuning), 0, 4);
+    const int tuning = std::clamp (getChoiceParam (fw::id::tuning), 0, 11);
     const float capo = getScaled (fw::id::capo);
 
     for (int s = 0; s < fw::kNumStrings; ++s)
@@ -158,7 +165,8 @@ void FretworkAudioProcessor::buildPerfParams (fw::PerfParams& p)
 void FretworkAudioProcessor::buildEngineParams (fw::dsp::EngineParams& p)
 {
     const int body = std::clamp (getChoiceParam (fw::id::body), 0, 3);
-    const int material = std::clamp (getChoiceParam (fw::id::material), 0, 3);
+    // Indices 4+ are the named string sets in kMaterialSets.
+    const int material = std::clamp (getChoiceParam (fw::id::material), 0, fw::dsp::kNumMaterials - 1);
 
     for (int s = 0; s < fw::kNumStrings; ++s)
     {
@@ -172,6 +180,15 @@ void FretworkAudioProcessor::buildEngineParams (fw::dsp::EngineParams& p)
         sp.fretNoise     = getScaled (fw::id::fretNoise);
         sp.bodyLossScale = fw::dsp::kBodyLossScale[body];
         sp.scaleLengthM  = fw::dsp::kScaleLengthM[s];
+
+        // Gauge set: heavier strings sustain a little longer and attack darker.
+        const int set = std::clamp (getChoiceParam (fw::id::stringSet), 0, fw::dsp::kNumStringSets - 1);
+        const auto& gs = fw::dsp::kStringSets[(std::size_t) set];
+        const float gauge = gs.gauges[(std::size_t) s];
+        sp.sustain = juce::jlimit (25.f, 200.f,
+            getScaled (fw::id::sustain) * (1.f + (float) gs.sustainPerGauge * (gauge - 0.010f) * 60.f));
+        sp.stiffness = juce::jlimit (0.f, 200.f,
+            getScaled (fw::id::stiffness) * (float) gs.brightness);
     }
 
     p.body         = body;
@@ -181,6 +198,9 @@ void FretworkAudioProcessor::buildEngineParams (fw::dsp::EngineParams& p)
     p.bendTime     = getScaled (fw::id::bendTime);
     p.vibRate      = getScaled (fw::id::vibRate);
     p.vibDepth     = getScaled (fw::id::vibDepth);
+
+    p.guitarType   = getChoiceParam (fw::id::guitarType);
+    p.courseLevel  = getScaled (fw::id::courseLevel);
 
     p.pickupType   = getChoiceParam (fw::id::pickupType);
     p.pickupSel    = getChoiceParam (fw::id::pickupSel);
@@ -196,6 +216,7 @@ void FretworkAudioProcessor::buildEngineParams (fw::dsp::EngineParams& p)
     p.tone         = getScaled (fw::id::tone);
     p.drive        = getScaled (fw::id::drive);
     p.room         = getScaled (fw::id::room);
+    p.roomType     = getChoiceParam (fw::id::roomType);
     p.width        = getScaled (fw::id::width);
     p.output       = getScaled (fw::id::output);
     p.power        = getParam (fw::id::power) > 0.5f ? 1 : 0;
