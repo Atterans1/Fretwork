@@ -87,6 +87,14 @@ pure-nickel hard, 12-string hard; all low E, 3.4 s renders), with reference
 ranges stated as decay -6 to -12 dB/s, attack 1.5-2x body brightness,
 intonation drift 2-8 cents.
 
+Those ranges were stated to the reviewer as if authoritative; they are not.
+The -6 to -12 dB/s figure is an approximate recollection (see
+PIANOTEQ_STUDY.md), and that study measured A3/E4, not the low E this render
+used. Pianoteq's measured classical-guitar decay at A3 was -4.9 dB/s,
+essentially the same as the -4.8 to -5.0 dB/s the reviewer flagged. The
+verdict below is provisional and the decay finding should be treated as
+unproven rather than as a defect.
+
 - **VERDICT: close** — mostly matches, one dimension slightly off
 - **DECAY: too_slow** — measured -4.8 to -5.0 dB/s against the -6 to -12 band
 - **ATTACK_BRIGHTER: yes** — 1.7x attack-to-body ratio
@@ -102,10 +110,11 @@ plucked-string physics. The only flaw is the ~-4.8 to -5.0 dB/s decay, which
 is slightly slower than the -6 to -12 dB/s of a real low E, keeping this just
 short of convincing."
 
-Actionable: the decay is the one dimension the model flagged, so it is the
-next thing to tune. A slower-than-real decay also matches what the held-note
-gate measures (still 17% of body amplitude at 3.8 s), so both the objective
-gate and the AI review point at the same knob.
+Actionable: the decay was the one dimension the model flagged, but the flag
+rests on the unmeasured reference band above. Before tuning anything, the
+band needs real numbers for a low E on a solid-body electric, measured the
+way the study measured Pianoteq. Until then the held-note decay gate
+(17% of body amplitude at 3.8 s) is the only grounded observation.
 
 Limits: the reviewer sees numbers, not waveforms. A spectrogram review would
 be the next step if a judge model that accepts images is available.
