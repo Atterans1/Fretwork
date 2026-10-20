@@ -146,7 +146,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout createLayout()
         "80/20 Bronze", "Phosphor Bronze", "Flatwound Jazz", "Silk & Steel"
     }, 0));
     add (choiceParam (id::stringSet,  "String Gauge", { "Standard 10s", "Pure Nickel Slinky", "Super Slinky 9s", "Power Slinky 11s", "Heavy 12s", "Classical Tension" }, 1));
-    add (choiceParam (id::guitarType, "Guitar Type",  { "6-String", "12-String", "Baritone", "Nylon 12-String" }, 0));
+    add (choiceParam (id::guitarType, "Guitar Type",  { "6-String", "12-String", "Baritone", "Nylon 12-String", "7-String" }, 0));
     add (floatParam  (id::courseLevel,"Course Level", 0.f, 100.f, 55.f, "%", 0.5f));
     add (floatParam  (id::stringAge,  "String Age",  0.f, 100.f, 20.f,   "%", 0.5f));
     add (floatParam  (id::stiffness,  "Stiffness",   0.f, 200.f, 100.f,  "%", 0.5f));

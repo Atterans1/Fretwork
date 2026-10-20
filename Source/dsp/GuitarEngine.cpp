@@ -60,7 +60,7 @@ void GuitarEngine::prepare (double sampleRate, int maxBlockSize)
                       &sRoom_, &sMicBlend_, &sBodyRes_, &sTopDamp_, &sOutput_ })
         sm->setCoefficient (fs_, 0.02);
 
-    for (int s = 0; s < kNumStrings; ++s)
+    for (int s = 0; s < kMaxStrings; ++s)
     {
         panBase_[s] = (float) s / 5.f;
         bendNow_[s] = bendTarget_[s] = bendStep_[s] = 0.f;
@@ -94,15 +94,21 @@ void GuitarEngine::updatePan()
 {
     const float w = clampf (sWidth_.value, 0.f, 1.f);
 
-    for (int s = 0; s < kNumStrings; ++s)
+    // Spacing spans the active courses: a 6-string keeps its original arc
+    // (s / 5); a 7-string spreads the same arc over its extra low course.
+    const float last = (float) (p_.activeStringCount - 1);
+    for (int s = 0; s < p_.activeStringCount; ++s)
+    {
+        panBase_[(std::size_t) s] = last > 0.f ? (float) s / last : 0.5f;
         // Spread around the centre: width 0 is mono, width 1 is the full arc.
         // Scaling the raw 0..1 position collapsed everything hard left at 0.
-        equalPower (0.5f + (panBase_[s] - 0.5f) * w, panL_[(std::size_t) s], panR_[(std::size_t) s]);
+        equalPower (0.5f + (panBase_[(std::size_t) s] - 0.5f) * w, panL_[(std::size_t) s], panR_[(std::size_t) s]);
+    }
 }
 
 void GuitarEngine::refreshModel()
 {
-    for (int s = 0; s < kNumStrings; ++s)
+    for (int s = 0; s < kMaxStrings; ++s)
     {
         strings_[(std::size_t) s].setModel (p_.strings[(std::size_t) s]);
         if (course_[(std::size_t) s] != nullptr) course_[(std::size_t) s]->setModel (p_.strings[(std::size_t) s]);
@@ -110,15 +116,15 @@ void GuitarEngine::refreshModel()
 
     // Courses: 12-string configs octave the lower four courses and pair the
     // top two in unison; NylonTwelve octaves only the three bass courses.
-    const int type = (int) clampf ((float) p_.guitarType, 0.f, 3.f);
+    const int type = (int) clampf ((float) p_.guitarType, 0.f, 4.f);
     courseLevel_ = clampf (p_.courseLevel, 0.f, 100.f) * 0.01f;
-    for (int s = 0; s < kNumStrings; ++s)
+    for (int s = 0; s < kMaxStrings; ++s)
     {
         bool on = false;
         int  semis = 12;
         if (type == 1)      { on = true; semis = s <= 3 ? 12 : 0; }        // 12-string: EADG octaved, BE unison
         else if (type == 3) { on = s <= 2; semis = 12; }                    // Nylon 12: bass three octaved
-        else if (type == 2) { on = false; }                                 // Baritone: plain six
+        else if (type == 2 || type == 4) { on = false; }                    // Baritone: plain six; 7-string: plain seven
         courseOn_[(std::size_t) s] = on;
         courseSemis_[(std::size_t) s] = (float) semis;
     }
@@ -148,7 +154,7 @@ void GuitarEngine::refreshModel()
     const float bendSec = clampf (p_.bendTime, 1.f, 4000.f) * 0.001f;
     const float bendAmt = clampf (p_.bendAmount, 0.f, 24.f);
 
-    for (int s = 0; s < kNumStrings; ++s)
+    for (int s = 0; s < p_.activeStringCount; ++s)
         bendStep_[(std::size_t) s] = bendAmt / (float) (bendSec * fs_);
 }
 
@@ -197,7 +203,8 @@ void GuitarEngine::setParams (const EngineParams& p)
 
 void GuitarEngine::handle (const StringEvent& e)
 {
-    const int s = (int) clampf ((float) e.string, 0.f, (float) (kNumStrings - 1));
+    const int s = (int) e.string;
+    if (s < 0 || s >= p_.activeStringCount) return;   // inactive course never sounds
 
     switch (e.type)
     {
@@ -335,7 +342,7 @@ void GuitarEngine::render (float* left, float* right, int n)
 
         float el = 0.f, er = 0.f, bridgeSum = 0.f, mixSum = 0.f, side = 0.f;
 
-        for (int s = 0; s < kNumStrings; ++s)
+        for (int s = 0; s < p_.activeStringCount; ++s)
         {
             // Bend ramp toward its target at the configured rate.
             float& bn = bendNow_[(std::size_t) s];
@@ -350,7 +357,7 @@ void GuitarEngine::render (float* left, float* right, int n)
             // depth produced a fixed detune with no wobble at all.
             strings_[(std::size_t) s].setVibrato (vibCents);
 
-            const float others = (prevBridgeSum_ - prevBridge_[(std::size_t) s]) / (float) (kNumStrings - 1);
+            const float others = (prevBridgeSum_ - prevBridge_[(std::size_t) s]) / (float) juce::jmax (1, p_.activeStringCount - 1);
             const float b = strings_[(std::size_t) s].tick (couple * others, couple);
             prevBridge_[(std::size_t) s] = b;
 

@@ -113,6 +113,13 @@ target_sources(FretworkTests PRIVATE
     Source/PluginEditor.cpp
     ${FRETWORK_UI_SOURCES})
 
+# The test binary stack-allocates GuitarEngine directly; widening per-string
+# storage to 7 courses pushed an already-large inline array past the default
+# 1 MB reserve. 16 MB keeps headroom for future storage growth.
+if (MSVC)
+    target_link_options(FretworkTests PRIVATE "/STACK:16777216")
+endif()
+
 target_link_libraries(FretworkTests
     PRIVATE
         FretworkCore

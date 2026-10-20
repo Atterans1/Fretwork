@@ -15,7 +15,10 @@ namespace fw::dsp {
 
 struct EngineParams
 {
-    std::array<StringModelParams, kNumStrings> strings {};
+    std::array<StringModelParams, kMaxStrings> strings {};
+
+    // Active course count; slots >= this never tick or render.
+    int   activeStringCount = kNumStrings;
 
     int   body        = 0;        // BodyKind
     float sympathetic = 30.f;     // %
@@ -101,15 +104,15 @@ private:
     void refreshModel();
     void updatePan();
 
-    std::array<GuitarString, kNumStrings> strings_ {};
+    std::array<GuitarString, kMaxStrings> strings_ {};
 
     // Octave/unison course strings for 12-string configurations. Heap-owned
     // (each GuitarString is several hundred KB of delay-line arrays; a second
     // inline array of six blew the stack in the test binary). Created in
     // prepare(); empty for GuitarType::SixString.
-    std::unique_ptr<GuitarString> course_ [kNumStrings] {};
-    std::array<bool, kNumStrings> courseOn_ {};
-    std::array<float, kNumStrings> courseSemis_ {};
+    std::unique_ptr<GuitarString> course_ [kMaxStrings] {};
+    std::array<bool, kMaxStrings> courseOn_ {};
+    std::array<float, kMaxStrings> courseSemis_ {};
     float courseLevel_ = 0.55f;
 
     PickupModel pickup_ {};
@@ -136,20 +139,20 @@ private:
 
     OutputParams outParams_ {};
 
-    std::array<float, kNumStrings> panL_ {};
-    std::array<float, kNumStrings> panR_ {};
-    std::array<float, kNumStrings> panBase_ {};
+    std::array<float, kMaxStrings> panL_ {};
+    std::array<float, kMaxStrings> panR_ {};
+    std::array<float, kMaxStrings> panBase_ {};
 
     // Per-string bend ramp, for Bend articulation notes.
-    std::array<float, kNumStrings> bendNow_    {};
-    std::array<float, kNumStrings> bendTarget_ {};
-    std::array<float, kNumStrings> bendStep_   {};
+    std::array<float, kMaxStrings> bendNow_    {};
+    std::array<float, kMaxStrings> bendTarget_ {};
+    std::array<float, kMaxStrings> bendStep_   {};
 
     float globalBend_ = 0.f;
     float modWheel_   = 0.f;
     double lfoPhase_  = 0.0;
     // Previous sample's bridge output per string, for sympathetic coupling.
-    std::array<float, kNumStrings> prevBridge_ {};
+    std::array<float, kMaxStrings> prevBridge_ {};
     float prevBridgeSum_ = 0.f;
 
     float electricLevel_ = 1.f;

@@ -23,7 +23,7 @@ struct UiState
     // the fretboard show an open string for a string that is not sounding.
     UiState() noexcept { for (auto& f : fret) f = -1; }
 
-    int   fret[kNumStrings] {};
+    int   fret[kMaxStrings] {};
     int   seqStep = -1;
     int   ks[6] {};
     std::uint32_t ksNotes = 0;
@@ -60,7 +60,7 @@ struct PerfParams
     Articulation art {};
 
     int   arpStrings = 6;
-    bool  arpMask[6]  { true, true, true, true, true, true };
+    bool  arpMask[kMaxStrings]  { true, true, true, true, true, true, true };
     int   arpOrder    = 0;
     int   arpRate     = 3;
     float arpGate     = 80.f;
@@ -68,7 +68,12 @@ struct PerfParams
 
     float tremRate = 16.f;
 
-    float open[kNumStrings] { 40.f, 45.f, 50.f, 55.f, 59.f, 64.f };
+    float open[kMaxStrings] { 40.f, 45.f, 50.f, 55.f, 59.f, 64.f, 30.87f };
+
+    // Active course count, kMaxStrings or fewer. Slots >= this never sound:
+    // no open pitch, no voicing, no strum, no UI dot. Default keeps six-string
+    // behaviour byte-identical.
+    int   activeStringCount = kNumStrings;
 
     int   maxFret  = 20;
 
@@ -101,7 +106,7 @@ public:
     UiState ui() const { return ui_; }
 
 private:
-    static constexpr int kMaxHits   = kNumStrings * 2;
+    static constexpr int kMaxHits   = kMaxStrings * 2;
     static constexpr int kMaxClicks = 64;
 
     struct QueuedEvent
@@ -152,7 +157,7 @@ private:
     Clock       clock_ {};
     Rng         rng_ {};
 
-    bool sounding_[kNumStrings] {};
+    bool sounding_[kMaxStrings] {};
 
     int             ks_[6] {};
     std::uint32_t   ksNotes_         = 0;
@@ -182,7 +187,7 @@ private:
     int          clusterPitch_[kClusterMax] {};
     bool         clusterNoised_ = false;     // stroke noise already emitted for this cluster
     std::int64_t noteStart_[128] {};         // absolute sample of each pitch's last note-on
-    int          soundingPitch_[kNumStrings] { -1, -1, -1, -1, -1, -1 };   // pitch each string is playing
+    int          soundingPitch_[kMaxStrings] { -1, -1, -1, -1, -1, -1, -1 };   // pitch each string is playing
     std::int64_t lastOnAbs_ = -1;            // last Poly note-on
     // Strum mode auto-strum: a chord's note-ons gather, then one down-stroke.
     std::int64_t autoStrumAt_ = -1;          // absolute sample of the pending stroke, -1 none

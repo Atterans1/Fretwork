@@ -25,6 +25,10 @@ namespace
         { 36.f, 43.f, 48.f, 55.f, 57.f, 64.f }    // C6: C2 G2 C3 G3 A3 E4
     };
 
+    // 7-string standard: low B1 prepended; the six-string courses keep their
+    // pitches, so every existing tuning row stays valid for six-string use.
+    constexpr float kTuning7[7] = { 35.f, 40.f, 45.f, 50.f, 55.f, 59.f, 64.f };
+
     constexpr const char* tuningIds[6] =
     {
         fw::id::tune0, fw::id::tune1, fw::id::tune2,
@@ -149,8 +153,17 @@ void FretworkAudioProcessor::buildPerfParams (fw::PerfParams& p)
     const int tuning = std::clamp (getChoiceParam (fw::id::tuning), 0, 11);
     const float capo = getScaled (fw::id::capo);
 
-    for (int s = 0; s < fw::kNumStrings; ++s)
-        p.open[s] = kTunings[tuning][s] + capo + getScaled (tuningIds[s]) * 0.01f;
+    // A 7-string guitar prepends the low B to the chosen six-string tuning and
+    // runs seven courses; every other type uses the tuning row as-is.
+    const bool seven = getChoiceParam (fw::id::guitarType) == (int) fw::GuitarType::SevenString;
+    p.activeStringCount = seven ? fw::kMaxStrings : fw::kNumStrings;
+
+    for (int s = 0; s < fw::kMaxStrings; ++s)
+    {
+        const float base = seven ? kTuning7[s]
+                                 : (s < fw::kNumStrings ? kTunings[tuning][s] : 0.f);
+        p.open[s] = base + capo + (s < fw::kNumStrings ? getScaled (tuningIds[s]) * 0.01f : 0.f);
+    }
 
     const int body = std::clamp (getChoiceParam (fw::id::body), 0, 3);
     p.maxFret = fw::dsp::kBodyMaxFret[body];

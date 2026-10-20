@@ -1,4 +1,5 @@
 #pragma once
+#include "../Contracts.h"
 #include <cstddef>
 
 namespace fw::dsp {
@@ -106,7 +107,9 @@ inline constexpr PickupTone kPickupTone[3] =
 
 // Scale length per string in metres, used to turn the pickup fractions above
 // into an absolute distance for anything that needs one.
-inline constexpr float kScaleLengthM[6] = { 0.648f, 0.628f, 0.648f, 0.648f, 0.628f, 0.648f };
+// Multi-scale per course; index kMaxStrings-1 is the 7-string's low B, whose
+// longer scale is why 7-strings ship with heavier gauges.
+inline constexpr float kScaleLengthM[kMaxStrings] = { 0.686f, 0.648f, 0.648f, 0.648f, 0.628f, 0.648f, 0.686f };
 
 } // namespace fw::dsp
 
@@ -149,11 +152,13 @@ inline constexpr int kNumMaterials = (int) (sizeof (kMaterialSets) / sizeof (kMa
 // low E, matching every other per-string array (see Contracts.h). Wound flags
 // use the same order. Gauge sets the per-string sustain/attack character
 // through the loop design (heavier strings sustain longer, are less bright).
+// The 7th entry is the 7-string low B: 7-string sets run the low B at
+// .054-.062; .054 keeps tension sane at the longer 7-string scale.
 struct StringGaugeSet
 {
     const char* name;
-    float       gauges[6];
-    bool        wound[6];
+    float       gauges[kMaxStrings];
+    bool        wound[kMaxStrings];
     double      sustainPerGauge;  // T60 multiplier per 0.001 inch above 0.010
     double      brightness;       // excitation lowpass shift (1 = neutral)
 };
@@ -162,12 +167,12 @@ struct StringGaugeSet
 // Nickel, 9-42: .009 .011 .016 .024w .032 .042 (ernieball.com P02253).
 inline constexpr StringGaugeSet kStringSets[] =
 {
-    { "Standard 10s",       { 0.046f, 0.036f, 0.026f, 0.017f, 0.013f, 0.010f }, { true, true, true,false,false,false }, 0.9,  1.00 },
-    { "Pure Nickel Slinky", { 0.042f, 0.032f, 0.024f, 0.016f, 0.011f, 0.009f }, { true, true, true,false,false,false }, 0.90, 0.88 },
-    { "Super Slinky 9s",    { 0.042f, 0.032f, 0.024f, 0.016f, 0.011f, 0.009f }, { true, true, true,false,false,false }, 0.90, 1.05 },
-    { "Power Slinky 11s",   { 0.048f, 0.038f, 0.028f, 0.018f, 0.014f, 0.011f }, { true, true, true,false,false,false }, 1.00, 0.95 },
-    { "Heavy 12s",          { 0.054f, 0.042f, 0.032f, 0.020f, 0.016f, 0.012f }, { true, true, true,false,false,false }, 1.05, 0.90 },
-    { "Classical Tension",  { 0.043f, 0.033f, 0.028f, 0.040f, 0.032f, 0.028f }, { false,false,false,true, true, true  }, 0.90, 0.75 },
+    { "Standard 10s",       { 0.054f, 0.046f, 0.036f, 0.026f, 0.017f, 0.013f, 0.010f }, { true, true, true, true,false,false,false }, 0.9,  1.00 },
+    { "Pure Nickel Slinky", { 0.054f, 0.042f, 0.032f, 0.024f, 0.016f, 0.011f, 0.009f }, { true, true, true, true,false,false,false }, 0.90, 0.88 },
+    { "Super Slinky 9s",    { 0.054f, 0.042f, 0.032f, 0.024f, 0.016f, 0.011f, 0.009f }, { true, true, true, true,false,false,false }, 0.90, 1.05 },
+    { "Power Slinky 11s",   { 0.058f, 0.048f, 0.038f, 0.028f, 0.018f, 0.014f, 0.011f }, { true, true, true, true,false,false,false }, 1.00, 0.95 },
+    { "Heavy 12s",          { 0.062f, 0.054f, 0.042f, 0.032f, 0.020f, 0.016f, 0.012f }, { true, true, true, true,false,false,false }, 1.05, 0.90 },
+    { "Classical Tension",  { 0.043f, 0.033f, 0.028f, 0.030f, 0.040f, 0.032f, 0.028f }, { false,false,false,true, true, true, true }, 0.90, 0.75 },
 };
 
 inline constexpr int kNumStringSets = (int) (sizeof (kStringSets) / sizeof (kStringSets[0]));

@@ -1,5 +1,9 @@
 #pragma once
 namespace fw {
+// Storage maximum: every per-string array is sized with kMaxStrings. The ACTIVE
+// course count travels separately (PerfParams::activeStringCount) so a 7-string
+// guitar raises it while six-string instances never process a phantom course.
+constexpr int kMaxStrings = 7;
 constexpr int kNumStrings = 6;                       // index 0 = low E ... 5 = high E (UI "string 1" = index 5)
 constexpr int kLowestPlayable = 38;                  // MIDI 12..37 are keyswitches, >=38 are playable
 // Guitar is written an octave above where it sounds: incoming MIDI is the
@@ -12,7 +16,7 @@ enum class Harmonic   : int { Off, Natural };
 enum class PlayMode   : int { Poly, Strum, Arp, Seq };
 // 12-string pairs: the four lower courses (E A D G, indices 0..3) carry an
 // octave course; B and high E (indices 4,5) pair in unison. 0 = no courses.
-enum class GuitarType : int { SixString, TwelveString, Baritone, NylonTwelve };
+enum class GuitarType : int { SixString, TwelveString, Baritone, NylonTwelve, SevenString };
 // Legato = hammer-on / pull-off / slide target (no full pluck).
 // StrokeNoise = pick scraping across the strings in a strum (dir, durSec).
 // Squeak = fingertip sliding along a string (string, dir, durSec).
