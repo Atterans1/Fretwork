@@ -46,7 +46,7 @@ add_library(FretworkCore STATIC
     Source/SeqStore.cpp
     Source/PatchManager.cpp
     Source/SeqImport.cpp
-    Source/MidiLearn.cpp
+    Source/MidiExpressionMapper.cpp
     Source/PluginProcessor.cpp
     ${FRETWORK_DSP_SOURCES}
     ${FRETWORK_ENGINE_SOURCES})
@@ -202,6 +202,22 @@ target_include_directories(SoundJudge PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/Source"
     "${CMAKE_CURRENT_SOURCE_DIR}/Source/ui")
 target_link_libraries(SoundJudge PRIVATE
+    FretworkCore
+    FretworkAssets
+    juce::juce_audio_processors juce::juce_audio_formats juce::juce_dsp juce::juce_gui_basics
+    juce::juce_recommended_config_flags)
+
+# Renders legato slides and picked references through the real processor and
+# prints the measured glide pitch track and attack energy.
+juce_add_console_app(GlideRender PRODUCT_NAME "GlideRender")
+target_sources(GlideRender PRIVATE
+    Tools/GlideRender.cpp
+    Source/PluginEditor.cpp
+    ${FRETWORK_UI_SOURCES})
+target_include_directories(GlideRender PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/Source"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Source/ui")
+target_link_libraries(GlideRender PRIVATE
     FretworkCore
     FretworkAssets
     juce::juce_audio_processors juce::juce_audio_formats juce::juce_dsp juce::juce_gui_basics

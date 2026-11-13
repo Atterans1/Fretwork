@@ -31,6 +31,19 @@ public:
         without synthesising a mouse event. */
     void setCurrentPage (int index);
 
+    // Layout helper
+    static juce::Rectangle<int> cellRect (int col, int row, int colSpan = 1);
+    static juce::Rectangle<int> maskCellRect (int index);
+
+    // Page builders
+    void buildBody (juce::Component& page, juce::AudioProcessorValueTreeState& state);
+    void buildStrings (juce::Component& page, juce::AudioProcessorValueTreeState& state);
+    void buildPickup (juce::Component& page, juce::AudioProcessorValueTreeState& state);
+    void buildTone (juce::Component& page, juce::AudioProcessorValueTreeState& state);
+    void buildArp (juce::Component& page, juce::AudioProcessorValueTreeState& state);
+    void buildAmp (juce::Component& page, juce::AudioProcessorValueTreeState& state);
+    void buildFx (juce::Component& page, juce::AudioProcessorValueTreeState& state);
+
 private:
     class ComboCell;
     class MaskCell;
@@ -50,17 +63,6 @@ private:
     static constexpr int kPanelH = 228;
     static_assert (kGridY + 2 * (kCellH + kGapY) + kCompactH <= kPanelH - kTabStrip,
                    "setup tab rows must fit the panel content height");
-
-    static juce::Rectangle<int> cellRect (int col, int row, int colSpan = 1);
-    static juce::Rectangle<int> maskCellRect (int index);
-
-    void buildBody (juce::Component& page, juce::AudioProcessorValueTreeState& state);
-    void buildStrings (juce::Component& page, juce::AudioProcessorValueTreeState& state);
-    void buildPickup (juce::Component& page, juce::AudioProcessorValueTreeState& state);
-    void buildTone (juce::Component& page, juce::AudioProcessorValueTreeState& state);
-    void buildArp (juce::Component& page, juce::AudioProcessorValueTreeState& state);
-    void buildAmp (juce::Component& page, juce::AudioProcessorValueTreeState& state);
-    void buildFx (juce::Component& page, juce::AudioProcessorValueTreeState& state);
 
     FretworkAudioProcessor& processor;
     juce::TabbedButtonBar tabBar { juce::TabbedButtonBar::TabsAtTop };

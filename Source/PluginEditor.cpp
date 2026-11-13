@@ -351,6 +351,10 @@ void PluginEditor::timerCallback()
     for (auto& button : slotButtons)
         if (button != nullptr)
             button->repaint();
+    // Ensure strummer knob readouts stay in sync with parameter values
+    for (auto& knob : strummerKnobs)
+        if (knob != nullptr)
+            knob->updateValueText();
 
     if (slotParam != nullptr)
         slotLabel.setText ("SEQ #" + juce::String ((int) slotParam->get()), juce::dontSendNotification);

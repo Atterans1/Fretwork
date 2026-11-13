@@ -45,7 +45,7 @@ FretworkAudioProcessor::FretworkAudioProcessor()
 {
     midiIn.resize (128);
     patches = std::make_unique<fw::PatchManager> (vts, [this] (int body) { applyBodyDefaults (body); });
-    midiLearn = std::make_unique<fw::MidiLearn> (vts);
+    midiLearn = std::make_unique<fw::MidiExpressionMapper> (vts);
 }
 
 //==============================================================================
@@ -289,10 +289,11 @@ void FretworkAudioProcessor::processBlock (juce::AudioBuffer<float>& audio,
         if (! twoByte && size < 3) continue;
         if (midiIn.size() >= midiIn.capacity()) break;
 
-        // Learned controller links move their parameter; the message still
-        // reaches the engine, so a linked mod wheel keeps its vibrato.
-        if (kind == 0xb0)
-            midiLearn->handleController (d[1], d[2]);
+        // Learned links move their parameter; the message still reaches the
+        // engine, so a linked mod wheel keeps its vibrato. Short channel
+        // messages fit MidiMessage's inline storage, so this never allocates.
+        if (kind != 0x80 && kind != 0xc0)
+            midiLearn->handleMidiMessage (meta.getMessage());
 
         fw::MidiMsg msg {};
         msg.offset = meta.samplePosition;

@@ -233,11 +233,11 @@ void SetupTabs::buildBody (juce::Component& page, juce::AudioProcessorValueTreeS
 //==============================================================================
 void SetupTabs::buildStrings (juce::Component& page, juce::AudioProcessorValueTreeState& state)
 {
-    const auto knob = [&state, &page] (int col, int row, const char* id, const char* cap, int colSpan = 1)
+    const auto knob = [&state, &page] (int col, int row, const char* id, const char* cap, bool micro = false)
     {
         auto* cell = new KnobCell();
-        cell->attach (state, id, cap, false);
-        cell->setBounds (cellRect (col, row, colSpan));
+        cell->attach (state, id, cap, micro);
+        cell->setBounds (cellRect (col, row));
         page.addAndMakeVisible (cell);
     };
 
@@ -251,15 +251,18 @@ void SetupTabs::buildStrings (juce::Component& page, juce::AudioProcessorValueTr
     combo (0, 0, fw::id::material, "MATERIAL", 2);
     combo (2, 0, fw::id::stringSet, "GAUGE", 2);
     combo (4, 0, fw::id::guitarType, "GUITAR");
-    knob (2, 0, fw::id::stringAge, "AGE");
-    knob (3, 0, fw::id::stiffness, "STIFF");
-    knob (4, 0, fw::id::pickPos, "PICK POS");
 
     knob (0, 1, fw::id::courseLevel, "COURSE");
     knob (1, 1, fw::id::pickHard, "PICK HARD");
-    knob (1, 1, fw::id::sympathetic, "SYMP");
     knob (2, 1, fw::id::fretNoise, "FRETS");
     knob (3, 1, fw::id::sustain, "SUSTAIN");
+    knob (4, 1, fw::id::pickPos, "PICK POS");
+
+    // Compact row: caption-only cells, so the three extra controls fit without
+    // sharing a slot with a neighbour.
+    knob (0, 2, fw::id::stringAge, "AGE", true);
+    knob (1, 2, fw::id::stiffness, "STIFF", true);
+    knob (2, 2, fw::id::sympathetic, "SYMP", true);
 }
 
 //==============================================================================
@@ -313,7 +316,6 @@ void SetupTabs::buildTone (juce::Component& page, juce::AudioProcessorValueTreeS
     knob (4, 0, fw::id::output, "OUTPUT", false);
 
     combo (0, 2, fw::id::roomType, "ROOM TYPE", 2);
-    knob (4, 0, fw::id::output, "OUTPUT", false);
 
     knob (0, 1, fw::id::vibRate, "VIB RATE", false);
     knob (1, 1, fw::id::vibDepth, "VIB DEPTH", false);
@@ -321,7 +323,7 @@ void SetupTabs::buildTone (juce::Component& page, juce::AudioProcessorValueTreeS
     knob (3, 1, fw::id::bendAmount, "BEND AMT", false);
     knob (4, 1, fw::id::bendTime, "BEND TIME", false);
 
-    knob (0, 2, fw::id::wheelRange, "WHEEL", true);
+    knob (2, 2, fw::id::wheelRange, "WHEEL", true);
 }
 
 //==============================================================================
@@ -409,5 +411,6 @@ void SetupTabs::buildArp (juce::Component& page, juce::AudioProcessorValueTreeSt
         page.addAndMakeVisible (cell);
     }
 }
+
 
 } // namespace fw::ui

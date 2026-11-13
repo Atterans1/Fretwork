@@ -34,8 +34,7 @@ public:
     void enablementChanged() override { repaint(); }
 
     void parameterChanged (const juce::String& parameterID, float newValue) override;
-
-    juce::Slider& knob() noexcept { return slider; }
+    void updateValueText() { refreshValueText(); }
 
 private:
     /** A rotary slider whose right-click opens the MIDI Learn menu instead of

@@ -7,3 +7,16 @@ Demo/ref/
 # JUCE is its own git checkout (see JUCE/.git); not vendored here.
 JUCE/
 .omp/
+
+# scratch output
+build_*/
+build_*.log
+/*.wav
+/*.log
+/ref.mid
+*.bak
+*.backup
+*.new
+mode_matrix*/
+plugin_*/
+e2e_test*/

@@ -126,7 +126,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout createLayout()
         "Standard", "Drop D", "DADGAD", "Open G", "Open D",
         "Drop C", "Drop B", "Eb Standard", "Open Gm", "Open Dm", "Nashville", "C6"
     }, 0));
-    add (intParam    (id::capo,       "Capo",       0, 7, 0));
+    add (intParam    (id::capo,       "Capo",       0, 12, 0));
     add (floatParam  (id::tune0,      "String 6 Fine", -50.f, 50.f, 0.f, "c", 0.5f));
     add (floatParam  (id::tune1,      "String 5 Fine", -50.f, 50.f, 0.f, "c", 0.5f));
     add (floatParam  (id::tune2,      "String 4 Fine", -50.f, 50.f, 0.f, "c", 0.5f));
