@@ -207,7 +207,9 @@ void testTuning()
         s.reset();
 
         const double target = midiToHz (midi);
-        const auto buf = renderPluck (s, pluckEvent (0, (float) midi), 0);
+        // A medium pluck: this checks the loop's own tuning. A hard pick starts a
+        // few cents sharp on purpose (tension modulation, RealismTests.cpp).
+        const auto buf = renderPluck (s, pluckEvent (0, (float) midi, 0.5f), 0);
         const double measured = detectPitch (buf, kSampleRate, target);
 
         if (measured <= 0.0)
@@ -1106,7 +1108,10 @@ void testLifecycleAcrossNeck()
 
             const double cents = 1200.0 * std::log2 (finePitch (x, fs, 0.3, 0.8, hz) / hz);
             const double early = segBrightness (x, fs, 0.06, 0.12);
-            const double late  = segBrightness (x, fs, 0.90, 1.10);
+            // Ends before 0.6 s, when automatic vibrato starts: a bend vibrato
+            // lifts every partial a few cents, which moves them against the
+            // body's resonances and changes the brightness for its own reasons.
+            const double late  = segBrightness (x, fs, 0.42, 0.58);
             const double sus   = segRms (x, fs, 0.30, 0.40);
             const double held  = segRms (x, fs, 1.05, 1.15);
             const double tail  = segRms (x, fs, 1.60, 1.80);

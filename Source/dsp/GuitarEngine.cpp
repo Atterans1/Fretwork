@@ -69,6 +69,9 @@ void GuitarEngine::prepare (double sampleRate, int maxBlockSize)
     globalBend_ = 0.f;
     modWheel_ = 0.f;
     lfoPhase_ = 0.0;
+    vibDrift_ = vibDriftTarget_ = 0.f;
+    vibDriftCountdown_ = 0;
+    vibDriftCoef_ = (float) (1.0 - std::exp (-1.0 / (0.15 * fs_)));
     prevBridge_.fill (0.f);
     prevBridgeSum_ = 0.f;
 
@@ -309,6 +312,7 @@ void GuitarEngine::render (float* left, float* right, int n)
     // Vibrato LFO, 0..1 phase.
     const double lfoInc = clampf (p_.vibRate, 0.f, 40.f) * (1.0 / fs_);
     const float  vibCents01 = modWheel_ * (clampf (p_.vibDepth, 0.f, 200.f) * 0.01f);
+    const bool   bendVibrato = (int) clampf ((float) p_.body, 0.f, 3.f) != (int) BodyKind::Classical;
 
     if (! on)
     {
@@ -335,11 +339,26 @@ void GuitarEngine::render (float* left, float* right, int n)
         sTopDamp_.step();
         sOutput_.step();
 
-        lfoPhase_ += lfoInc;
+        if (--vibDriftCountdown_ <= 0)
+        {
+            vibSeed_ = vibSeed_ * 1664525u + 1013904223u;
+            vibDriftTarget_ = (float) ((vibSeed_ >> 8) * (1.0 / 16777216.0)) * 2.f - 1.f;
+            vibDriftCountdown_ = (int) (0.3 * fs_);
+        }
+        vibDrift_ += (vibDriftTarget_ - vibDrift_) * vibDriftCoef_;
+
+        lfoPhase_ += lfoInc * (1.0 + 0.07 * (double) vibDrift_);
         if (lfoPhase_ >= 1.0) lfoPhase_ -= std::floor (lfoPhase_);
 
         const float lfo = (float) std::sin (2.0 * kPi * lfoPhase_);
-        const float vibCents = vibCents01 * lfo;
+        // On a steel or electric guitar, vibrato is a bend: the fretting finger
+        // pushes the string sideways and lets it back, so the pitch only rises
+        // from the fretted note and never dips under it. Classical players roll
+        // the finger along the string instead, which swings both ways.
+        // Bend-style keeps the swing at 1.5x the depth, all above the note.
+        const float vibCents = bendVibrato
+            ? vibCents01 * 0.75f * (1.f - (float) std::cos (2.0 * kPi * lfoPhase_))
+            : vibCents01 * lfo;
 
         updatePan();
 

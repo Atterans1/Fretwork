@@ -8,6 +8,7 @@
 #include "dsp/PickupModel.h"
 
 #include <array>
+#include <cstdint>
 #include <memory>
 #include <vector>
 
@@ -155,6 +156,13 @@ private:
     float globalBend_ = 0.f;
     float modWheel_   = 0.f;
     double lfoPhase_  = 0.0;
+    // A player's vibrato never holds one exact rate: it drifts a few percent.
+    // A slow random walk, new target every ~0.3 s, smoothed.
+    std::uint32_t vibSeed_   = 0x2f6b5a1du;
+    float vibDrift_          = 0.f;
+    float vibDriftTarget_    = 0.f;
+    int   vibDriftCountdown_ = 0;
+    float vibDriftCoef_      = 0.0002f;
     // Previous sample's bridge output per string, for sympathetic coupling.
     std::array<float, kMaxStrings> prevBridge_ {};
     float prevBridgeSum_ = 0.f;
