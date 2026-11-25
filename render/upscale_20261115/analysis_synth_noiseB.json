@@ -1,0 +1,41 @@
+{
+  "label": "synth_noiseB",
+  "file": "synth_noiseB.wav",
+  "samples": 48000,
+  "firstFretSustainNoiseAboveM50": null,
+  "notes": [
+    {
+      "fret": 21,
+      "pitch": 85,
+      "nominalHz": 1108.73,
+      "fundHz": 1107.42,
+      "centsOff": -2,
+      "fundAbsSus": 52.4,
+      "harm2to8Rel": [
+        -51.6,
+        -53.2,
+        -50.1,
+        -57.4,
+        -48.7,
+        -51.2,
+        -49.2
+      ],
+      "floorMedianRel": -62.4,
+      "above12kRel": -24.6,
+      "above16kRel": -26.6,
+      "inharmonicAboveM50": 0,
+      "inharmonicFirstHz": null,
+      "inhList": [],
+      "noiseAttackRel": -61,
+      "noiseSustainRel": -61,
+      "noiseTailRel": -61,
+      "noiseSustainAbs": -8.6,
+      "fundAttackAbs": 52.4,
+      "fundSustainAbs": 52.4,
+      "fundTailAbs": 52.4,
+      "noiseTailAbs": -8.6,
+      "clickRelDb": -10.2,
+      "clickAbsDbFS": -29.4
+    }
+  ]
+}

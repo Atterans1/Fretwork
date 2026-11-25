@@ -1,0 +1,21 @@
+{
+  "case": "single_note_A2",
+  "envelope": {
+    "body_0_6s_rms": 0.04752,
+    "mid_1_1_6s_rms": 0.02431,
+    "tail_2_8_3_4s_rms": 0.00918,
+    "peak": 0.15400,
+    "decay_db_per_sec": -5.95
+  },
+  "rhythm": {
+    "onset_count": 2,
+    "last_onset_gap_sec": 0.0900
+  },
+  "timbre": {
+    "brightness_attack_hz": 293.5,
+    "brightness_body_hz": 183.8
+  },
+  "intonation": {
+    "pitch_dev_cents": 3.53
+  }
+}

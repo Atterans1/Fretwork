@@ -84,19 +84,22 @@ private:
 };
 
 //==============================================================================
+// Per-string captions shared by the BODY gain row and the STRINGS tune row.
+static const char* const kStringCaptions[6] = { "E", "A", "D", "G", "B", "e" };
+
 juce::Rectangle<int> SetupTabs::cellRect (int col, int row, int colSpan)
 {
     const int h = (row >= 2) ? kCompactH : kCellH;
     return { kGridX + col * (kCellW + kGapX),
-             kGridY + row * (kCellH + kGapY),
+             rowY (row),
              kCellW * colSpan + kGapX * (colSpan - 1),
              h };
 }
 
-juce::Rectangle<int> SetupTabs::maskCellRect (int index)
+juce::Rectangle<int> SetupTabs::maskCellRect (int index, int row)
 {
     return { kMaskX + index * (kMaskW + kMaskGap),
-             kGridY + 2 * (kCellH + kGapY),
+             rowY (row),
              kMaskW,
              kCompactH };
 }
@@ -136,6 +139,17 @@ SetupTabs::SetupTabs (FretworkAudioProcessor& p, juce::AudioProcessorValueTreeSt
 SetupTabs::~SetupTabs()
 {
     tabBar.removeChangeListener (this);
+
+    // Pages and their cells are created with new and no parent owns them, so
+    // delete them here. Deleting a cell also unregisters its parameter listener.
+    for (auto* page : pages)
+    {
+        if (page == nullptr)
+            continue;
+
+        page->deleteAllChildren();
+        delete page;
+    }
 }
 
 //==============================================================================
@@ -213,18 +227,18 @@ void SetupTabs::buildBody (juce::Component& page, juce::AudioProcessorValueTreeS
     knob (2, 1, fw::id::topDamp, "TOP");
     knob (3, 1, fw::id::micBlend, "MIC");
 
-    static const char* const kTuningIds[6] =
+    static const char* const kStringGainIds[6] =
     {
-        fw::id::tune0, fw::id::tune1, fw::id::tune2,
-        fw::id::tune3, fw::id::tune4, fw::id::tune5
+        fw::id::stringGain0, fw::id::stringGain1, fw::id::stringGain2,
+        fw::id::stringGain3, fw::id::stringGain4, fw::id::stringGain5
     };
 
-    static const char* const kTuningNames[6] = { "E", "A", "D", "G", "B", "e" };
+
 
     for (int i = 0; i < 6; ++i)
     {
         auto* cell = new KnobCell();
-        cell->attach (state, kTuningIds[i], kTuningNames[i], true);
+        cell->attach (state, kStringGainIds[i], kStringCaptions[i], true);
         cell->setBounds (maskCellRect (i));
         page.addAndMakeVisible (cell);
     }
@@ -263,6 +277,20 @@ void SetupTabs::buildStrings (juce::Component& page, juce::AudioProcessorValueTr
     knob (0, 2, fw::id::stringAge, "AGE", true);
     knob (1, 2, fw::id::stiffness, "STIFF", true);
     knob (2, 2, fw::id::sympathetic, "SYMP", true);
+
+    static const char* const kTuneIds[6] =
+    {
+        fw::id::tune0, fw::id::tune1, fw::id::tune2,
+        fw::id::tune3, fw::id::tune4, fw::id::tune5
+    };
+
+    for (int i = 0; i < 6; ++i)
+    {
+        auto* cell = new KnobCell();
+        cell->attach (state, kTuneIds[i], kStringCaptions[i], true);
+        cell->setBounds (maskCellRect (i, 3));
+        page.addAndMakeVisible (cell);
+    }
 }
 
 //==============================================================================

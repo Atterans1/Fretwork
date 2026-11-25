@@ -80,6 +80,8 @@ private:
 
     IconButton* powerButton = nullptr;
     RightClickButton* transposeButton = nullptr;
+    FretButton* transposePrevButton = nullptr;
+    FretButton* transposeNextButton = nullptr;
     FretButton* slotPrevButton = nullptr;
     FretButton* playButton = nullptr;
     FretButton* slotNextButton = nullptr;
@@ -104,7 +106,7 @@ private:
 
     // Paint-only layout from resized(): small-caps captions and the hairline
     // dividers between the control clusters.
-    juce::Rectangle<float> transposeCaption, bpmCaption;
+    juce::Rectangle<float> transposeCaption;
     std::array<float, 5> dividers {};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TransportBar)

@@ -201,9 +201,9 @@ PluginEditor::PluginEditor (FretworkAudioProcessor& p)
     }
 
     slotLabel.setText ("SEQ #1", juce::dontSendNotification);
-    // Glowing LCD text; paint() puts the black LCD strip behind it.
-    slotLabel.setFont (fw::ui::Palette::fontNum (13.0f));
-    slotLabel.setColour (juce::Label::textColourId, fw::ui::Palette::lcdText);
+    // Flat LCD text; paint() puts the black LCD strip behind it.
+    slotLabel.setFont (fw::ui::Palette::fontNum (fw::ui::Palette::Scale::medium));
+    slotLabel.setColour (juce::Label::textColourId, fw::ui::Palette::text);
     slotLabel.setJustificationType (juce::Justification::centredLeft);
     slotLabel.setInterceptsMouseClicks (false, false);
     addAndMakeVisible (slotLabel);
@@ -271,7 +271,7 @@ void PluginEditor::paint (juce::Graphics& g)
     waves::chassis (g, getLocalBounds().toFloat());
 
     waves::group (g, { 12.0f, 12.0f, 340.0f, 250.0f }, "Strummer");      // A
-    waves::group (g, { 706.0f, 258.0f, 402.0f, 114.0f }, "Sequence");    // E
+    waves::group (g, { 706.0f, 264.0f, 402.0f, 108.0f }, "Sequence");    // E
 
     // The "SEQ #n" readout sits on its own LCD strip.
     waves::lcd (g, slotLabel.getBounds().toFloat(), 2.0f);
@@ -282,13 +282,14 @@ void PluginEditor::resized()
 {
     fretboard.setBounds (364, 12, 330, 120);
     seqGrid.setBounds (706, 12, 402, 240);
-    setupTabs.setBounds (364, 144, 330, 228);
+    setupTabs.setBounds (364, 144, 330, fw::ui::SetupTabs::kPanelH);
     // Region A ends at y 262, setupTabs starts at x 364, the articulation bar
-    // at 384: this is the only strip left under the strummer knobs.
-    guitarView->setBounds (12, 266, 340, 114);
-    transport.setBounds (12, 452, 1096, 44);
-    // 50 white keys at 22px = 1100; 1096 clipped the top C by 4px.
-    keyboard.setBounds (12, 508, 1100, 180);
+    // at 428: this is the only strip left under the strummer knobs.
+    guitarView->setBounds (12, 266, 340, 150);
+    transport.setBounds (12, 496, 1096, 44);
+    // C0..C6 is 43 white keys; they share the 1096px width.
+    keyboard.setBounds (12, 552, 1096, 136);
+    keyboard.setKeyWidth (1096.0f / 43.0f);
 
     // A: six 113 x 114 cells, 2 rows of 3. They start 16px below the region
     // top so the "STRUMMER" caption on the group's top rule stays clear of
@@ -297,19 +298,19 @@ void PluginEditor::resized()
         strummerKnobs[(std::size_t) i]->setBounds (12 + 113 * (i % 3), 28 + 114 * (i / 3), 113, 114);
 
     // E: everything starts below the "SEQUENCE" caption on the top rule.
-    slotLabel.setBounds (716, 278, 132, 18);
+    slotLabel.setBounds (716, 284, 132, 18);
     slotLabel.setText ("SEQ #" + juce::String (slotParam != nullptr ? (int) slotParam->get() : 1),
                        juce::dontSendNotification);
 
     for (int i = 0; i < 8; ++i)
-        slotButtons[(std::size_t) i]->setBounds (716 + 34 * (i % 4), 300 + 34 * (i / 4), 30, 30);
+        slotButtons[(std::size_t) i]->setBounds (716 + 34 * (i % 4), 306 + 34 * (i / 4), 30, 30);
 
-    // Region E spans x 706..1108. These three need ~6px gaps between them and
-    // a right margin: at 76 wide they end at 934 / 1016 / 1098, and at 92
-    // tall they end at 368, inside the frame's bottom rule at 372.
-    humanizeCell->setBounds (858, 276, 76, 92);
-    choiceCells[0]->setBounds (940, 276, 76, 92);
-    choiceCells[1]->setBounds (1022, 276, 76, 92);
+    // Region E spans x 706..1108. The three cells are 72 wide, 12px apart,
+    // ending 12px short of the frame's right edge. They are 84 tall, so they
+    // stay inside the frame's bottom rule at 372.
+    humanizeCell->setBounds (856, 282, 72, 84);
+    choiceCells[0]->setBounds (940, 282, 72, 84);
+    choiceCells[1]->setBounds (1024, 282, 72, 84);
 
     layoutArticulationBar();
 }
@@ -318,7 +319,7 @@ void PluginEditor::layoutArticulationBar()
 {
     static constexpr int weights[8] = { 3, 3, 4, 2, 2, 4, 3, 1 };
     static constexpr int total = 22;
-    constexpr int x0 = 12, y0 = 384, height = 56, gap = 8;
+    constexpr int x0 = 12, y0 = 428, height = 56, gap = 12;
 
     const int usable = 1096 - gap * (8 - 1);
     int x = x0, assigned = 0;

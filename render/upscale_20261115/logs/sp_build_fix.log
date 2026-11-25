@@ -1,0 +1,50 @@
+MSBuild version 17.14.51+25f168cee for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Generating StringPitchFix_artefacts/JuceLibraryCode/StringPitchFix_resources.rc
+  Building Custom Rule C:/Users/jeffr/Fretwork/render/upscale_20261115/fix/CMakeLists.txt
+  StringPitchFix_rc_lib.vcxproj -> C:\Users\jeffr\Fretwork\build_upscale_fix\StringPitchFix_rc_lib.dir\Release\StringPitchFix_rc_lib.lib
+  FretworkCore.vcxproj -> C:\Users\jeffr\Fretwork\build_upscale_fix\fretwork_fix\Release\FretworkCore.lib
+  Building Custom Rule C:/Users/jeffr/Fretwork/render/upscale_20261115/fix/CMakeLists.txt
+  StringPitch.cpp
+  juce_audio_utils.cpp
+  juce_audio_processors.cpp
+  juce_gui_extra.cpp
+  juce_gui_basics.cpp
+  juce_graphics.cpp
+  juce_graphics_Harfbuzz.cpp
+  juce_events.cpp
+  juce_core.cpp
+  juce_core_CompilationTime.cpp
+  juce_data_structures.cpp
+  juce_audio_processors_headless.cpp
+  juce_audio_processors_headless_ara.cpp
+  juce_audio_processors_headless_lv2_libs.cpp
+  juce_audio_basics.cpp
+  juce_audio_formats.cpp
+  juce_audio_devices.cpp
+  juce_dsp.cpp
+C:\Users\jeffr\AppData\Local\Temp\fw_fix\JUCE\modules\juce_audio_processors\juce_audio_processors.cpp(1,1): error C1085: Cannot write compiler generated file: 'C:\Users\jeffr\Fretwork\build_upscale_fix\StringPitchFix.dir\Release\juce_audio_processors.obj': No space left on device [C:\Users\jeffr\Fretwork\build_upscale_fix\StringPitchFix.vcxproj]
+C:\Users\jeffr\AppData\Local\Temp\fw_fix\JUCE\modules\juce_gui_extra\juce_gui_extra.cpp(1,1): error C1085: Cannot write compiler generated file: 'C:\Users\jeffr\Fretwork\build_upscale_fix\StringPitchFix.dir\Release\juce_gui_extra.obj': No space left on device [C:\Users\jeffr\Fretwork\build_upscale_fix\StringPitchFix.vcxproj]
+C:\Users\jeffr\AppData\Local\Temp\fw_fix\JUCE\modules\juce_audio_formats\juce_audio_formats.cpp(1,1): error C1085: Cannot write compiler generated file: 'C:\Users\jeffr\Fretwork\build_upscale_fix\StringPitchFix.dir\Release\juce_audio_formats.obj': No space left on device [C:\Users\jeffr\Fretwork\build_upscale_fix\StringPitchFix.vcxproj]
+C:\Users\jeffr\AppData\Local\Temp\fw_fix\JUCE\modules\juce_audio_utils\juce_audio_utils.cpp(1,1): error C1085: Cannot write compiler generated file: 'C:\Users\jeffr\Fretwork\build_upscale_fix\StringPitchFix.dir\Release\juce_audio_utils.obj': No space left on device [C:\Users\jeffr\Fretwork\build_upscale_fix\StringPitchFix.vcxproj]
+C:\Users\jeffr\AppData\Local\Temp\fw_fix\JUCE\modules\juce_dsp\juce_dsp.cpp(1,1): error C1085: Cannot write compiler generated file: 'C:\Users\jeffr\Fretwork\build_upscale_fix\StringPitchFix.dir\Release\juce_dsp.obj': No space left on device [C:\Users\jeffr\Fretwork\build_upscale_fix\StringPitchFix.vcxproj]
+C:\Users\jeffr\AppData\Local\Temp\fw_fix\JUCE\modules\juce_audio_devices\juce_audio_devices.cpp(1,1): error C1085: Cannot write compiler generated file: 'C:\Users\jeffr\Fretwork\build_upscale_fix\StringPitchFix.dir\Release\juce_audio_devices.obj': No space left on device [C:\Users\jeffr\Fretwork\build_upscale_fix\StringPitchFix.vcxproj]
+C:\Users\jeffr\AppData\Local\Temp\fw_fix\JUCE\modules\juce_graphics\juce_graphics.cpp(1,1): error C1085: Cannot write compiler generated file: 'C:\Users\jeffr\Fretwork\build_upscale_fix\StringPitchFix.dir\Release\juce_graphics.obj': No space left on device [C:\Users\jeffr\Fretwork\build_upscale_fix\StringPitchFix.vcxproj]
+C:\Users\jeffr\AppData\Local\Temp\fw_fix\JUCE\modules\juce_graphics\juce_graphics_Harfbuzz.cpp(1,1): error C1085: Cannot write compiler generated file: 'C:\Users\jeffr\Fretwork\build_upscale_fix\StringPitchFix.dir\Release\juce_graphics_Harfbuzz.obj': No space left on device [C:\Users\jeffr\Fretwork\build_upscale_fix\StringPitchFix.vcxproj]
+C:\Users\jeffr\AppData\Local\Temp\fw_fix\JUCE\modules\juce_gui_basics\juce_gui_basics.cpp(1,1): error C1085: Cannot write compiler generated file: 'C:\Users\jeffr\Fretwork\build_upscale_fix\StringPitchFix.dir\Release\juce_gui_basics.obj': No space left on MSBUILD : error MSB4017: The build stopped unexpectedly because of an unexpected logger failure.
+Microsoft.Build.Exceptions.InternalLoggerException: The build stopped unexpectedly because of an unexpected logger failure. ---> System.IO.IOException: There is not enough space on the disk.
+
+   at System.IO.__Error.WinIOError(Int32 errorCode, String maybeFullPath)
+   at System.IO.__ConsoleStream.Write(Byte[] buffer, Int32 offset, Int32 count)
+   at System.IO.StreamWriter.Flush(Boolean flushStream, Boolean flushEncoder)
+   at System.IO.StreamWriter.Write(String value)
+   at System.IO.TextWriter.SyncTextWriter.Write(String value)
+   at Microsoft.Build.BackEnd.Logging.ParallelConsoleLogger.WriteMessageAligned(String message, Boolean prefixAlreadyWritten, Int32 prefixAdjustment)
+   at Microsoft.Build.BackEnd.Logging.ParallelConsoleLogger.ErrorHandler(Object sender, BuildErrorEventArgs e)
+   at Microsoft.Build.BackEnd.Logging.EventSourceSink.RaiseEvent[TArgs](TArgs buildEvent, ArgsHandler`1 handler, ArgsHandler`1 followUpHandler)
+   --- End of inner exception stack trace ---
+   at Microsoft.Build.Exceptions.InternalLoggerException.Throw(Exception innerException, BuildEventArgs e, String messageResourceName, Boolean initializationException, String[] messageArgs)
+   at Microsoft.Build.BackEnd.Logging.EventSourceSink.RaiseEvent[TArgs](TArgs buildEvent, ArgsHandler`1 handler, ArgsHandler`1 followUpHandler)
+   at Microsoft.Build.BackEnd.Logging.EventSourceSink.RaiseEvent[TArgs](TArgs buildEvent, ArgsHandler`1 handler, ArgsHandler`1 followUpHandler)

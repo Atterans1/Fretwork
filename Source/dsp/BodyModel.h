@@ -18,6 +18,10 @@ public:
     // in: summed bridge signal. piezoOut: highpassed bridge. micOut: body modes.
     void process (const float* in, float* piezoOut, float* micOut, int numSamples) noexcept;
 
+    // One sample of the same path, so the engine can run the body inside its
+    // per-sample loop and feed the top motion back into the strings.
+    void processSample (float in, float& piezoOut, float& micOut) noexcept;
+
     void reset() noexcept;
 
 private:

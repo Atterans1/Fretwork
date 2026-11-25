@@ -1,0 +1,56 @@
+MSBuild version 17.14.51+25f168cee for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Generating FretworkTests_artefacts/JuceLibraryCode/FretworkTests_resources.rc
+  Building Custom Rule C:/Users/jeffr/AppData/Local/Temp/fw_fix/CMakeLists.txt
+  FretworkTests_rc_lib.vcxproj -> C:\Users\jeffr\Fretwork\build_upscale_fix\fretwork_fix\FretworkTests_rc_lib.dir\Release\FretworkTests_rc_lib.lib
+  Generating juce_binarydata_FretworkAssets/JuceLibraryCode/BinaryData1.cpp, juce_binarydata_FretworkAssets/JuceLibraryCode/BinaryData2.cpp, juce_binarydata_FretworkAssets/JuceLibraryCode/BinaryData3.cpp, juce_binarydata_FretworkAssets/JuceLibraryCode/BinaryData4.cpp, juce_binarydata_FretworkAssets/JuceLibraryCode/BinaryData.h
+  FretworkCore.vcxproj -> C:\Users\jeffr\Fretwork\build_upscale_fix\fretwork_fix\Release\FretworkCore.lib
+  Building Custom Rule C:/Users/jeffr/AppData/Local/Temp/fw_fix/CMakeLists.txt
+  BinaryData1.cpp
+  BinaryData2.cpp
+  BinaryData3.cpp
+  BinaryData4.cpp
+  Generating Code...
+  FretworkAssets.vcxproj -> C:\Users\jeffr\Fretwork\build_upscale_fix\fretwork_fix\Release\FretworkAssets.lib
+  Building Custom Rule C:/Users/jeffr/AppData/Local/Temp/fw_fix/CMakeLists.txt
+  AmpFxTests.cpp
+  ChordVoicingTests.cpp
+  FunctionalTests.cpp
+  ModeArticTests.cpp
+  RangeSweepTests.cpp
+  SevenStringTests.cpp
+  SoundEvalTests.cpp
+  VoiceProbeTests.cpp
+  main.cpp
+  PluginEditor.cpp
+  FretLookAndFeel.cpp
+  FretboardView.cpp
+  GuitarArt.cpp
+  GuitarBodyView.cpp
+  KeyboardStrip.cpp
+  KnobCell.cpp
+  Segmented.cpp
+  SeqGrid.cpp
+  SetupTabs.cpp
+  TransportBar.cpp
+  juce_audio_utils.cpp
+  juce_audio_processors.cpp
+  juce_gui_extra.cpp
+  juce_gui_basics.cpp
+  juce_graphics.cpp
+  juce_graphics_Harfbuzz.cpp
+  juce_events.cpp
+  juce_core.cpp
+  juce_core_CompilationTime.cpp
+  juce_data_structures.cpp
+  juce_audio_processors_headless.cpp
+  juce_audio_processors_headless_ara.cpp
+  juce_audio_processors_headless_lv2_libs.cpp
+  juce_audio_basics.cpp
+  juce_audio_formats.cpp
+  juce_audio_devices.cpp
+  juce_dsp.cpp
+  juce_graphics_Sheenbidi.c
+  FretworkTests.vcxproj -> C:\Users\jeffr\Fretwork\build_upscale_fix\fretwork_fix\FretworkTests_artefacts\Release\FretworkTests.exe

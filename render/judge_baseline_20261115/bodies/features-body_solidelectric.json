@@ -1,0 +1,21 @@
+{
+  "case": "body_solidelectric",
+  "envelope": {
+    "body_0_6s_rms": 0.04353,
+    "mid_1_1_6s_rms": 0.03219,
+    "tail_2_8_3_4s_rms": 0.01673,
+    "peak": 0.16955,
+    "decay_db_per_sec": -3.46
+  },
+  "rhythm": {
+    "onset_count": 2,
+    "last_onset_gap_sec": 0.0900
+  },
+  "timbre": {
+    "brightness_attack_hz": 375.5,
+    "brightness_body_hz": 211.0
+  },
+  "intonation": {
+    "pitch_dev_cents": 2.93
+  }
+}

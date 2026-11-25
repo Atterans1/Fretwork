@@ -1,0 +1,135 @@
+T1 tuning accuracy
+T2 sustain and decay
+T3 pick position
+T4 body, material, pickup
+T5 power off
+T6 strum spread
+T7 keyswitch latching
+T8 arp stepping
+T9 state round trip
+T10 processor renders
+T11 bend accuracy
+T12 natural harmonic
+T13 mute
+T14 rotary sweep
+T15 keyswitch exclusivity
+T16 keyboard state -> audio
+T17 setup tab pages
+T18 knob cap tiers
+T19 timbre diagnostic
+T20 realtime matrix
+T21 lifecycle across neck
+T22 chord polyphony
+T23 hold does not retrigger
+T24 keyboard no replay
+T25 sequential notes one instance
+amp: Off with both mixes at 0 leaves the sound bit-identical
+amp: the models add harmonics in order Clean < Crunch < Lead
+amp: Treble and Bass move their bands
+amp: a 4x12 cabinet rolls off the top end
+fx: delay repeats at the set time and the repeats fade
+fx: chorus widens even a mono signal
+amp: maximum gain with heavy feedback stays finite and clamped
+amp: the amp factory presets load the amp and play cleanly
+chords: detection names triads, sevenths, slash chords and rejects non-chords
+chords: guitar voicing finds the standard open and barre shapes
+chords: the previous shape pulls the next one up the neck (voice leading)
+chords: Auto voicing follows what is played
+chords: Played never re-voices, Guitar shapes intervals too, Poly always as held
+chords: Arp over a guitar shape is not silent
+chords: as-held placement keeps chords low on the neck and single notes where they were
+chords: octave-doubled chord shapes once, not twice
+chords: drop D open shape voices in Drop D tuning
+params: layout matches the golden contract (ids, kinds, ranges, defaults)
+params: every value of every parameter, automated mid-note, stays finite and unclipped
+params: sound-shaping parameters audibly change the output
+params: Tone brightens as it goes up
+params: projects and presets saved before the Tone fix keep their sound
+params: sympathetic resonance stays bounded and decays
+params: rendering is deterministic for identical input
+state: save/load restores every parameter
+state: a corrupted state still loads to sane values
+state: loading garbage or empty data is harmless
+midi: note-on sounds at the right pitch, note-off releases it
+midi: velocity scales loudness
+midi: pitch bend follows Wheel Range
+midi: mod wheel adds vibrato
+midi: sustain pedal holds notes past note-off
+midi: aftertouch bends the held note up by Bend Amount
+midi: MIDI Learn links a controller to a knob and survives save/load
+midi: Transpose shifts the sounding pitch
+modes: Velocity offset shifts strum-stroke loudness
+output: Power off is silent, Output level scales
+output: Width controls stereo spread
+output: metronome clicks on the beat with no notes
+modes: Strum strokes sound the held chord, Strum Time spreads it
+modes: Arp steps through the held chord
+modes: Seq mode and playback run cleanly in every slot
+modes: Seq plays a drawn pattern on its 16th-note grid
+articulation: Bend transition bends up INTO the played pitch
+midi: notes sound an octave below written, like a real guitar
+out of box: Strum mode strums a pressed chord without stroke keys
+out of box: Seq plays its factory pattern while a chord is held
+out of box: every factory preset sounds a held chord, no other input
+host: every sample rate and block size plays in tune
+host: blocks larger than announced are rendered completely
+host: reset via prepareToPlay mid-session leaves no stuck notes
+body: a solid electric sustains longer than a dreadnought
+seq import: a strum pattern from a MIDI file lands on the grid
+presets: host programs are the factory presets and load their sound
+presets: a host re-sending the current program does not overwrite a restored sound
+undo: UI edits step back and forward; host automation is not recorded
+undo and presets leave tempo and playback alone
+A/B: switching compares two sounds without losing either
+presets: a user preset saves to a file and loads back
+strum: soft strokes reach fewer strings, from the side they start on
+strum: holding the bass key keeps the bass string out of the strum
+strum: harder strokes sweep the strings faster
+strum: humanized strokes keep their sweep order
+midi: notes from the host light the on-screen piano
+editor: body display draws a distinct guitar for every body
+editor: seq grid: clicking edits the pattern, dragging erases or resizes, wheel changes velocity
+editor: opens at 1120x700, paints, and closes repeatedly
+editor: every slider and combo box drives exactly one parameter
+editor: host automation updates the on-screen controls
+editor: buttons toggle their parameters
+editor: the look and feel paints every state it claims to handle
+tunings: table matches documented open pitches
+guitar types: 12-string course sounds an octave above
+room types: hall rings longer than booth
+cpu: busy strum render runs faster than realtime
+octaves: full three-octave range plays in tune
+mode matrix: strum down and up in every mode
+mode matrix: palm mute and dead notes by velocity in every mode
+mode matrix: hammer-on, pull-off and slide on a ringing string in every mode
+mode matrix: natural harmonics at full velocity in every mode
+mode matrix: automatic vibrato on a held note in every mode
+mode matrix: fret noise when the chord is let go, in every mode
+mode matrix: string squeak on a fast position shift, in every mode
+mode matrix: pick attack follows velocity in every mode
+mode matrix: bend follows the wheel in every mode
+mode matrix: a hammered-over note is not lost after the pedal lets go
+articulation: a dead note's body ring stops, but never fades a ringing open chord
+timing: Seq swing delays the off-beat steps, in every signature
+timing: every signature gives the right bar length and metronome beats
+poly: keys struck together each sound at their own pitch on their own string
+strum: upstroke catches fewer strings than downstroke at full velocity
+range: every written note inside the fretboard window sounds
+range: an octave above the open high course still sounds
+range: notes past the window sound at their own pitch or not at all
+seven-string: the low B1 course sounds at its own pitch
+seven-string: the low E still sounds through course 1
+seven-string: state round-trips through the APVTS
+sound: a plucked low E sits at 82.4 Hz
+sound: a held string decays smoothly without truncation
+sound: releasing damps faster than the natural decay
+sound: the attack is brighter than the sustained body
+sound: a hard pluck is brighter than a soft one
+sound: a down strum is spread across a real sweep window
+sound: a loud strum stays finite and unclipped
+cpu profile: cost per feature
+voice probe: Auto shapes C major onto held pitch classes only
+voice probe: Guitar mode shapes C major onto held pitch classes only
+voice probe: Auto and Guitar produce the same C major shape
+zzbaseline: guitar render hashes
+zzdump: reference PCM for the Rust parity harness

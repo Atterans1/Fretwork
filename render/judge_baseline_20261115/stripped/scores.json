@@ -1,0 +1,54 @@
+{
+  "standard_soft_low_E": [
+    1.7,
+    1.7
+  ],
+  "single_note_A2": [
+    2.207,
+    2.207
+  ],
+  "standard_hard_low_E": [
+    1.94,
+    2.027
+  ],
+  "twelve_string_low_E": [
+    1.904,
+    1.921
+  ],
+  "strum_open_E": [
+    2.207,
+    2.207
+  ],
+  "pure_nickel_hard_low_E": [
+    2.021,
+    2.021
+  ],
+  "body_semihollow": [
+    2.077,
+    2.077
+  ],
+  "body_dreadnought": [
+    1.973,
+    2.027
+  ],
+  "body_classical": [
+    1.685,
+    1.685
+  ],
+  "guitar_7string": [
+    1.797,
+    2.027
+  ],
+  "guitar_baritone": [
+    2.027,
+    2.027
+  ],
+  "body_solidelectric": [
+    1.987,
+    1.987
+  ],
+  "guitar_nylon12": [
+    1.921,
+    1.921
+  ]
+}

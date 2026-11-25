@@ -43,7 +43,16 @@ void BodyModel::rebuild (int bodyIndex, float sizeScale, float resScale)
         const float hz  = m.hz * size;
         const float q   = std::max (0.5f, m.q * res);
 
-        modes_[i].setBandPass (fs_, hz, q, m.db + table.mixDb);
+        // Per-mode decay: a bare bandpass rings out in t60 = 2.2*Q/hz, which
+        // starves the upper modes (about 4 ms at 3 kHz, where a real top still
+        // rings 40-80 ms). Floor the decay time and re-derive Q from it; low
+        // modes keep their table Q because their implicit t60 is already longer.
+        const float t60      = 2.198f * q / hz;
+        const float t60Floor = 0.05f;
+        const float qDerived = std::min (t60Floor * hz / 2.198f, 25.0f); // cap: a 68-Q biquad whistles, it does not sound like wood
+        const float qEff     = t60 < t60Floor ? qDerived : q;
+
+        modes_[i].setBandPass (fs_, hz, qEff, m.db + table.mixDb);
     }
 }
 
@@ -66,22 +75,27 @@ void BodyModel::setBody (int bodyIndex, float sizeScale, float resScale, float t
     }
 }
 
+void BodyModel::processSample (float in, float& piezoOut, float& micOut) noexcept
+{
+    piezoOut = piezoHp_.process (in);
+
+    float mic = 0.f;
+    for (int m = 0; m < count_; ++m)
+        mic += modes_[(std::size_t) m].process (piezoOut);
+
+    micOut = topDamp_.process (mic);
+}
+
 void BodyModel::process (const float* in, float* piezoOut, float* micOut, int n) noexcept
 {
     if (in == nullptr || micOut == nullptr || n <= 0) return;
 
     for (int i = 0; i < n; ++i)
     {
-        const float piezo = piezoHp_.process (in[i]);
-
-        float mic = 0.f;
-        for (int m = 0; m < count_; ++m)
-            mic += modes_[(std::size_t) m].process (piezo);
-
-        mic = topDamp_.process (mic);
-
-        if (piezoOut != nullptr) piezoOut[i] = piezo;
-        micOut[i] = mic;
+        float p = 0.f, m = 0.f;
+        processSample (in[i], p, m);
+        if (piezoOut != nullptr) piezoOut[i] = p;
+        micOut[i] = m;
     }
 }
 

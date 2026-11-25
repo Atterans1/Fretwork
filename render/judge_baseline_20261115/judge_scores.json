@@ -1,0 +1,127 @@
+{
+  "rubric": "ad hoc 0-4 score question written for this run; not defined in repo",
+  "gate": "2.85 gate: not defined in repo; unverified, no pass/fail reported",
+  "verdict_rule": "valid verdict only if confidence >= 0.3; confidence 0 = no verdict",
+  "scorer": "omp judgeBatch, 'score' question, two batches (8 + 7 states)",
+  "scored": [
+    {
+      "case": "single_note_A2",
+      "score": 2.9894,
+      "confidence": 0.4217,
+      "valid_verdict": true,
+      "set": "stock"
+    },
+    {
+      "case": "standard_hard_low_E",
+      "score": 2.8513,
+      "confidence": 0.3286,
+      "valid_verdict": true,
+      "set": "stock"
+    },
+    {
+      "case": "standard_soft_low_E",
+      "score": 2.7559,
+      "confidence": 0.2377,
+      "valid_verdict": false,
+      "set": "stock"
+    },
+    {
+      "case": "strum_open_E",
+      "score": 3.0705,
+      "confidence": 0.2254,
+      "valid_verdict": false,
+      "set": "stock"
+    },
+    {
+      "case": "twelve_string_low_E",
+      "score": 2.695,
+      "confidence": 0,
+      "valid_verdict": false,
+      "set": "stock"
+    },
+    {
+      "case": "pure_nickel_hard_low_E",
+      "score": 2.0964,
+      "confidence": 0,
+      "valid_verdict": false,
+      "set": "stock"
+    },
+    {
+      "case": "body_dreadnought",
+      "score": 2.934,
+      "confidence": 0.333,
+      "valid_verdict": true,
+      "set": "bodies",
+      "note": "features identical to standard_hard_low_E"
+    },
+    {
+      "case": "body_classical",
+      "score": 2.903,
+      "confidence": 0.086,
+      "valid_verdict": false,
+      "set": "bodies"
+    },
+    {
+      "case": "body_semihollow",
+      "score": 3.069,
+      "confidence": 0.434,
+      "valid_verdict": true,
+      "set": "bodies"
+    },
+    {
+      "case": "body_solidelectric",
+      "score": 2.599,
+      "confidence": 0,
+      "valid_verdict": false,
+      "set": "bodies"
+    },
+    {
+      "case": "guitar_baritone",
+      "score": 3.224,
+      "confidence": 0.353,
+      "valid_verdict": true,
+      "set": "bodies",
+      "note": "features identical to 6-string"
+    },
+    {
+      "case": "guitar_nylon12",
+      "score": 3.442,
+      "confidence": 0.535,
+      "valid_verdict": true,
+      "set": "bodies",
+      "note": "features identical to twelve_string_low_E"
+    },
+    {
+      "case": "guitar_7string",
+      "score": 3.243,
+      "confidence": 0.369,
+      "valid_verdict": true,
+      "set": "bodies",
+      "note": "features identical to 6-string"
+    }
+  ],
+  "excluded_invalid_features": [
+    {
+      "case": "neck_scale_low_E",
+      "reason": "pitch dev 300.4 cents; melodic notes likely measured as drift (unverified)"
+    },
+    {
+      "case": "sequencer_pattern_low_E",
+      "reason": "pitch dev 1303.1 cents; melodic notes likely measured as drift (unverified)"
+    },
+    {
+      "case": "symp_ring",
+      "reason": "pitch dev 386.2 cents; not scored"
+    },
+    {
+      "case": "symp_muted",
+      "reason": "pitch dev 501.3 cents; not scored"
+    },
+    {
+      "case": "symp_solo",
+      "reason": "body 0.0, attack 0 Hz, pitch dev 490.4 cents; not scored"
+    }
+  ],
+  "not_measured": "Dreadnought, Classical, Solid Electric, Semi-Hollow, 7-string measured on a low-E single pluck only; no per-instrument passage scores",
+  "lowest_submetric": "not available; SoundJudge reports features, not sub-scores"
+}

@@ -29,6 +29,12 @@ namespace
     // pitches, so every existing tuning row stays valid for six-string use.
     constexpr float kTuning7[7] = { 35.f, 40.f, 45.f, 50.f, 55.f, 59.f, 64.f };
 
+    constexpr const char* stringGainIds[6] =
+    {
+        fw::id::stringGain0, fw::id::stringGain1, fw::id::stringGain2,
+        fw::id::stringGain3, fw::id::stringGain4, fw::id::stringGain5
+    };
+
     constexpr const char* tuningIds[6] =
     {
         fw::id::tune0, fw::id::tune1, fw::id::tune2,
@@ -193,6 +199,7 @@ void FretworkAudioProcessor::buildEngineParams (fw::dsp::EngineParams& p)
         sp.fretNoise     = getScaled (fw::id::fretNoise);
         sp.bodyLossScale = fw::dsp::kBodyLossScale[body];
         sp.scaleLengthM  = fw::dsp::kScaleLengthM[s];
+        p.stringGain[(std::size_t) s] = juce::Decibels::decibelsToGain (getScaled (stringGainIds[s]));
 
         // Gauge set: heavier strings sustain a little longer and attack darker.
         const int set = std::clamp (getChoiceParam (fw::id::stringSet), 0, fw::dsp::kNumStringSets - 1);

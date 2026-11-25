@@ -29,7 +29,7 @@ private:
                         bool isDown, bool isOver, juce::Colour noteFillColour) override;
 
     static constexpr int kLowestKey = 12;
-    static constexpr int kHighestKey = 96;
+    static constexpr int kHighestKey = 84;
     static constexpr int kKsLast = 37;
 
     static bool isKeyswitch (int midiNote) noexcept { return midiNote >= kLowestKey && midiNote <= kKsLast; }

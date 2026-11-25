@@ -1,0 +1,5 @@
+hi_6string: decay -9.5 onsets 2 attack 606 body 563 pitch dev 766.3 c
+hi_12string: decay -7.4 onsets 2 attack 664 body 639 pitch dev 556.9 c
+hi_baritone: decay -9.5 onsets 2 attack 606 body 563 pitch dev 766.3 c
+hi_nylon12: decay -7.4 onsets 2 attack 664 body 639 pitch dev 556.9 c
+hi_7string: decay -10.1 onsets 2 attack 600 body 571 pitch dev 763.3 c

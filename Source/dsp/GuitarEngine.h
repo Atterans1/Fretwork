@@ -20,6 +20,10 @@ struct EngineParams
     // Active course count; slots >= this never tick or render.
     int   activeStringCount = kNumStrings;
 
+    // Per-course output gain (linear). Scales the pickup and output mix only;
+    // the sympathetic bridge feedback stays unscaled so the loop gain is unchanged.
+    std::array<float, kMaxStrings> stringGain { 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f };
+
     int   body        = 0;        // BodyKind
     float sympathetic = 30.f;     // %
     float glideTime   = 90.f;     // ms
@@ -154,6 +158,7 @@ private:
     // Previous sample's bridge output per string, for sympathetic coupling.
     std::array<float, kMaxStrings> prevBridge_ {};
     float prevBridgeSum_ = 0.f;
+    // Previous sample's body mic output, fed back through the bridge admittance.
 
     float electricLevel_ = 1.f;
     // A dead (fully damped) note leaves the body resonance ringing long after

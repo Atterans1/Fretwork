@@ -33,7 +33,9 @@ public:
 
     // Layout helper
     static juce::Rectangle<int> cellRect (int col, int row, int colSpan = 1);
-    static juce::Rectangle<int> maskCellRect (int index);
+    static juce::Rectangle<int> maskCellRect (int index, int row = 2);
+    // PluginEditor gives the tab stack this height; every page's rows must fit under the tab strip.
+    static constexpr int kPanelH = 272;
 
     // Page builders
     void buildBody (juce::Component& page, juce::AudioProcessorValueTreeState& state);
@@ -58,10 +60,14 @@ private:
     static constexpr int kMaskW = 48, kMaskGap = 6, kMaskX = 6;
     static constexpr int kTabStrip = 28;
 
-    // Height PluginEditor hands the tab stack (see PluginEditor::resized). Rows
-    // must fit under the tab strip; the slack is split evenly top and bottom.
-    static constexpr int kPanelH = 228;
-    static_assert (kGridY + 2 * (kCellH + kGapY) + kCompactH <= kPanelH - kTabStrip,
+    // Rows 0-1 are full cells; rows 2 and up are compact strips stacked below them.
+    static constexpr int rowY (int row)
+    {
+        return row < 2 ? kGridY + row * (kCellH + kGapY)
+                       : kGridY + 2 * (kCellH + kGapY) + (row - 2) * (kCompactH + kGapY);
+    }
+
+    static_assert (kGridY + 2 * (kCellH + kGapY) + (kCompactH + kGapY) + kCompactH <= kPanelH - kTabStrip,
                    "setup tab rows must fit the panel content height");
 
     FretworkAudioProcessor& processor;

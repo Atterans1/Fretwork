@@ -133,11 +133,17 @@ void GuitarEngine::refreshModel()
     const BodyTable& bt = kBodyTables[bi];
 
     acousticLevel_ = dbToLin (bt.mixDb);
-    // The magnetic pickup sums every string with little body loss, so electric
-    // bodies ran ~3 dB hotter than the acoustics at the same settings and a
-    // hard six-string strum clipped. 0.7 (-3 dB) matches their loudness.
+    // A magnetic pickup belongs only on an electric body. Acoustic bodies
+    // take no pickup signal and are heard through the piezo and mic path.
+    // Electric bodies sit at 0.7 (-3 dB) so a hard six-string strum does not clip.
     electricLevel_ = (bi == (int) BodyKind::SolidElectric
-                   || bi == (int) BodyKind::SemiHollow) ? 0.7f : 0.25f;
+                   || bi == (int) BodyKind::SemiHollow) ? 0.7f : 0.f;
+    // Pickup-removal makeup: acoustic bodies lost the magnetic pickup path's
+    // energy when electricLevel_ was zeroed. Raise the acoustic mix by 2.5 dB
+    // so overall level is preserved. Applied here, once - not in the body
+    // tables, where mixDb also feeds per-mode gain (double application).
+    if (electricLevel_ == 0.f)
+        acousticLevel_ *= dbToLin (2.5f);
 
     PickupParams pp {};
     pp.type     = p_.pickupType;
@@ -310,6 +316,13 @@ void GuitarEngine::render (float* left, float* right, int n)
         return;
     }
 
+    // Body modes are a parallel bank; run them per sample so the top's motion
+    // can feed back into the strings one sample later (bridge admittance).
+    body_.setBody ((int) clampf ((float) p_.body, 0.f, 3.f),
+                       clampf (p_.bodySize, 0.05f, 4.f),
+                       sBodyRes_.value,
+                       sTopDamp_.value);
+
     for (int i = 0; i < n; ++i)
     {
         sSympathetic_.step();
@@ -371,15 +384,16 @@ void GuitarEngine::render (float* left, float* right, int n)
 
             const float total = b + courseOut;
             mixSum += total;
-            bridgeSum += total;
-            side += total * (panL_[(std::size_t) s] - panR_[(std::size_t) s]);
+            const float outGain = p_.stringGain[(std::size_t) s];
+            bridgeSum += total * outGain;
+            side += total * outGain * (panL_[(std::size_t) s] - panR_[(std::size_t) s]);
 
             const float v = pickup_.processString (s, b, strings_[(std::size_t) s].periodSamples());
             const float vc = courseOut != 0.f
                 ? pickup_.processString (s, courseOut, course_[(std::size_t) s]->periodSamples())
                 : 0.f;
-            el += (v + vc * courseLevel_) * panL_[(std::size_t) s];
-            er += (v + vc * courseLevel_) * panR_[(std::size_t) s];
+            el += (v + vc * courseLevel_) * panL_[(std::size_t) s] * outGain;
+            er += (v + vc * courseLevel_) * panR_[(std::size_t) s] * outGain;
         }
 
         prevBridgeSum_ = mixSum;
@@ -388,14 +402,11 @@ void GuitarEngine::render (float* left, float* right, int n)
         er_[(std::size_t) i] = er * electricLevel_;
         bridgeSum_[(std::size_t) i] = bridgeSum;
         bridgeSide_[(std::size_t) i] = side;
-    }
 
-    // Body modes are a parallel bank, so they work on the summed block.
-    body_.setBody ((int) clampf ((float) p_.body, 0.f, 3.f),
-                       clampf (p_.bodySize, 0.05f, 4.f),
-                       sBodyRes_.value,
-                       sTopDamp_.value);
-    body_.process (bridgeSum_.data(), piezo_.data(), mic_.data(), n);
+        // Body on this sample's bridge sum. Its mic output does not drive the
+        // strings yet: no bridge-to-string return path exists in this build.
+        body_.processSample (bridgeSum, piezo_[(std::size_t) i], mic_[(std::size_t) i]);
+    }
 
     const float mb = clampf (sMicBlend_.value, 0.f, 1.f);
 

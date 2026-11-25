@@ -1,0 +1,10 @@
+MSBuild version 17.14.51+25f168cee for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule C:/Users/jeffr/Fretwork/render/upscale_20261115/CMakeLists.txt
+  LoopProbe_rc_lib.vcxproj -> C:\Users\jeffr\Fretwork\build_upscale\LoopProbe_rc_lib.dir\Release\LoopProbe_rc_lib.lib
+  FretworkCore.vcxproj -> C:\Users\jeffr\Fretwork\build_upscale\fretwork\Release\FretworkCore.lib
+  Building Custom Rule C:/Users/jeffr/Fretwork/render/upscale_20261115/CMakeLists.txt
+  LoopProbe.cpp
+  LoopProbe.vcxproj -> C:\Users\jeffr\Fretwork\build_upscale\LoopProbe_artefacts\Release\LoopProbe.exe

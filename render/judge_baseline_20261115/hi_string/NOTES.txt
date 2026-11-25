@@ -1,0 +1,7 @@
+Higher-string sweep (MIDI 64, E4), scratch SoundJudgeParam build, not scored.
+hi_6string:  decay -9.5  attack 606 Hz body 563 Hz pitch dev 766.3 c
+hi_12string: decay -7.4  attack 664 Hz body 639 Hz pitch dev 556.9 c
+hi_baritone: identical to hi_6string (engine: plain six)
+hi_nylon12:  identical to hi_12string (engine: bass 3 courses octaved; E4 not octaved, expected)
+hi_7string:  decay -10.1 attack 600 Hz body 571 Hz pitch dev 763.3 c
+Pitch dev 557-766 cents: suspect extraction artifact, excluded from scoring.

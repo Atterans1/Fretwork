@@ -1,0 +1,21 @@
+{
+  "case": "hi_7string",
+  "envelope": {
+    "body_0_6s_rms": 0.04177,
+    "mid_1_1_6s_rms": 0.01455,
+    "tail_2_8_3_4s_rms": 0.00256,
+    "peak": 0.19044,
+    "decay_db_per_sec": -10.10
+  },
+  "rhythm": {
+    "onset_count": 2,
+    "last_onset_gap_sec": 0.0900
+  },
+  "timbre": {
+    "brightness_attack_hz": 599.9,
+    "brightness_body_hz": 570.7
+  },
+  "intonation": {
+    "pitch_dev_cents": 763.26
+  }
+}

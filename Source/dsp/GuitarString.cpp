@@ -431,7 +431,11 @@ float GuitarString::tick (float sympatheticIn, float coupling)
     }
     x *= releaseGain_;
 
-    float input = x * (1.f - coupling) + sympatheticIn;
+    // A damped string is not a sympathetic resonator: scale the string-string
+    // drive by the live loop gain share, so a released string stops being
+    // driven by its neighbours.
+    const float gate = releaseGain_ < naturalGain_ ? releaseGain_ / naturalGain_ : 1.f;
+    float input = x * (1.f - coupling) + sympatheticIn * gate;
 
     if (injectPos_ < injectLen_)
         input += excite_[injectPos_++] * injectScale_;

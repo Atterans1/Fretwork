@@ -10,23 +10,32 @@ namespace fw::ui
     labels, one violet LED accent with an amber position marker. */
 struct Palette
 {
-    inline static const juce::Colour background { 0xff17181c };   // chassis face
-    inline static const juce::Colour frame      { 0xff2b2d33 };   // bevelled outer frame
+    inline static const juce::Colour background { 0xff1e1e24 };   // chassis face
+    inline static const juce::Colour frame      { 0xff2b2d33 };   // flat outer frame
     inline static const juce::Colour panel      { 0xff1f2126 };   // group fill
     inline static const juce::Colour panelHi    { 0xff2a2d33 };   // raised surfaces
     inline static const juce::Colour line       { 0xff3a3d45 };   // hairline rules
     inline static const juce::Colour lcd        { 0xff0b0c0e };   // LCD / value wells
     inline static const juce::Colour text       { 0xffece7dc };   // warm off-white
     inline static const juce::Colour caption    { 0xffa9adb5 };   // small-caps headers
-    inline static const juce::Colour dim        { 0xff80848d };
+    // ~6.3:1 on background (was 4.2:1 at 0xff80848d).
+    inline static const juce::Colour dim        { 0xff9ba0aa };
     inline static const juce::Colour unlit      { 0xff34363d };   // unlit LED dot
-    inline static const juce::Colour accent     { 0xff9d72ff };   // violet LED
-    inline static const juce::Colour lcdText    { 0xffc6aeff };   // glowing LCD text
+    inline static const juce::Colour accent     { 0xff8a5cf6 };   // violet LED
+
     inline static const juce::Colour accent2    { 0xffd23fd6 };   // magenta (Waves Tune)
     inline static const juce::Colour accent3    { 0xff6f8cff };
     inline static const juce::Colour amber      { 0xfff2b45a };   // pointer / peak marker
     inline static const juce::Colour whiteKey   { 0xffe9eaec };
     inline static const juce::Colour blackKey   { 0xff121316 };
+
+    /** The one type scale for the editor. Every text size comes from here. */
+    struct Scale
+    {
+        static constexpr float small  = 11.0f;
+        static constexpr float medium = 13.0f;
+        static constexpr float large  = 14.0f;
+    };
 
     static juce::Font font (float height, int style = juce::Font::plain)
     {
@@ -140,6 +149,10 @@ public:
     //==============================================================================
     static constexpr int popupMenuItemHeight = 26;
     static constexpr int comboBoxFontHeight  = 18;
+    static constexpr int comboCellW          = 22;  // arrow cell width
+    static constexpr int comboTextInsetX     = 6;   // item text inset, left
+    static constexpr int comboTextInsetY     = 1;   // item text inset, top and bottom
+    static constexpr int comboTextInsetR     = 8;   // gap between text and arrow cell
 
 private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (FretLookAndFeel)

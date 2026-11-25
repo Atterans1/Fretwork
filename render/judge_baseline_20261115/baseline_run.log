@@ -1,0 +1,11 @@
+standard_soft_low_E: body 0.0128 tail 0.0033 decay -4.9 dB/s onsets 2 attack 234 Hz body 108 Hz pitch dev 2.9 c
+standard_hard_low_E: body 0.0494 tail 0.0128 decay -4.9 dB/s onsets 2 attack 264 Hz body 125 Hz pitch dev 2.9 c
+pure_nickel_hard_low_E: body 0.0497 tail 0.0135 decay -4.7 dB/s onsets 2 attack 274 Hz body 123 Hz pitch dev 2.9 c
+twelve_string_low_E: body 0.0599 tail 0.0162 decay -4.7 dB/s onsets 2 attack 283 Hz body 171 Hz pitch dev 1.5 c
+neck_scale_low_E: body 0.0514 tail 0.0407 decay -0.8 dB/s onsets 3 attack 257 Hz body 150 Hz pitch dev 300.4 c
+sequencer_pattern_low_E: body 0.0426 tail 0.1025 decay 3.2 dB/s onsets 4 attack 257 Hz body 309 Hz pitch dev 1303.1 c
+strum_open_E: body 0.0917 tail 0.0148 decay -6.6 dB/s onsets 2 attack 369 Hz body 244 Hz pitch dev 8.3 c
+single_note_A2: body 0.0475 tail 0.0092 decay -5.9 dB/s onsets 2 attack 293 Hz body 184 Hz pitch dev 3.5 c
+symp_ring: body 0.0426 tail 0.0054 decay -7.5 dB/s onsets 2 attack 261 Hz body 259 Hz pitch dev 386.2 c
+symp_muted: body 0.0426 tail 0.0127 decay -4.4 dB/s onsets 4 attack 261 Hz body 293 Hz pitch dev 501.3 c
+symp_solo: body 0.0000 tail 0.0127 decay 0.0 dB/s onsets 2 attack 0 Hz body 381 Hz pitch dev 490.4 c

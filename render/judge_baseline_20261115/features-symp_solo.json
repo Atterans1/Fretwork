@@ -1,0 +1,21 @@
+{
+  "case": "symp_solo",
+  "envelope": {
+    "body_0_6s_rms": 0.00000,
+    "mid_1_1_6s_rms": 0.03902,
+    "tail_2_8_3_4s_rms": 0.01274,
+    "peak": 0.15607,
+    "decay_db_per_sec": 0.00
+  },
+  "rhythm": {
+    "onset_count": 2,
+    "last_onset_gap_sec": 0.0800
+  },
+  "timbre": {
+    "brightness_attack_hz": 0.0,
+    "brightness_body_hz": 381.2
+  },
+  "intonation": {
+    "pitch_dev_cents": 490.36
+  }
+}

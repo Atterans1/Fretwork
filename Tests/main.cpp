@@ -6,6 +6,7 @@
 
 #include "PluginProcessor.h"
 #include "Params.h"
+#include <juce_audio_formats/juce_audio_formats.h>
 #include "Harness.h"
 
 #include "SeqStore.h"
@@ -1393,6 +1394,80 @@ int renderDemo (const juce::File& dir)
     return 0;
 }
 
+// --render <dir>: offline reverb renders for measurement. Two passages (sustain
+// and strum, note-off at 2.0 s, same timing as ModeMatrix) at room 0 as the
+// dry reference, plus every room type at Room Level 20 and 100. Room and room
+// type are set through the parameter tree. 24-bit stereo 48 kHz WAV.
+int renderAmbience (const juce::File& dir)
+{
+    dir.createDirectory();
+    struct Ev { int sample; bool on; int note; };
+    // Guitar notes sound an octave up in MIDI, as ModeMatrix writes them (note >= 38 gets +12).
+    const auto written = [] (int n) { return n < 38 ? n : n + 12; };
+    const std::vector<std::pair<juce::String, std::vector<Ev>>> passages {
+        { "sustain", { { 960, true, 40 }, { 96000, false, 40 } } },
+        { "strum", { { 960, true, 40 }, { 1680, true, 45 }, { 2400, true, 50 },
+                     { 3120, true, 55 }, { 3840, true, 59 }, { 4560, true, 64 },
+                     { 96000, false, 40 }, { 96000, false, 45 }, { 96000, false, 50 },
+                     { 96000, false, 55 }, { 96000, false, 59 }, { 96000, false, 64 } } } };
+
+    struct Case { juce::String name; int room; int type; };
+    const char* const typeNames[] = { "Booth", "Room", "Hall", "Plate" };
+    std::vector<Case> cases { { "room0", 0, 1 } };
+    for (int t = 0; t < 4; ++t)
+        for (int room : { 20, 100 })
+            cases.push_back ({ juce::String (typeNames[t]) + "_" + juce::String (room), room, t });
+
+    const auto renderOne = [&] (const std::vector<Ev>& evs, int room, int type, const juce::File& out)
+    {
+        auto procPtr = std::make_unique<FretworkAudioProcessor>();
+        auto& proc = *procPtr;
+        proc.prepareToPlay (48000.0, 512);
+        const auto set = [&] (const char* id, float v)
+        {
+            if (auto* p = proc.getState().getParameter (id))
+                p->setValueNotifyingHost (p->convertTo0to1 (v));
+        };
+        set (fw::id::room, (float) room);
+        set (fw::id::roomType, (float) type);
+
+        const int total = 6 * 48000;
+        juce::AudioBuffer<float> all (2, total);
+        all.clear();
+        for (int start = 0; start < total; start += 512)
+        {
+            const int n = std::min (512, total - start);
+            juce::AudioBuffer<float> buf (2, n);
+            buf.clear();
+            juce::MidiBuffer midi;
+            for (const auto& e : evs)
+                if (e.sample >= start && e.sample < start + n)
+                    midi.addEvent (e.on ? juce::MidiMessage::noteOn (1, written (e.note), (juce::uint8) 100)
+                                        : juce::MidiMessage::noteOff (1, written (e.note)),
+                                   e.sample - start);
+            proc.processBlock (buf, midi);
+            for (int c = 0; c < 2; ++c) all.copyFrom (c, start, buf, c, 0, n);
+        }
+
+        out.deleteFile();
+        std::unique_ptr<juce::FileOutputStream> fos (out.createOutputStream().release());
+        if (fos == nullptr) return false;
+        juce::WavAudioFormat wav;
+        std::unique_ptr<juce::AudioFormatWriter> w (wav.createWriterFor (fos.get(), 48000.0, 2, 24, {}, 0));
+        if (w == nullptr) return false;
+        fos.release();
+        return w->writeFromAudioSampleBuffer (all, 0, total);
+    };
+
+    for (const auto& [passage, evs] : passages)
+        for (const auto& c : cases)
+        {
+            const bool ok = renderOne (evs, c.room, c.type, dir.getChildFile (passage + "_" + c.name + ".wav"));
+            std::printf ("%s_%s: %s\n", passage.toRawUTF8(), c.name.toRawUTF8(), ok ? "ok" : "FAILED");
+        }
+    return 0;
+}
+
 // --snapshot <dir>: renders the editor at 1x and 2x scale to PNGs, plus a
 // strip of widget states (hover/down/on/disabled) for visual review.
 int renderSnapshots (const juce::File& dir)
@@ -1508,6 +1583,8 @@ int main (int argc, char** argv)
 
     if (argc >= 3 && std::string (argv[1]) == "--demo")
         return renderDemo (juce::File (juce::String (argv[2])));
+    if (argc >= 3 && std::string (argv[1]) == "--render")
+        return renderAmbience (juce::File (juce::String (argv[2])));
 
     struct Test { const char* name; void (*fn)(); };
 

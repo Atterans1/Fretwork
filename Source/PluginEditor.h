@@ -24,7 +24,7 @@ namespace fw::ui
     class SlotButton;
 }
 
-/** Fixed 1120 x 700 Fretwork editor. Every control is bound through an APVTS
+/** Fretwork editor. Every control is bound through an APVTS
     attachment; a 30 Hz timer mirrors the audio thread's UiSnapshot and applies
     pending keyswitch changes on the message thread. */
 class PluginEditor : public juce::AudioProcessorEditor,

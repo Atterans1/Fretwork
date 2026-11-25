@@ -1,0 +1,21 @@
+{
+  "case": "body_semihollow",
+  "envelope": {
+    "body_0_6s_rms": 0.04968,
+    "mid_1_1_6s_rms": 0.03460,
+    "tail_2_8_3_4s_rms": 0.01586,
+    "peak": 0.19332,
+    "decay_db_per_sec": -4.13
+  },
+  "rhythm": {
+    "onset_count": 2,
+    "last_onset_gap_sec": 0.0900
+  },
+  "timbre": {
+    "brightness_attack_hz": 342.0,
+    "brightness_body_hz": 197.3
+  },
+  "intonation": {
+    "pitch_dev_cents": 3.07
+  }
+}

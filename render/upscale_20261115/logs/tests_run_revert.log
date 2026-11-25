@@ -1,0 +1,574 @@
+T1 tuning accuracy
+  ok
+T2 sustain and decay
+  ok
+T3 pick position
+  ok
+T4 body, material, pickup
+  FAIL  [T4 body, material, pickup] neck and middle pickups differ   (line 340)
+  FAILED
+T5 power off
+  ok
+T6 strum spread
+  ok
+T7 keyswitch latching
+  ok
+T8 arp stepping
+  ok
+T9 state round trip
+  ok
+T10 processor renders
+  ok
+T11 bend accuracy
+  ok
+T12 natural harmonic
+  ok
+T13 mute
+  ok
+T14 rotary sweep
+  ok
+T15 keyswitch exclusivity
+  ok
+T16 keyboard state -> audio
+    energy: silent=0  best via keyboard state=511 (note 55)
+  ok
+T17 setup tab pages
+  ok
+T18 knob cap tiers
+  ok
+T19 timbre diagnostic
+    rms=0.05918  bestLag=535.0 (82.43 Hz)  autocorr=0.993  expected=82.41 Hz
+    crest factor=2.45
+    attack 0-20ms: low=92.1% mid=6.9% high=0.8% top=0.2%
+    steady  250ms+: low=98.2% mid=1.7% high=0.1% top=0.0%
+  ok
+T20 realtime matrix
+    fs= 44100 blk=   32 note=40 vel=0.40  ac=0.998 hz=82.43 atkHi=0.7% peak=0.059
+    fs= 44100 blk=   32 note=40 vel=0.99  ac=0.998 hz=82.43 atkHi=0.9% peak=0.227
+    fs= 44100 blk=   32 note=64 vel=0.40  ac=0.999 hz=329.10 atkHi=1.2% peak=0.053
+    fs= 44100 blk=   32 note=64 vel=0.99  ac=0.999 hz=329.10 atkHi=1.4% peak=0.201
+    fs= 44100 blk=  128 note=40 vel=0.40  ac=0.998 hz=82.43 atkHi=0.8% peak=0.060
+    fs= 44100 blk=  128 note=40 vel=0.99  ac=0.998 hz=82.43 atkHi=1.0% peak=0.228
+    fs= 44100 blk=  128 note=64 vel=0.40  ac=0.999 hz=329.10 atkHi=1.2% peak=0.054
+    fs= 44100 blk=  128 note=64 vel=0.99  ac=0.999 hz=329.10 atkHi=1.3% peak=0.218
+    fs= 44100 blk=  480 note=40 vel=0.40  ac=0.997 hz=82.43 atkHi=0.8% peak=0.060
+    fs= 44100 blk=  480 note=40 vel=0.99  ac=0.998 hz=82.43 atkHi=1.0% peak=0.226
+    fs= 44100 blk=  480 note=64 vel=0.40  ac=0.999 hz=329.10 atkHi=1.3% peak=0.055
+    fs= 44100 blk=  480 note=64 vel=0.99  ac=0.999 hz=329.10 atkHi=1.4% peak=0.221
+    fs= 44100 blk= 2048 note=40 vel=0.40  ac=0.989 hz=82.58 atkHi=0.8% peak=0.098
+    fs= 44100 blk= 2048 note=40 vel=0.99  ac=0.990 hz=82.43 atkHi=0.9% peak=0.379
+    fs= 44100 blk= 2048 note=64 vel=0.40  ac=0.979 hz=329.10 atkHi=1.3% peak=0.084
+    fs= 44100 blk= 2048 note=64 vel=0.99  ac=0.983 hz=329.10 atkHi=1.4% peak=0.305
+    fs= 44100 blk=  var note=40 vel=0.40  ac=0.996 hz=82.43 atkHi=0.8% peak=0.053
+    fs= 44100 blk=  var note=40 vel=0.99  ac=0.997 hz=82.43 atkHi=1.1% peak=0.193
+    fs= 44100 blk=  var note=64 vel=0.40  ac=0.996 hz=329.10 atkHi=1.2% peak=0.055
+    fs= 44100 blk=  var note=64 vel=0.99  ac=0.997 hz=329.10 atkHi=1.4% peak=0.220
+    fs= 48000 blk=   32 note=40 vel=0.40  ac=0.998 hz=82.47 atkHi=0.8% peak=0.059
+    fs= 48000 blk=   32 note=40 vel=0.99  ac=0.998 hz=82.47 atkHi=1.0% peak=0.228
+    fs= 48000 blk=   32 note=64 vel=0.40  ac=0.999 hz=328.77 atkHi=1.2% peak=0.055
+    fs= 48000 blk=   32 note=64 vel=0.99  ac=0.999 hz=328.77 atkHi=1.3% peak=0.211
+    fs= 48000 blk=  128 note=40 vel=0.40  ac=0.998 hz=82.47 atkHi=0.8% peak=0.060
+    fs= 48000 blk=  128 note=40 vel=0.99  ac=0.998 hz=82.47 atkHi=1.0% peak=0.230
+    fs= 48000 blk=  128 note=64 vel=0.40  ac=0.999 hz=328.77 atkHi=1.2% peak=0.054
+    fs= 48000 blk=  128 note=64 vel=0.99  ac=0.999 hz=328.77 atkHi=1.3% peak=0.218
+    fs= 48000 blk=  480 note=40 vel=0.40  ac=0.997 hz=82.47 atkHi=0.8% peak=0.063
+    fs= 48000 blk=  480 note=40 vel=0.99  ac=0.998 hz=82.47 atkHi=1.0% peak=0.236
+    fs= 48000 blk=  480 note=64 vel=0.40  ac=0.995 hz=328.77 atkHi=1.1% peak=0.063
+    fs= 48000 blk=  480 note=64 vel=0.99  ac=0.996 hz=328.77 atkHi=1.2% peak=0.245
+    fs= 48000 blk= 2048 note=40 vel=0.40  ac=0.986 hz=82.62 atkHi=0.8% peak=0.098
+    fs= 48000 blk= 2048 note=40 vel=0.99  ac=0.987 hz=82.47 atkHi=0.9% peak=0.381
+    fs= 48000 blk= 2048 note=64 vel=0.40  ac=0.987 hz=328.77 atkHi=1.3% peak=0.061
+    fs= 48000 blk= 2048 note=64 vel=0.99  ac=0.988 hz=328.77 atkHi=1.4% peak=0.234
+    fs= 48000 blk=  var note=40 vel=0.40  ac=0.998 hz=82.47 atkHi=0.8% peak=0.060
+    fs= 48000 blk=  var note=40 vel=0.99  ac=0.998 hz=82.47 atkHi=1.0% peak=0.231
+    fs= 48000 blk=  var note=64 vel=0.40  ac=0.998 hz=328.77 atkHi=1.3% peak=0.055
+    fs= 48000 blk=  var note=64 vel=0.99  ac=0.998 hz=328.77 atkHi=1.4% peak=0.222
+    fs= 96000 blk=   32 note=40 vel=0.40  ac=0.998 hz=82.40 atkHi=0.8% peak=0.059
+    fs= 96000 blk=   32 note=40 vel=0.99  ac=0.998 hz=82.40 atkHi=1.0% peak=0.229
+    fs= 96000 blk=   32 note=64 vel=0.40  ac=0.999 hz=329.90 atkHi=1.2% peak=0.053
+    fs= 96000 blk=   32 note=64 vel=0.99  ac=0.999 hz=329.90 atkHi=1.4% peak=0.204
+    fs= 96000 blk=  128 note=40 vel=0.40  ac=0.998 hz=82.40 atkHi=0.8% peak=0.059
+    fs= 96000 blk=  128 note=40 vel=0.99  ac=0.998 hz=82.40 atkHi=1.0% peak=0.229
+    fs= 96000 blk=  128 note=64 vel=0.40  ac=0.999 hz=329.90 atkHi=1.3% peak=0.051
+    fs= 96000 blk=  128 note=64 vel=0.99  ac=0.999 hz=329.90 atkHi=1.4% peak=0.203
+    fs= 96000 blk=  480 note=40 vel=0.40  ac=0.997 hz=82.40 atkHi=0.8% peak=0.060
+    fs= 96000 blk=  480 note=40 vel=0.99  ac=0.998 hz=82.40 atkHi=1.0% peak=0.230
+    fs= 96000 blk=  480 note=64 vel=0.40  ac=0.998 hz=329.90 atkHi=1.2% peak=0.054
+    fs= 96000 blk=  480 note=64 vel=0.99  ac=0.998 hz=329.90 atkHi=1.3% peak=0.218
+    fs= 96000 blk= 2048 note=40 vel=0.40  ac=0.995 hz=82.47 atkHi=0.8% peak=0.074
+    fs= 96000 blk= 2048 note=40 vel=0.99  ac=0.996 hz=82.40 atkHi=0.9% peak=0.263
+    fs= 96000 blk= 2048 note=64 vel=0.40  ac=0.992 hz=329.90 atkHi=1.3% peak=0.063
+    fs= 96000 blk= 2048 note=64 vel=0.99  ac=0.992 hz=329.90 atkHi=1.4% peak=0.243
+    fs= 96000 blk=  var note=40 vel=0.40  ac=0.997 hz=82.40 atkHi=0.8% peak=0.062
+    fs= 96000 blk=  var note=40 vel=0.99  ac=0.998 hz=82.40 atkHi=1.0% peak=0.237
+    fs= 96000 blk=  var note=64 vel=0.40  ac=0.998 hz=329.90 atkHi=1.2% peak=0.055
+    fs= 96000 blk=  var note=64 vel=0.99  ac=0.998 hz=329.90 atkHi=1.3% peak=0.221
+  ok
+T21 lifecycle across neck
+    note=40 vel=0.40  cents=+0.21 bright  150-> 107 Hz  sus=0.0149 held=0.0112 tail=0.000683  offStep=0.0003/ref 0.0004
+    note=40 vel=0.99  cents=+0.13 bright  178-> 122 Hz  sus=0.0584 held=0.0430 tail=0.002602  offStep=0.0016/ref 0.0019
+    note=45 vel=0.40  cents=-0.51 bright  211-> 150 Hz  sus=0.0126 held=0.0069 tail=0.000900  offStep=0.0004/ref 0.0004
+  FAIL  [T21 lifecycle across neck] release damps the string (-20 dB within 0.5 s)   (line 1123)
+    note=45 vel=0.99  cents=-0.29 bright  255-> 182 Hz  sus=0.0485 held=0.0269 tail=0.003423  offStep=0.0016/ref 0.0019
+  FAIL  [T21 lifecycle across neck] release damps the string (-20 dB within 0.5 s)   (line 1123)
+    note=50 vel=0.40  cents=+0.65 bright  302-> 207 Hz  sus=0.0122 held=0.0074 tail=0.000346  offStep=0.0004/ref 0.0004
+    note=50 vel=0.99  cents=+0.58 bright  332-> 226 Hz  sus=0.0473 held=0.0286 tail=0.001375  offStep=0.0018/ref 0.0018
+    note=55 vel=0.40  cents=-0.22 bright  292-> 277 Hz  sus=0.0245 held=0.0153 tail=0.000553  offStep=0.0012/ref 0.0013
+    note=55 vel=0.99  cents=-0.15 bright  312-> 289 Hz  sus=0.0940 held=0.0591 tail=0.002117  offStep=0.0053/ref 0.0055
+    note=59 vel=0.40  cents=+0.06 bright  418-> 380 Hz  sus=0.0158 held=0.0081 tail=0.000308  offStep=0.0009/ref 0.0009
+    note=59 vel=0.99  cents=+0.11 bright  467-> 403 Hz  sus=0.0616 held=0.0314 tail=0.001228  offStep=0.0038/ref 0.0037
+    note=64 vel=0.40  cents=+0.13 bright  549-> 540 Hz  sus=0.0142 held=0.0067 tail=0.000107  offStep=0.0009/ref 0.0010
+    note=64 vel=0.99  cents=+0.14 bright  577-> 556 Hz  sus=0.0562 held=0.0264 tail=0.000413  offStep=0.0037/ref 0.0043
+  FAILED
+T22 chord polyphony
+    chord peak=0.255  sustain >8kHz=0.14%  rms=0.0523
+  ok
+T23 hold does not retrigger
+    hold: onsets after the first = 0
+  ok
+T24 keyboard no replay
+    keyboard: re-plucks=0 tail=0.000000
+  ok
+T25 sequential notes one instance
+    event 0 at 1.0s rms=0.0074
+    event 1 at 4.5s rms=0.0590
+    event 2 at 8.0s rms=0.0074
+    event 3 at 11.5s rms=0.0353
+    event 4 at 15.0s rms=0.0079
+    event 5 at 18.5s rms=0.0289
+    event 6 at 22.0s rms=0.0751
+  ok
+amp: Off with both mixes at 0 leaves the sound bit-identical
+  ok (0.1 s)
+amp: the models add harmonics in order Clean < Crunch < Lead
+    model 0: energy above 1.5 kHz 0.07 %, peak 0.158
+    model 1: energy above 1.5 kHz 0.07 %, peak 0.146
+    model 2: energy above 1.5 kHz 0.11 %, peak 0.125
+    model 3: energy above 1.5 kHz 1.51 %, peak 0.101
+  ok (0.1 s)
+amp: Treble and Bass move their bands
+    treble 0/100: above 3 kHz 0.012 / 0.310 %; bass 0/100: below 150 Hz 19.72 / 28.50 %
+  FAIL  [amp: Treble and Bass move their bands] Bass up brings the low end up   (AmpFxTests.cpp:80)
+  FAILED (0.1 s)
+amp: a 4x12 cabinet rolls off the top end
+    above 6 kHz: no cab 0.031 %, 4x12 0.0042 %
+  ok (0.1 s)
+fx: delay repeats at the set time and the repeats fade
+    rms before echo 0.00004, echo 1 0.01968, echo 2 0.00979
+  ok (0.0 s)
+fx: chorus widens even a mono signal
+    side/mid energy: dry 0.00e+00, chorus 2.68e-01
+  ok (0.1 s)
+amp: maximum gain with heavy feedback stays finite and clamped
+  ok (0.1 s)
+amp: the amp factory presets load the amp and play cleanly
+    Crunch Amp    peak 0.249 rms 0.0810
+    Lead Stack    peak 0.161 rms 0.0526
+    Chorus Clean  peak 0.223 rms 0.0635
+    Jazz Amp      peak 0.222 rms 0.0904
+  ok (0.3 s)
+chords: detection names triads, sevenths, slash chords and rejects non-chords
+  ok (0.0 s)
+chords: guitar voicing finds the standard open and barre shapes
+  ok (0.0 s)
+chords: the previous shape pulls the next one up the neck (voice leading)
+  ok (0.0 s)
+chords: Auto voicing follows what is played
+  ok (0.0 s)
+chords: Played never re-voices, Guitar shapes intervals too, Poly always as held
+  ok (0.0 s)
+chords: Arp over a guitar shape is not silent
+  ok (0.1 s)
+chords: as-held placement keeps chords low on the neck and single notes where they were
+  ok (0.0 s)
+chords: octave-doubled chord shapes once, not twice
+  ok (0.0 s)
+chords: drop D open shape voices in Drop D tuning
+  ok (0.0 s)
+params: layout matches the golden contract (ids, kinds, ranges, defaults)
+  ok (0.0 s)
+params: every value of every parameter, automated mid-note, stays finite and unclipped
+  ok (1.3 s)
+params: sound-shaping parameters audibly change the output
+    body          min vs max difference 0.636
+    bodySize      min vs max difference 1.253
+    bodyRes       min vs max difference 0.151
+    micBlend      min vs max difference 0.946
+    material      min vs max difference 0.036
+    stringAge     min vs max difference 0.250
+    stiffness     min vs max difference 0.133
+    pickPos       min vs max difference 1.199
+    pickHard      min vs max difference 0.634
+    sustain       min vs max difference 0.220
+    tone          min vs max difference 0.216
+    drive         min vs max difference 0.368
+    room          min vs max difference 0.762
+    output        min vs max difference 26.390
+    excitation    min vs max difference 0.217
+    damping       min vs max difference 0.981
+    harmonic      min vs max difference 0.973
+    topDamp       min vs max difference 0.039
+    sympathetic   min vs max difference 0.172
+    pickupType    min vs max difference 0.330
+    pickupSel     min vs max difference 0.947
+    pickupHeight  min vs max difference 3.997
+    pickupTone    min vs max difference 1.804
+    pickupOut     min vs max difference 8.808
+  ok (1.5 s)
+params: Tone brightens as it goes up
+    tone  1000 Hz: energy above 3 kHz 0.936 %
+    tone  2811 Hz: energy above 3 kHz 1.076 %
+    tone  6000 Hz: energy above 3 kHz 1.121 %
+    tone 16000 Hz: energy above 3 kHz 1.145 %
+  ok (0.1 s)
+params: projects and presets saved before the Tone fix keep their sound
+    old-default project vs new default: difference 3.76e-06
+  ok (0.1 s)
+params: sympathetic resonance stays bounded and decays
+    sympathetic   0: rms 0.05-0.3 0.0334, 1.2-1.5 0.0222, after release 0.000000, peak 0.178
+    sympathetic  30: rms 0.05-0.3 0.0328, 1.2-1.5 0.0184, after release 0.000000, peak 0.178
+    sympathetic 100: rms 0.05-0.3 0.0315, 1.2-1.5 0.0120, after release 0.000000, peak 0.177
+  ok (0.4 s)
+params: rendering is deterministic for identical input
+  ok (0.1 s)
+state: save/load restores every parameter
+  ok (0.0 s)
+state: a corrupted state still loads to sane values
+  ok (0.2 s)
+state: loading garbage or empty data is harmless
+  ok (0.0 s)
+midi: note-on sounds at the right pitch, note-off releases it
+  FAIL  [midi: note-on sounds at the right pitch, note-off releases it] note 40 silent after release   (FunctionalTests.cpp:402)
+  FAILED (0.3 s)
+midi: velocity scales loudness
+  ok (0.1 s)
+midi: pitch bend follows Wheel Range
+  ok (0.2 s)
+midi: mod wheel adds vibrato
+    pitch deviation: no wheel 0.50 c, wheel 28.88 c
+  ok (0.1 s)
+midi: sustain pedal holds notes past note-off
+  ok (0.1 s)
+midi: aftertouch bends the held note up by Bend Amount
+    aftertouch: none 164.8 Hz, light 164.8 Hz, full 184.9 Hz
+  ok (0.1 s)
+midi: MIDI Learn links a controller to a knob and survives save/load
+  ok (0.0 s)
+midi: Transpose shifts the sounding pitch
+  ok (0.0 s)
+modes: Velocity offset shifts strum-stroke loudness
+    stroke rms: offset -40 0.0286, +40 0.0964
+  ok (0.1 s)
+output: Power off is silent, Output level scales
+    -6 dB vs -24 dB level ratio 7.80 (ideal 7.94)
+  ok (0.1 s)
+output: Width controls stereo spread
+    side/mid: width 0 0.0000, width 100 1.0210
+  ok (0.1 s)
+output: metronome clicks on the beat with no notes
+    metronome onsets: 4
+  ok (0.1 s)
+modes: Strum strokes sound the held chord, Strum Time spreads it
+    stroke rise: strum 0 ms 0.140 s, strum 200 ms 0.210 s
+  ok (0.1 s)
+modes: Arp steps through the held chord
+    arp: 9 note changes in 1.75 s, 5 distinct notes, rms 0.0381
+  ok (0.1 s)
+modes: Seq mode and playback run cleanly in every slot
+  ok (0.3 s)
+modes: Seq plays a drawn pattern on its 16th-note grid
+    seq: 3 stroke attacks in 2.4 s (pattern gives 7)
+  FAIL  [modes: Seq plays a drawn pattern on its 16th-note grid] a stroke every 0.3 s   (FunctionalTests.cpp:690)
+  FAILED (0.1 s)
+articulation: Bend transition bends up INTO the played pitch
+    bend transition: starts -106 c, settles +0.1 c
+  ok (0.0 s)
+midi: notes sound an octave below written, like a real guitar
+    written 60 sounds +0.1 c from 130.81 Hz
+    written 52 sounds +0.1 c from 82.41 Hz
+  ok (0.1 s)
+out of box: Strum mode strums a pressed chord without stroke keys
+    auto-strum onset 26.0 ms after the first key, rms 0.0765
+  ok (0.0 s)
+out of box: Seq plays its factory pattern while a chord is held
+    seq factory pattern: 7 strokes in 2.4 s, on the 16th grid: yes
+  ok (0.1 s)
+out of box: every factory preset sounds a held chord, no other input
+    preset Campfire Strum       rms  -27.2 dBFS peak  -15.7 dBFS
+    preset Fingerstyle Folk     rms  -23.5 dBFS peak  -10.5 dBFS
+    preset Palm-Muted Pop       rms  -34.8 dBFS peak  -15.4 dBFS
+    preset Bossa Nova           rms  -24.0 dBFS peak  -12.1 dBFS
+    preset Classical Arpeggio   rms  -26.5 dBFS peak  -15.0 dBFS
+    preset Nylon Lead           rms  -20.7 dBFS peak   -7.7 dBFS
+    preset Clean Funk Rhythm    rms  -24.3 dBFS peak  -11.2 dBFS
+    preset Crunch Rhythm        rms  -24.4 dBFS peak  -14.4 dBFS
+    preset Blues Lead           rms  -19.9 dBFS peak  -11.7 dBFS
+    preset Jazz Box Comping     rms  -18.0 dBFS peak   -5.2 dBFS
+    preset Warm Semi Strum      rms  -19.1 dBFS peak   -9.9 dBFS
+    preset Rockabilly Slap      rms  -26.4 dBFS peak  -12.0 dBFS
+    preset Crunch Amp           rms  -22.9 dBFS peak  -13.0 dBFS
+    preset Lead Stack           rms  -25.8 dBFS peak  -15.4 dBFS
+    preset Chorus Clean         rms  -27.4 dBFS peak  -16.1 dBFS
+    preset Jazz Amp             rms  -23.6 dBFS peak  -12.9 dBFS
+    preset Pop Strum            rms  -26.2 dBFS peak  -13.4 dBFS
+    preset Rock Rhythm          rms  -23.6 dBFS peak  -14.6 dBFS
+  ok (0.9 s)
+host: every sample rate and block size plays in tune
+  ok (7.7 s)
+host: blocks larger than announced are rendered completely
+    480 vs 2048 host blocks: difference 8.76e-03 (-41.2 dB)
+  ok (0.1 s)
+host: reset via prepareToPlay mid-session leaves no stuck notes
+  ok (0.0 s)
+body: a solid electric sustains longer than a dreadnought
+  ok (0.3 s)
+seq import: a strum pattern from a MIDI file lands on the grid
+  ok (0.0 s)
+presets: host programs are the factory presets and load their sound
+  ok (0.0 s)
+presets: a host re-sending the current program does not overwrite a restored sound
+  ok (0.0 s)
+undo: UI edits step back and forward; host automation is not recorded
+  ok (0.0 s)
+undo and presets leave tempo and playback alone
+  ok (0.0 s)
+A/B: switching compares two sounds without losing either
+  ok (0.0 s)
+presets: a user preset saves to a file and loads back
+  ok (0.0 s)
+strum: soft strokes reach fewer strings, from the side they start on
+  ok (0.0 s)
+strum: holding the bass key keeps the bass string out of the strum
+  ok (0.0 s)
+strum: harder strokes sweep the strings faster
+    sweep ms: vel 30 51.0, 100 40.0, 127 35.7
+  ok (0.0 s)
+strum: humanized strokes keep their sweep order
+  ok (0.0 s)
+midi: notes from the host light the on-screen piano
+  ok (0.0 s)
+editor: body display draws a distinct guitar for every body
+  ok (0.5 s)
+editor: seq grid: clicking edits the pattern, dragging erases or resizes, wheel changes velocity
+  ok (0.0 s)
+editor: opens at 1120x700, paints, and closes repeatedly
+  ok (0.5 s)
+editor: every slider and combo box drives exactly one parameter
+    63 sliders, 22 combo boxes
+    parameters reachable from sliders/combos: 83 of 94
+  ok (0.0 s)
+editor: host automation updates the on-screen controls
+    56 sliders followed host automation
+  ok (0.0 s)
+editor: buttons toggle their parameters
+    68 buttons, 38 drive a parameter, 28 distinct parameters
+  ok (1.9 s)
+editor: the look and feel paints every state it claims to handle
+  ok (0.1 s)
+tunings: table matches documented open pitches
+  ok (0.2 s)
+guitar types: 12-string course sounds an octave above
+  ok (0.0 s)
+room types: hall rings longer than booth
+  ok (0.1 s)
+cpu: busy strum render runs faster than realtime
+    cpu: 47.4 ms per second of audio (21.10x realtime)
+    cpu 12-string: 57.0 ms/s (17.54x realtime)
+  ok (1.1 s)
+octaves: full three-octave range plays in tune
+  ok (0.1 s)
+mode matrix: strum down and up in every mode
+    Strum down     Poly   PASS  5 strings in stroke order, pick scrape
+    Strum up       Poly   PASS  3 strings in stroke order, pick scrape
+    Strum down     Strum  PASS  5 strings in stroke order, pick scrape
+    Strum up       Strum  PASS  3 strings in stroke order, pick scrape
+    Strum down     Arp    PASS  5 strings in stroke order, pick scrape
+    Strum up       Arp    PASS  3 strings in stroke order, pick scrape
+    Strum down     Seq    PASS  5 strings in stroke order, pick scrape
+    Strum up       Seq    PASS  3 strings in stroke order, pick scrape
+  ok (0.0 s)
+mode matrix: palm mute and dead notes by velocity in every mode
+    Palm mute      Poly   PASS  5/5 hits muted (velocity 35)
+    Dead note      Poly   PASS  5/5 hits muted (velocity 12)
+    Palm mute      Strum  PASS  4/4 hits muted (velocity 35)
+    Dead note      Strum  PASS  3/3 hits muted (velocity 12)
+    Palm mute      Arp    PASS  17/17 hits muted (velocity 35)
+    Dead note      Arp    PASS  17/17 hits muted (velocity 12)
+    Palm mute      Seq    PASS  29/29 hits muted (velocity 35)
+    Dead note      Seq    PASS  29/29 hits muted (velocity 12)
+  ok (0.0 s)
+mode matrix: hammer-on, pull-off and slide on a ringing string in every mode
+    Hammer-on      Poly   PASS  legato to B3 on string 0, no pick
+    Pull-off       Poly   PASS  legato back to A3 on the same string
+    Slide          Poly   PASS  glide E3 -> A3 with squeak
+    Hammer-on      Strum  PASS  legato to B3 on string 0, no pick
+    Pull-off       Strum  PASS  legato back to A3 on the same string
+    Slide          Strum  PASS  glide E3 -> A3 with squeak
+    Hammer-on      Arp    PASS  legato to B3 on string 0, no pick
+    Pull-off       Arp    PASS  legato back to A3 on the same string
+    Slide          Arp    PASS  glide E3 -> A3 with squeak
+    Hammer-on      Seq    PASS  legato to B3 on string 0, no pick
+    Pull-off       Seq    PASS  legato back to A3 on the same string
+    Slide          Seq    PASS  glide E3 -> A3 with squeak
+  ok (0.0 s)
+mode matrix: natural harmonics at full velocity in every mode
+    Harmonic       Poly   PASS  1/1 hits are the 12th-fret harmonic on low E
+    Harmonic       Strum  PASS  1/1 hits are the 12th-fret harmonic on low E
+    Harmonic       Arp    PASS  17/17 hits are the 12th-fret harmonic on low E
+    Harmonic       Seq    PASS  7/7 hits are the 12th-fret harmonic on low E
+  ok (0.0 s)
+mode matrix: automatic vibrato on a held note in every mode
+    Vibrato        Poly   PASS  depth 0.00 at 0.4 s, 0.30 at 1.5 s
+    Vibrato        Strum  PASS  depth 0.00 at 0.4 s, 0.30 at 1.5 s
+    Vibrato        Arp    PASS  depth 0.00 at 0.4 s, 0.30 at 1.5 s
+    Vibrato        Seq    PASS  depth 0.00 at 0.4 s, 0.30 at 1.5 s
+  ok (0.0 s)
+mode matrix: fret noise when the chord is let go, in every mode
+    Fret noise     Poly   PASS  5 strings released (finger lift) at let-go
+    Fret noise     Strum  PASS  6 strings released (finger lift) at let-go
+    Fret noise     Arp    PASS  6 strings released (finger lift) at let-go
+    Fret noise     Seq    PASS  6 strings released (finger lift) at let-go
+  ok (0.0 s)
+mode matrix: string squeak on a fast position shift, in every mode
+    String squeak  Poly   PASS  squeak on the shift
+    String squeak  Strum  PASS  squeak on the shift
+    String squeak  Arp    PASS  squeak on the shift
+    String squeak  Seq    PASS  squeak on the shift
+  ok (0.0 s)
+mode matrix: pick attack follows velocity in every mode
+    Pick attack    Poly   PASS  mean hit velocity 0.47 (key 60) vs 0.94 (key 120)
+    Pick attack    Strum  PASS  mean hit velocity 0.40 (key 60) vs 0.77 (key 120)
+    Pick attack    Arp    PASS  mean hit velocity 0.47 (key 60) vs 0.94 (key 120)
+    Pick attack    Seq    PASS  mean hit velocity 0.60 (key 60) vs 0.60 (key 120)
+  ok (0.0 s)
+mode matrix: bend follows the wheel in every mode
+    Bend           Poly   PASS  wheel up bends +2.00 semitones
+    Bend           Strum  PASS  wheel up bends +2.00 semitones
+    Bend           Arp    PASS  wheel up bends +2.00 semitones
+    Bend           Seq    PASS  wheel up bends +2.00 semitones
+  ok (0.0 s)
+mode matrix: a hammered-over note is not lost after the pedal lets go
+    Pedal clean-up Strum  PASS  A3 sounds in the next chord
+    Pedal clean-up Arp    PASS  A3 sounds in the next chord
+  ok (0.0 s)
+articulation: a dead note's body ring stops, but never fades a ringing open chord
+    dead note: -55.2 dBFS at 0-50 ms, -180.0 dBFS at 0.4 s
+    open chord ring at 0.9 s: -32.3 dBFS alone, -31.0 dBFS with a dead note added
+  ok (0.1 s)
+timing: Seq swing delays the off-beat steps, in every signature
+    3/4 swing 0%: odd steps late by 0 ms (want 0)
+    3/4 swing 40%: odd steps late by 60 ms (want 60)
+    4/4 swing 0%: odd steps late by 0 ms (want 0)
+    4/4 swing 40%: odd steps late by 60 ms (want 60)
+    6/8 swing 0%: odd steps late by 0 ms (want 0)
+    6/8 swing 40%: odd steps late by 60 ms (want 60)
+    8/4 swing 0%: odd steps late by 0 ms (want 0)
+    8/4 swing 40%: odd steps late by 60 ms (want 60)
+    9/8 swing 0%: odd steps late by 0 ms (want 0)
+    9/8 swing 40%: odd steps late by 60 ms (want 60)
+  ok (0.0 s)
+timing: every signature gives the right bar length and metronome beats
+    3/4: 2 clicks in one bar (want 3)
+    6/8: 5 clicks in one bar (want 6)
+    8/4: 7 clicks in one bar (want 8)
+    9/8: 8 clicks in one bar (want 9)
+  ok (0.4 s)
+poly: keys struck together each sound at their own pitch on their own string
+  ok (0.0 s)
+strum: upstroke catches fewer strings than downstroke at full velocity
+  ok (0.0 s)
+range: every written note inside the fretboard window sounds
+  ok (1.1 s)
+range: an octave above the open high course still sounds
+  ok (0.0 s)
+range: notes past the window sound at their own pitch or not at all
+  ok (0.0 s)
+seven-string: the low B1 course sounds at its own pitch
+  ok (0.0 s)
+seven-string: the low E still sounds through course 1
+  ok (0.0 s)
+seven-string: state round-trips through the APVTS
+  ok (0.0 s)
+sound: a plucked low E sits at 82.4 Hz
+    low E: 82.50 Hz, peak 0.1597, body 0.0424
+  ok (0.1 s)
+sound: a held string decays smoothly without truncation
+    decay: body 0.0424, 0.7 s 0.0331, 3.8 s 0.0076, reversals 0
+  ok (0.1 s)
+sound: releasing damps faster than the natural decay
+    held tail 0.0258 vs released tail 0.0017
+  ok (0.1 s)
+sound: the attack is brighter than the sustained body
+    brightness: attack 258.9 Hz vs body 133.8 Hz
+  ok (0.2 s)
+sound: a hard pluck is brighter than a soft one
+    soft rms 0.0045 bright 162.8 | hard rms 0.0532 bright 229.0
+  ok (0.0 s)
+sound: a down strum is spread across a real sweep window
+    strum onsets: 10 in the first second
+  ok (0.0 s)
+sound: a loud strum stays finite and unclipped
+  ok (0.1 s)
+cpu profile: cost per feature
+    6-string       42.4 ms/s (23.60x)
+    12-string      63.1 ms/s (15.84x)
+    6-string dry   40.9 ms/s (24.44x)
+    6-string solid 38.3 ms/s (26.11x)
+  ok (0.9 s)
+voice probe: Auto shapes C major onto held pitch classes only
+    Auto frets: 0=0 1=3 2=2 3=0 4=1 5=0 (n=6)
+  ok (0.0 s)
+voice probe: Guitar mode shapes C major onto held pitch classes only
+    Guitar frets: 0=0 1=3 2=2 3=0 4=1 5=0 (n=6)
+  ok (0.0 s)
+voice probe: Auto and Guitar produce the same C major shape
+    Auto 0=0 1=3 2=2 3=0 4=1 5=0 vs Guitar 0=0 1=3 2=2 3=0 4=1 5=0
+  ok (0.0 s)
+zzbaseline: guitar render hashes
+HASH default                        1ec80739abd93ce0 rms=0.042137333 peak=0.309287697
+HASH default-96k                    cdfe0af96efaa90e rms=0.042589390 peak=0.323259503
+HASH default-44k1                   94f7c3f90b67df0f rms=0.042622926 peak=0.332378328
+HASH default-block64                0190d9b3c9293bf3 rms=0.042130932 peak=0.311335802
+HASH default-block1024              e0447637b093e725 rms=0.042164902 peak=0.333959162
+HASH twelve                         515c40e9701cc4a0 rms=0.061705226 peak=0.472448200
+HASH baritone                       1ec80739abd93ce0 rms=0.042137333 peak=0.309287697
+HASH nylon12                        795902d350d14409 rms=0.051638572 peak=0.389562756
+HASH seven                          a683d01cdce0eb9a rms=0.043920346 peak=0.265988380
+HASH body0                          1ec80739abd93ce0 rms=0.042137333 peak=0.309287697
+HASH body1                          2f73c9168a977fb5 rms=0.082547070 peak=0.411887407
+HASH body2                          929e52c46e6aebcf rms=0.042776412 peak=0.242905408
+HASH body3                          208be483181c08f4 rms=0.047127517 peak=0.265710235
+HASH pickup-single                  929e52c46e6aebcf rms=0.042776412 peak=0.242905408
+HASH pickup-humbucker               4d4ce9a3adba2804 rms=0.070035398 peak=0.354034662
+HASH pickup-p90                     a8c80e32c4e10e57 rms=0.057300556 peak=0.316752672
+HASH pickup-sel3                    90d9bd1b90ea2825 rms=0.071754790 peak=0.359684199
+HASH gauge0                         13ae0d928ba7a680 rms=0.042145402 peak=0.308702201
+HASH gauge3                         3fd367050619b6a0 rms=0.042337531 peak=0.308729410
+HASH gauge5                         7219c85555608a1e rms=0.042535016 peak=0.309285879
+HASH material2                      904c092473040d04 rms=0.041289383 peak=0.309819698
+HASH material9                      ab6c529859a0a254 rms=0.040719154 peak=0.309696406
+HASH tuning-dropD                   376bd55dbb3249f4 rms=0.042139016 peak=0.309712797
+HASH tuning-nashville               52717996dbd66da6 rms=0.039355885 peak=0.269130528
+HASH capo3                          196c50da5f3b7dc9 rms=0.044072238 peak=0.336211681
+HASH hammer-on                      179e4613006fccd0 rms=0.019745601 peak=0.104783110
+HASH slide                          29c1b7491b715a22 rms=0.030938478 peak=0.162052110
+HASH harmonic                       f83a270d03ae9db2 rms=0.014107135 peak=0.106361948
+HASH palm-dead                      9b9b8308625fdb99 rms=0.002453464 peak=0.029966127
+HASH strum                          8abf3fef24e4f975 rms=0.033566974 peak=0.190189838
+HASH bend-wheel                     2299446afeb6a671 rms=0.021066458 peak=0.128899053
+HASH fretnoise-max                  d4c0106f9d67837e rms=0.037896818 peak=0.306674302
+HASH parts-extreme                  1ec80739abd93ce0 rms=0.042137333 peak=0.309287697
+HASH parts-long                     1ec80739abd93ce0 rms=0.042137333 peak=0.309287697
+HASH amp-fx                         07573908b5919e73 rms=0.039127495 peak=0.147588998
+HASH sustain-age                    7a2bdb06cd899819 rms=0.032646055 peak=0.307243139
+  ok (3.3 s)
+zzdump: reference PCM for the Rust parity harness
+DUMP default-48k-480        fs=48000.0 block= 480 frames=124800 finite=1 rms=0.042137333 peak=0.309287697
+DUMP default-48k-64         fs=48000.0 block=  64 frames=124800 finite=1 rms=0.042130932 peak=0.311335802
+DUMP default-44k1-441       fs=44100.0 block= 441 frames=114660 finite=1 rms=0.042622926 peak=0.332378328
+DUMP default-96k-480        fs=96000.0 block= 480 frames=249600 finite=1 rms=0.042589390 peak=0.323259503
+DUMP body1-48k-480          fs=48000.0 block= 480 frames=124800 finite=1 rms=0.082547070 peak=0.411887407
+DUMP body2-48k-480          fs=48000.0 block= 480 frames=124800 finite=1 rms=0.042776412 peak=0.242905408
+  ok (0.7 s)
+
+2851 checks, 6 failures

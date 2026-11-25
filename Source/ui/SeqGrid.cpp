@@ -70,7 +70,7 @@ void SeqGrid::recomputeLayout()
         return;
 
     const int q = juce::jlimit (0, 2, (int) quantizeParam->getIndex());
-    const int s = juce::jlimit (0, 6, (int) signatureParam->getIndex());
+    const int s = juce::jlimit (0, 8, (int) signatureParam->getIndex());
 
     stepsPerQuarter_ = fw::seqStepsPerQuarter (q);
     const int computed = juce::jlimit (1, kMaxCols, fw::seqStepsPerBar (q, s));
@@ -165,7 +165,7 @@ void SeqGrid::paint (juce::Graphics& g)
     waves::caption (g, { 8.0f, 4.0f, 120.0f, 14.0f }, "Sequencer", juce::Justification::centredLeft);
 
     g.setFont (Palette::fontNum (11.5f));
-    g.setColour (Palette::lcdText);
+    g.setColour (Palette::text);
     g.drawText ("SLOT " + juce::String (slot + 1),
                 (float) (kIconCol - 8), 4.0f, (float) (getWidth() - kIconCol), 14.0f,
                 juce::Justification::centredRight, false);
@@ -240,18 +240,9 @@ void SeqGrid::paint (juce::Graphics& g)
         const float lift = (playing ? 0.45f : 0.0f) + (hovered || active ? 0.15f : 0.0f);
         const auto led = Palette::accent.withMultipliedBrightness (0.55f + 0.45f * bright).brighter (lift);
 
-        // soft glow halo
-        g.setColour (led.withAlpha (playing ? 0.30f : 0.16f));
-        g.fillRoundedRectangle (box.expanded (2.5f), corner + 2.5f);
-        g.setColour (led.withAlpha (playing ? 0.40f : 0.24f));
-        g.fillRoundedRectangle (box.expanded (1.2f), corner + 1.2f);
-
-        // LED body with a lighter top half
-        g.setGradientFill (juce::ColourGradient (led.brighter (0.25f), 0.0f, box.getY(),
-                                                 led.darker (0.15f), 0.0f, box.getBottom(), false));
+        // flat LED: state is carried by colour alone
+        g.setColour (led);
         g.fillRoundedRectangle (box, corner);
-        g.setColour (juce::Colours::white.withAlpha (playing ? 0.35f : 0.18f));
-        g.drawHorizontalLine ((int) box.getY() + 1, box.getX() + corner, box.getRight() - corner);
 
         // being edited: crisp white rim
         if (active)

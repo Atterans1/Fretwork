@@ -1,0 +1,38 @@
+MSBuild version 17.14.51+25f168cee for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  FretworkTests_rc_lib.vcxproj -> C:\Users\jeffr\Fretwork\build_upscale\fretwork\FretworkTests_rc_lib.dir\Release\FretworkTests_rc_lib.lib
+  FretworkAssets.vcxproj -> C:\Users\jeffr\Fretwork\build_upscale\fretwork\Release\FretworkAssets.lib
+  PluginProcessor.cpp
+  GuitarEngine.cpp
+  GuitarString.cpp
+  LoopDesign.cpp
+  FretworkCore.vcxproj -> C:\Users\jeffr\Fretwork\build_upscale\fretwork\Release\FretworkCore.lib
+  PluginEditor.cpp
+  KnobCell.cpp
+  SeqGrid.cpp
+  SetupTabs.cpp
+  TransportBar.cpp
+  AmpFxTests.cpp
+  ChordVoicingTests.cpp
+  FunctionalTests.cpp
+  ModeArticTests.cpp
+  RangeSweepTests.cpp
+  SevenStringTests.cpp
+  SoundEvalTests.cpp
+  VoiceProbeTests.cpp
+  main.cpp
+  zz_BaselineHash.cpp
+  zz_DumpRef.cpp
+  FretworkTests.vcxproj -> C:\Users\jeffr\Fretwork\build_upscale\fretwork\FretworkTests_artefacts\Release\FretworkTests.exe
+MSBuild version 17.14.51+25f168cee for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule C:/Users/jeffr/Fretwork/render/upscale_20261115/CMakeLists.txt
+  ScaleRender_rc_lib.vcxproj -> C:\Users\jeffr\Fretwork\build_upscale\ScaleRender_rc_lib.dir\Release\ScaleRender_rc_lib.lib
+  FretworkCore.vcxproj -> C:\Users\jeffr\Fretwork\build_upscale\fretwork\Release\FretworkCore.lib
+  Building Custom Rule C:/Users/jeffr/Fretwork/render/upscale_20261115/CMakeLists.txt
+  ScaleRender.cpp
+  ScaleRender.vcxproj -> C:\Users\jeffr\Fretwork\build_upscale\ScaleRender_artefacts\Release\ScaleRender.exe

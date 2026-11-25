@@ -1,0 +1,3 @@
+normal-block: block 480, 12.0 s, 1200 blocks, process 540.0 ms of 546 ms wall -> 98.9% CPU
+small-block: block 64, 12.0 s, 9000 blocks, process 690.2 ms of 705 ms wall -> 98.0% CPU
+WORST 98.9% CPU

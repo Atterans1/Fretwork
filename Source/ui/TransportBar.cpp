@@ -57,8 +57,8 @@ public:
         const auto r = getLocalBounds().toFloat().reduced (0.5f);
         const bool enabled = isEnabled();
 
-        waves::valueBox (g, r, getButtonText(), 14.0f, enabled,
-                         down ? Palette::lcdText.brighter (0.35f) : Palette::lcdText);
+        waves::valueBox (g, r, getButtonText(), Palette::Scale::large, enabled,
+                         down ? Palette::text.brighter (0.35f) : Palette::text);
 
         if (enabled && (over || down))
         {
@@ -78,8 +78,8 @@ public:
     void paintButton (juce::Graphics& g, bool over, bool down) override
     {
         const auto r = getLocalBounds().toFloat().reduced (0.5f);
-        waves::valueBox (g, r, getButtonText(), 11.0f, isEnabled(),
-                         down ? Palette::lcdText.brighter (0.35f) : Palette::lcdText);
+        waves::valueBox (g, r, getButtonText(), Palette::Scale::small, isEnabled(),
+                         down ? Palette::text.brighter (0.35f) : Palette::text);
 
         if (isEnabled() && (over || down))
         {
@@ -105,7 +105,7 @@ public:
         const auto r = getLocalBounds().toFloat().reduced (0.5f);
         const bool enabled = isEnabled();
 
-        waves::valueBox (g, r, juce::String (param.get(), 1), 14.0f, enabled, Palette::lcdText);
+        waves::valueBox (g, r, juce::String (param.get(), 1) + " BPM", Palette::Scale::large, enabled, Palette::text);
 
         if (enabled && (dragging || isMouseOver()))
         {
@@ -272,11 +272,21 @@ TransportBar::TransportBar (FretworkAudioProcessor& p, juce::AudioProcessorValue
 
     // ---- transpose stepper
     transposeButton = new TransposeField ("+0");
-    transposeButton->setFretFont (Palette::font (13.0f));
+    transposeButton->setFretFont (Palette::font (Palette::Scale::medium));
     addAndMakeVisible (transposeButton);
 
     transposeButton->onClick = [this] { nudgeTranspose (1); };
     transposeButton->onRightClick = [this] { nudgeTranspose (-1); };
+
+    transposePrevButton = new FretButton ("<");
+    transposePrevButton->setFretFont (Palette::font (13.0f, juce::Font::bold));
+    addAndMakeVisible (transposePrevButton);
+    transposePrevButton->onClick = [this] { nudgeTranspose (-1); };
+
+    transposeNextButton = new FretButton (">");
+    transposeNextButton->setFretFont (Palette::font (13.0f, juce::Font::bold));
+    addAndMakeVisible (transposeNextButton);
+    transposeNextButton->onClick = [this] { nudgeTranspose (1); };
 
     // ---- slot paging
     slotPrevButton = new FretButton ("<");
@@ -382,7 +392,7 @@ TransportBar::~TransportBar()
     metroAttachment.reset();
 
     for (juce::Component* c : std::initializer_list<juce::Component*> {
-             powerButton, transposeButton, slotPrevButton, playButton, slotNextButton,
+             powerButton, transposeButton, transposePrevButton, transposeNextButton, slotPrevButton, playButton, slotNextButton,
              metroButton, bpmField, clearButton, copyButton, pasteButton, importButton,
              presetPrevButton, presetField, presetNextButton, saveButton, undoButton, redoButton, abButton })
         delete c;
@@ -547,7 +557,6 @@ void TransportBar::paint (juce::Graphics& g)
     waves::group (g, full.withTop (full.getY() - 7.0f));
 
     waves::caption (g, transposeCaption, "Transpose", juce::Justification::centredRight);
-    waves::caption (g, bpmCaption, "BPM", juce::Justification::centredLeft);
 
     g.setColour (Palette::line);
     for (const float x : dividers)
@@ -579,7 +588,9 @@ void TransportBar::resized()
     place (powerButton, 36, 12);
     transposeCaption = { (float) x, (float) y, 80.0f, (float) h };
     x += 80 + 6;
-    place (transposeButton, 52, clusterGap);
+    place (transposePrevButton, 20, 2);
+    place (transposeButton, 52, 2);
+    place (transposeNextButton, 20, clusterGap);
     divider (dividers[0]);
 
     // < PLAY >
@@ -590,9 +601,7 @@ void TransportBar::resized()
 
     // metronome [100.0] BPM
     place (metroButton, 36, 8);
-    place (bpmField, 66, 6);
-    bpmCaption = { (float) x, (float) y, 30.0f, (float) h };
-    x += 30 + clusterGap;
+    place (bpmField, 84, clusterGap);
     divider (dividers[2]);
 
     // CLEAR COPY PASTE IMPORT edit the sequencer pattern, not the sound, so

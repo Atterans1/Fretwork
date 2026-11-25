@@ -1,0 +1,21 @@
+{
+  "case": "guitar_nylon12",
+  "envelope": {
+    "body_0_6s_rms": 0.05987,
+    "mid_1_1_6s_rms": 0.03874,
+    "tail_2_8_3_4s_rms": 0.01616,
+    "peak": 0.23999,
+    "decay_db_per_sec": -4.74
+  },
+  "rhythm": {
+    "onset_count": 2,
+    "last_onset_gap_sec": 0.0900
+  },
+  "timbre": {
+    "brightness_attack_hz": 283.2,
+    "brightness_body_hz": 171.2
+  },
+  "intonation": {
+    "pitch_dev_cents": 1.48
+  }
+}

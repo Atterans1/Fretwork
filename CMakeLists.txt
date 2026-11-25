@@ -33,7 +33,10 @@ juce_add_binary_data(FretworkAssets SOURCES
     Assets/guitars/dreadnought.png
     Assets/guitars/classical.png
     Assets/guitars/electric.png
-    Assets/guitars/semihollow.png)
+    Assets/guitars/semihollow.png
+    Assets/ui/panel_texture.png
+    Assets/ui/knob_face.png
+    Assets/ui/logo.png)
 
 # The DSP and performance cores are slice-developed, so glob them with
 # CONFIGURE_DEPENDS: newly added .cpp files are picked up on the next build.
@@ -189,6 +192,22 @@ if (WIN32)
     add_executable(midisend Tools/midisend.cpp)
 endif()
 
+# Worst-case real-time CPU probe: six sustained strings + full polyphony.
+# Editor sources are in the link for the same vtable reason as SoundJudge.
+juce_add_console_app(CpuProbe PRODUCT_NAME "CpuProbe")
+target_sources(CpuProbe PRIVATE
+    Tools/CpuProbe.cpp
+    Source/PluginEditor.cpp
+    ${FRETWORK_UI_SOURCES})
+target_include_directories(CpuProbe PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/Source"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Source/ui")
+target_link_libraries(CpuProbe PRIVATE
+    FretworkCore
+    FretworkAssets
+    juce::juce_audio_processors juce::juce_audio_formats juce::juce_dsp juce::juce_gui_basics
+    juce::juce_recommended_config_flags)
+
 # Renders the plugin and writes the acoustic features a listener judges by, as
 # JSON for a model to score. See Docs/EVALUATION.md.
 juce_add_console_app(SoundJudge PRODUCT_NAME "SoundJudge")
@@ -202,6 +221,22 @@ target_include_directories(SoundJudge PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/Source"
     "${CMAKE_CURRENT_SOURCE_DIR}/Source/ui")
 target_link_libraries(SoundJudge PRIVATE
+    FretworkCore
+    FretworkAssets
+    juce::juce_audio_processors juce::juce_audio_formats juce::juce_dsp juce::juce_gui_basics
+    juce::juce_recommended_config_flags)
+
+# Writes the same four SoundJudge passages as WAV for read-only metrics
+# (spectral rolloff, inharmonicity, sustain ripple). Not part of the judge.
+juce_add_console_app(AudioDump PRODUCT_NAME "AudioDump")
+target_sources(AudioDump PRIVATE
+    Tools/AudioDump/AudioDump.cpp
+    Source/PluginEditor.cpp
+    ${FRETWORK_UI_SOURCES})
+target_include_directories(AudioDump PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/Source"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Source/ui")
+target_link_libraries(AudioDump PRIVATE
     FretworkCore
     FretworkAssets
     juce::juce_audio_processors juce::juce_audio_formats juce::juce_dsp juce::juce_gui_basics

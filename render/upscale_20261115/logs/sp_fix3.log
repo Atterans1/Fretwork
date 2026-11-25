@@ -1,0 +1,10 @@
+MSBuild version 17.14.51+25f168cee for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule C:/Users/jeffr/Fretwork/render/upscale_20261115/fix/CMakeLists.txt
+  StringPitchFix_rc_lib.vcxproj -> C:\Users\jeffr\Fretwork\build_upscale_fix\StringPitchFix_rc_lib.dir\Release\StringPitchFix_rc_lib.lib
+  FretworkCore.vcxproj -> C:\Users\jeffr\Fretwork\build_upscale_fix\fretwork_fix\Release\FretworkCore.lib
+  Building Custom Rule C:/Users/jeffr/Fretwork/render/upscale_20261115/fix/CMakeLists.txt
+  StringPitch.cpp
+  StringPitchFix.vcxproj -> C:\Users\jeffr\Fretwork\build_upscale_fix\StringPitchFix_artefacts\Release\StringPitchFix.exe

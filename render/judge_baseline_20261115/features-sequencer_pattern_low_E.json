@@ -1,0 +1,21 @@
+{
+  "case": "sequencer_pattern_low_E",
+  "envelope": {
+    "body_0_6s_rms": 0.04261,
+    "mid_1_1_6s_rms": 0.10204,
+    "tail_2_8_3_4s_rms": 0.10253,
+    "peak": 0.32393,
+    "decay_db_per_sec": 3.18
+  },
+  "rhythm": {
+    "onset_count": 4,
+    "last_onset_gap_sec": 1.7600
+  },
+  "timbre": {
+    "brightness_attack_hz": 256.5,
+    "brightness_body_hz": 309.5
+  },
+  "intonation": {
+    "pitch_dev_cents": 1303.12
+  }
+}

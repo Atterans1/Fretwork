@@ -1,0 +1,20 @@
+{
+  "envelope": {
+    "body_0_6s_rms": 0.09168,
+    "mid_1_1_6s_rms": 0.04608,
+    "tail_2_8_3_4s_rms": 0.01477,
+    "peak": 0.41016,
+    "decay_db_per_sec": -6.61
+  },
+  "rhythm": {
+    "onset_count": 2,
+    "last_onset_gap_sec": 0.09
+  },
+  "timbre": {
+    "brightness_attack_hz": 369.3,
+    "brightness_body_hz": 244.1
+  },
+  "intonation": {
+    "pitch_dev_cents": 8.28
+  }
+}

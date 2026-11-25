@@ -1,0 +1,21 @@
+{
+  "case": "neck_scale_low_E",
+  "envelope": {
+    "body_0_6s_rms": 0.04027,
+    "mid_1_1_6s_rms": 0.07188,
+    "tail_2_8_3_4s_rms": 0.03203,
+    "peak": 0.27552,
+    "decay_db_per_sec": -0.83
+  },
+  "rhythm": {
+    "onset_count": 3,
+    "last_onset_gap_sec": 5.8500
+  },
+  "timbre": {
+    "brightness_attack_hz": 271.5,
+    "brightness_body_hz": 155.1
+  },
+  "intonation": {
+    "pitch_dev_cents": 301.92
+  }
+}

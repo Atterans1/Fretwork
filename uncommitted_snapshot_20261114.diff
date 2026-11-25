@@ -1,0 +1,713 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 4cc738e..b6f1b36 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -33,7 +33,10 @@ juce_add_binary_data(FretworkAssets SOURCES
+     Assets/guitars/dreadnought.png
+     Assets/guitars/classical.png
+     Assets/guitars/electric.png
+-    Assets/guitars/semihollow.png)
++    Assets/guitars/semihollow.png
++    Assets/ui/panel_texture.png
++    Assets/ui/knob_face.png
++    Assets/ui/logo.png)
+ 
+ # The DSP and performance cores are slice-developed, so glob them with
+ # CONFIGURE_DEPENDS: newly added .cpp files are picked up on the next build.
+@@ -207,6 +210,22 @@ target_link_libraries(SoundJudge PRIVATE
+     juce::juce_audio_processors juce::juce_audio_formats juce::juce_dsp juce::juce_gui_basics
+     juce::juce_recommended_config_flags)
+ 
++# Writes the same four SoundJudge passages as WAV for read-only metrics
++# (spectral rolloff, inharmonicity, sustain ripple). Not part of the judge.
++juce_add_console_app(AudioDump PRODUCT_NAME "AudioDump")
++target_sources(AudioDump PRIVATE
++    Tools/AudioDump/AudioDump.cpp
++    Source/PluginEditor.cpp
++    ${FRETWORK_UI_SOURCES})
++target_include_directories(AudioDump PRIVATE
++    "${CMAKE_CURRENT_SOURCE_DIR}/Source"
++    "${CMAKE_CURRENT_SOURCE_DIR}/Source/ui")
++target_link_libraries(AudioDump PRIVATE
++    FretworkCore
++    FretworkAssets
++    juce::juce_audio_processors juce::juce_audio_formats juce::juce_dsp juce::juce_gui_basics
++    juce::juce_recommended_config_flags)
++
+ # Renders legato slides and picked references through the real processor and
+ # prints the measured glide pitch track and attack energy.
+ juce_add_console_app(GlideRender PRODUCT_NAME "GlideRender")
+diff --git a/Source/Params.cpp b/Source/Params.cpp
+index b8ff824..04c5e54 100644
+--- a/Source/Params.cpp
++++ b/Source/Params.cpp
+@@ -133,6 +133,12 @@ juce::AudioProcessorValueTreeState::ParameterLayout createLayout()
+     add (floatParam  (id::tune3,      "String 3 Fine", -50.f, 50.f, 0.f, "c", 0.5f));
+     add (floatParam  (id::tune4,      "String 2 Fine", -50.f, 50.f, 0.f, "c", 0.5f));
+     add (floatParam  (id::tune5,      "String 1 Fine", -50.f, 50.f, 0.f, "c", 0.5f));
++    add (floatParam  (id::stringGain0, "String 6 Gain", -12.f, 12.f, 0.f, "dB", 1.f));
++    add (floatParam  (id::stringGain1, "String 5 Gain", -12.f, 12.f, 0.f, "dB", 1.f));
++    add (floatParam  (id::stringGain2, "String 4 Gain", -12.f, 12.f, 0.f, "dB", 1.f));
++    add (floatParam  (id::stringGain3, "String 3 Gain", -12.f, 12.f, 0.f, "dB", 1.f));
++    add (floatParam  (id::stringGain4, "String 2 Gain", -12.f, 12.f, 0.f, "dB", 1.f));
++    add (floatParam  (id::stringGain5, "String 1 Gain", -12.f, 12.f, 0.f, "dB", 1.f));
+     add (floatParam  (id::bodySize,   "Body Size",   0.85f, 1.15f, 1.f,  "x", 0.5f));
+     add (floatParam  (id::bodyRes,    "Body Resonance", 0.f, 150.f, 100.f, "%", 0.5f));
+     add (floatParam  (id::topDamp,    "Top Damp",    0.f, 100.f, 30.f,  "%",  0.5f));
+diff --git a/Source/Params.h b/Source/Params.h
+index d5ec45f..4096851 100644
+--- a/Source/Params.h
++++ b/Source/Params.h
+@@ -71,6 +71,12 @@ inline constexpr const char* tune2       = "tune2";
+ inline constexpr const char* tune3       = "tune3";
+ inline constexpr const char* tune4       = "tune4";
+ inline constexpr const char* tune5       = "tune5";
++inline constexpr const char* stringGain0 = "stringGain0";
++inline constexpr const char* stringGain1 = "stringGain1";
++inline constexpr const char* stringGain2 = "stringGain2";
++inline constexpr const char* stringGain3 = "stringGain3";
++inline constexpr const char* stringGain4 = "stringGain4";
++inline constexpr const char* stringGain5 = "stringGain5";
+ inline constexpr const char* bodySize    = "bodySize";
+ inline constexpr const char* bodyRes     = "bodyRes";
+ inline constexpr const char* topDamp     = "topDamp";
+diff --git a/Source/PluginEditor.cpp b/Source/PluginEditor.cpp
+index 8974d13..55804e9 100644
+--- a/Source/PluginEditor.cpp
++++ b/Source/PluginEditor.cpp
+@@ -249,7 +249,7 @@ PluginEditor::PluginEditor (FretworkAudioProcessor& p)
+     articulation[7]->setSegmentTooltip (0, "Hold: keep the chord ringing after you let go of the keys.");
+ 
+     setResizable (false, false);
+-    setSize (1120, 700);
++    setSize (1120, 744);
+ 
+     startTimerHz (30);
+ }
+@@ -282,13 +282,14 @@ void PluginEditor::resized()
+ {
+     fretboard.setBounds (364, 12, 330, 120);
+     seqGrid.setBounds (706, 12, 402, 240);
+-    setupTabs.setBounds (364, 144, 330, 228);
++    setupTabs.setBounds (364, 144, 330, fw::ui::SetupTabs::kPanelH);
+     // Region A ends at y 262, setupTabs starts at x 364, the articulation bar
+-    // at 384: this is the only strip left under the strummer knobs.
++    // at 428: this is the only strip left under the strummer knobs.
+     guitarView->setBounds (12, 266, 340, 114);
+-    transport.setBounds (12, 452, 1096, 44);
+-    // 50 white keys at 22px = 1100; 1096 clipped the top C by 4px.
+-    keyboard.setBounds (12, 508, 1100, 180);
++    transport.setBounds (12, 496, 1096, 44);
++    // C0..C6 is 43 white keys; they share the 1096px width.
++    keyboard.setBounds (12, 552, 1096, 180);
++    keyboard.setKeyWidth (1096.0f / 43.0f);
+ 
+     // A: six 113 x 114 cells, 2 rows of 3. They start 16px below the region
+     // top so the "STRUMMER" caption on the group's top rule stays clear of
+@@ -318,7 +319,7 @@ void PluginEditor::layoutArticulationBar()
+ {
+     static constexpr int weights[8] = { 3, 3, 4, 2, 2, 4, 3, 1 };
+     static constexpr int total = 22;
+-    constexpr int x0 = 12, y0 = 384, height = 56, gap = 8;
++    constexpr int x0 = 12, y0 = 428, height = 56, gap = 8;
+ 
+     const int usable = 1096 - gap * (8 - 1);
+     int x = x0, assigned = 0;
+diff --git a/Source/PluginEditor.h b/Source/PluginEditor.h
+index a0a9206..e2943b3 100644
+--- a/Source/PluginEditor.h
++++ b/Source/PluginEditor.h
+@@ -24,7 +24,7 @@ namespace fw::ui
+     class SlotButton;
+ }
+ 
+-/** Fixed 1120 x 700 Fretwork editor. Every control is bound through an APVTS
++/** Fretwork editor. Every control is bound through an APVTS
+     attachment; a 30 Hz timer mirrors the audio thread's UiSnapshot and applies
+     pending keyswitch changes on the message thread. */
+ class PluginEditor : public juce::AudioProcessorEditor,
+diff --git a/Source/PluginProcessor.cpp b/Source/PluginProcessor.cpp
+index 36fc77b..a7526c8 100644
+--- a/Source/PluginProcessor.cpp
++++ b/Source/PluginProcessor.cpp
+@@ -29,6 +29,12 @@ namespace
+     // pitches, so every existing tuning row stays valid for six-string use.
+     constexpr float kTuning7[7] = { 35.f, 40.f, 45.f, 50.f, 55.f, 59.f, 64.f };
+ 
++    constexpr const char* stringGainIds[6] =
++    {
++        fw::id::stringGain0, fw::id::stringGain1, fw::id::stringGain2,
++        fw::id::stringGain3, fw::id::stringGain4, fw::id::stringGain5
++    };
++
+     constexpr const char* tuningIds[6] =
+     {
+         fw::id::tune0, fw::id::tune1, fw::id::tune2,
+@@ -193,6 +199,7 @@ void FretworkAudioProcessor::buildEngineParams (fw::dsp::EngineParams& p)
+         sp.fretNoise     = getScaled (fw::id::fretNoise);
+         sp.bodyLossScale = fw::dsp::kBodyLossScale[body];
+         sp.scaleLengthM  = fw::dsp::kScaleLengthM[s];
++        p.stringGain[(std::size_t) s] = juce::Decibels::decibelsToGain (getScaled (stringGainIds[s]));
+ 
+         // Gauge set: heavier strings sustain a little longer and attack darker.
+         const int set = std::clamp (getChoiceParam (fw::id::stringSet), 0, fw::dsp::kNumStringSets - 1);
+diff --git a/Source/dsp/GuitarEngine.cpp b/Source/dsp/GuitarEngine.cpp
+index e6aadc2..2721346 100644
+--- a/Source/dsp/GuitarEngine.cpp
++++ b/Source/dsp/GuitarEngine.cpp
+@@ -371,15 +371,16 @@ void GuitarEngine::render (float* left, float* right, int n)
+ 
+             const float total = b + courseOut;
+             mixSum += total;
+-            bridgeSum += total;
+-            side += total * (panL_[(std::size_t) s] - panR_[(std::size_t) s]);
++            const float outGain = p_.stringGain[(std::size_t) s];
++            bridgeSum += total * outGain;
++            side += total * outGain * (panL_[(std::size_t) s] - panR_[(std::size_t) s]);
+ 
+             const float v = pickup_.processString (s, b, strings_[(std::size_t) s].periodSamples());
+             const float vc = courseOut != 0.f
+                 ? pickup_.processString (s, courseOut, course_[(std::size_t) s]->periodSamples())
+                 : 0.f;
+-            el += (v + vc * courseLevel_) * panL_[(std::size_t) s];
+-            er += (v + vc * courseLevel_) * panR_[(std::size_t) s];
++            el += (v + vc * courseLevel_) * panL_[(std::size_t) s] * outGain;
++            er += (v + vc * courseLevel_) * panR_[(std::size_t) s] * outGain;
+         }
+ 
+         prevBridgeSum_ = mixSum;
+diff --git a/Source/dsp/GuitarEngine.h b/Source/dsp/GuitarEngine.h
+index 843eea5..8d8cbc7 100644
+--- a/Source/dsp/GuitarEngine.h
++++ b/Source/dsp/GuitarEngine.h
+@@ -20,6 +20,10 @@ struct EngineParams
+     // Active course count; slots >= this never tick or render.
+     int   activeStringCount = kNumStrings;
+ 
++    // Per-course output gain (linear). Scales the pickup and output mix only;
++    // the sympathetic bridge feedback stays unscaled so the loop gain is unchanged.
++    std::array<float, kMaxStrings> stringGain { 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f };
++
+     int   body        = 0;        // BodyKind
+     float sympathetic = 30.f;     // %
+     float glideTime   = 90.f;     // ms
+diff --git a/Source/dsp/OutputStage.cpp b/Source/dsp/OutputStage.cpp
+index 860abcb..b3c2115 100644
+--- a/Source/dsp/OutputStage.cpp
++++ b/Source/dsp/OutputStage.cpp
+@@ -49,26 +49,23 @@ void OutputStage::setParams (const OutputParams& p)
+ 
+     const float room = clampf (p_.room01, 0.f, 1.f);
+ 
+-    // Room types: size, damping and brightness from a small measured-style set.
+-    // Booth: tiny and dead. Room: mid room. Hall: big and long. Plate: bright
+-    // and dense with almost no early-reflection colour.
+-    switch (std::clamp (p_.roomType, 0, 3))
+-    {
+-        case 0:  reverbParams_.roomSize = 0.10f + 0.15f * room; reverbParams_.damping = 0.85f; break;   // Booth
+-        case 1:  reverbParams_.roomSize = 0.25f + 0.30f * room; reverbParams_.damping = 0.55f; break;   // Room
+-        case 2:  reverbParams_.roomSize = 0.60f + 0.35f * room; reverbParams_.damping = 0.35f; break;   // Hall
+-        default: reverbParams_.roomSize = 0.50f + 0.30f * room; reverbParams_.damping = 0.15f; break;   // Plate
+-    }
+-    float wetScale = 1.0f;
+-    switch (std::clamp (p_.roomType, 0, 3))
+-    {
+-        case 0: wetScale = 0.6f; break;    // Booth: dry-ish
+-        case 1: wetScale = 1.0f; break;    // Room
+-        case 2: wetScale = 1.6f; break;    // Hall: big and washy
+-        default: wetScale = 1.3f; break;   // Plate
+-    }
+-    reverbParams_.wetLevel = 0.60f * room * wetScale;
+-    reverbParams_.dryLevel = 1.0f - 0.30f * room;
++    // Room types set comb feedback (size, which sets RT60) and damping (how fast
++    // highs decay). Booth short and dead, Room medium, Hall long, Plate bright
++    // and dense. JUCE feedback = size * 0.28 + 0.7, so size stays under 0.8 for Hall.
++    const int type = std::clamp (p_.roomType, 0, 3);
++    static constexpr float kSizeMin[4]   = { 0.00f, 0.55f, 0.70f, 0.55f };
++    static constexpr float kSizeRange[4] = { 0.10f, 0.05f, 0.10f, 0.15f };
++    static constexpr float kDamping[4]   = { 0.85f, 0.55f, 0.35f, 0.15f };
++    reverbParams_.roomSize = kSizeMin[type] + kSizeRange[type] * room;
++    reverbParams_.damping  = kDamping[type];
++
++    // Wet follows sqrt(room) so a low Room Level still sits under the release.
++    // Linear wet left the default about 27 dB under the note and gone in about 1 s.
++    static constexpr float kWetScale[4] = { 0.6f, 1.0f, 1.0f, 1.0f };
++    reverbParams_.wetLevel = 0.6f * std::sqrt (room) * kWetScale[type];
++    // JUCE multiplies dryLevel by 2. Room off bypasses the reverb (dry at 1.0),
++    // so 0.5 keeps the dry at 1.0 at every room setting.
++    reverbParams_.dryLevel = 0.5f;
+     // Width also narrows the room: a full-width reverb made "Width 0" stereo.
+     reverbParams_.width    = clampf (p_.width01, 0.f, 1.f);
+ 
+diff --git a/Source/ui/FretLookAndFeel.cpp b/Source/ui/FretLookAndFeel.cpp
+index eab2e2a..f5c878c 100644
+--- a/Source/ui/FretLookAndFeel.cpp
++++ b/Source/ui/FretLookAndFeel.cpp
+@@ -336,17 +336,20 @@ void FretLookAndFeel::drawTabButton (juce::TabBarButton& button, juce::Graphics&
+     const auto area = button.getLocalBounds().toFloat().reduced (4.0f, 5.0f);
+     const bool front = button.isFrontTab();
+ 
++    // Pill tabs: the front tab is a full-round purple outline.
++    const float pill = area.getHeight() * 0.5f;
++
+     if (front)
+     {
+         g.setColour (Palette::accent.withAlpha (0.12f));
+-        g.fillRoundedRectangle (area, 3.0f);
++        g.fillRoundedRectangle (area, pill);
+         g.setColour (Palette::accent);
+-        g.drawRoundedRectangle (area, 3.0f, 1.2f);
++        g.drawRoundedRectangle (area, pill, 1.5f);
+     }
+     else if (isMouseOver)
+     {
+         g.setColour (juce::Colours::white.withAlpha (isMouseDown ? 0.08f : 0.04f));
+-        g.fillRoundedRectangle (area, 3.0f);
++        g.fillRoundedRectangle (area, pill);
+     }
+ 
+     g.setFont (getTabButtonFont (button, (float) button.getHeight()));
+diff --git a/Source/ui/FretLookAndFeel.h b/Source/ui/FretLookAndFeel.h
+index 01420e0..ac4a17a 100644
+--- a/Source/ui/FretLookAndFeel.h
++++ b/Source/ui/FretLookAndFeel.h
+@@ -10,7 +10,7 @@ namespace fw::ui
+     labels, one violet LED accent with an amber position marker. */
+ struct Palette
+ {
+-    inline static const juce::Colour background { 0xff17181c };   // chassis face
++    inline static const juce::Colour background { 0xff1e1e24 };   // chassis face
+     inline static const juce::Colour frame      { 0xff2b2d33 };   // bevelled outer frame
+     inline static const juce::Colour panel      { 0xff1f2126 };   // group fill
+     inline static const juce::Colour panelHi    { 0xff2a2d33 };   // raised surfaces
+@@ -20,7 +20,7 @@ struct Palette
+     inline static const juce::Colour caption    { 0xffa9adb5 };   // small-caps headers
+     inline static const juce::Colour dim        { 0xff80848d };
+     inline static const juce::Colour unlit      { 0xff34363d };   // unlit LED dot
+-    inline static const juce::Colour accent     { 0xff9d72ff };   // violet LED
++    inline static const juce::Colour accent     { 0xff8a5cf6 };   // violet LED
+     inline static const juce::Colour lcdText    { 0xffc6aeff };   // glowing LCD text
+     inline static const juce::Colour accent2    { 0xffd23fd6 };   // magenta (Waves Tune)
+     inline static const juce::Colour accent3    { 0xff6f8cff };
+diff --git a/Source/ui/FretboardView.cpp b/Source/ui/FretboardView.cpp
+index d3e16b9..b3e8fdc 100644
+--- a/Source/ui/FretboardView.cpp
++++ b/Source/ui/FretboardView.cpp
+@@ -56,7 +56,7 @@ void FretboardView::paint (juce::Graphics& g)
+         }
+     }
+ 
+-    // ---- inlay markers at 3, 5, 7, 9, 12 (double) and 15, dim, between the
++    // ---- inlay markers at 3, 5, 7, 9, 12 (double), dim, between the
+     // middle strings like a real neck
+     const auto inlay = [&fretX] (int fret)
+     {
+@@ -68,7 +68,7 @@ void FretboardView::paint (juce::Graphics& g)
+ 
+     g.setColour (Palette::dim.withAlpha (0.35f));
+ 
+-    for (int f : { 3, 5, 7, 9, 15 })
++    for (int f : { 3, 5, 7, 9 })
+         g.fillEllipse (inlay (f) - d, midY - d, d * 2.0f, d * 2.0f);
+ 
+     {
+diff --git a/Source/ui/KeyboardStrip.h b/Source/ui/KeyboardStrip.h
+index fc4da4b..6d57dad 100644
+--- a/Source/ui/KeyboardStrip.h
++++ b/Source/ui/KeyboardStrip.h
+@@ -29,7 +29,7 @@ private:
+                         bool isDown, bool isOver, juce::Colour noteFillColour) override;
+ 
+     static constexpr int kLowestKey = 12;
+-    static constexpr int kHighestKey = 96;
++    static constexpr int kHighestKey = 84;
+     static constexpr int kKsLast = 37;
+ 
+     static bool isKeyswitch (int midiNote) noexcept { return midiNote >= kLowestKey && midiNote <= kKsLast; }
+diff --git a/Source/ui/SeqGrid.cpp b/Source/ui/SeqGrid.cpp
+index 81b18c6..9a46943 100644
+--- a/Source/ui/SeqGrid.cpp
++++ b/Source/ui/SeqGrid.cpp
+@@ -70,7 +70,7 @@ void SeqGrid::recomputeLayout()
+         return;
+ 
+     const int q = juce::jlimit (0, 2, (int) quantizeParam->getIndex());
+-    const int s = juce::jlimit (0, 6, (int) signatureParam->getIndex());
++    const int s = juce::jlimit (0, 8, (int) signatureParam->getIndex());
+ 
+     stepsPerQuarter_ = fw::seqStepsPerQuarter (q);
+     const int computed = juce::jlimit (1, kMaxCols, fw::seqStepsPerBar (q, s));
+diff --git a/Source/ui/SetupTabs.cpp b/Source/ui/SetupTabs.cpp
+index dbf5f86..0bffe77 100644
+--- a/Source/ui/SetupTabs.cpp
++++ b/Source/ui/SetupTabs.cpp
+@@ -84,19 +84,22 @@ private:
+ };
+ 
+ //==============================================================================
++// Per-string captions shared by the BODY gain row and the STRINGS tune row.
++static const char* const kStringCaptions[6] = { "E", "A", "D", "G", "B", "e" };
++
+ juce::Rectangle<int> SetupTabs::cellRect (int col, int row, int colSpan)
+ {
+     const int h = (row >= 2) ? kCompactH : kCellH;
+     return { kGridX + col * (kCellW + kGapX),
+-             kGridY + row * (kCellH + kGapY),
++             rowY (row),
+              kCellW * colSpan + kGapX * (colSpan - 1),
+              h };
+ }
+ 
+-juce::Rectangle<int> SetupTabs::maskCellRect (int index)
++juce::Rectangle<int> SetupTabs::maskCellRect (int index, int row)
+ {
+     return { kMaskX + index * (kMaskW + kMaskGap),
+-             kGridY + 2 * (kCellH + kGapY),
++             rowY (row),
+              kMaskW,
+              kCompactH };
+ }
+@@ -136,6 +139,17 @@ SetupTabs::SetupTabs (FretworkAudioProcessor& p, juce::AudioProcessorValueTreeSt
+ SetupTabs::~SetupTabs()
+ {
+     tabBar.removeChangeListener (this);
++
++    // Pages and their cells are created with new and no parent owns them, so
++    // delete them here. Deleting a cell also unregisters its parameter listener.
++    for (auto* page : pages)
++    {
++        if (page == nullptr)
++            continue;
++
++        page->deleteAllChildren();
++        delete page;
++    }
+ }
+ 
+ //==============================================================================
+@@ -213,18 +227,18 @@ void SetupTabs::buildBody (juce::Component& page, juce::AudioProcessorValueTreeS
+     knob (2, 1, fw::id::topDamp, "TOP");
+     knob (3, 1, fw::id::micBlend, "MIC");
+ 
+-    static const char* const kTuningIds[6] =
++    static const char* const kStringGainIds[6] =
+     {
+-        fw::id::tune0, fw::id::tune1, fw::id::tune2,
+-        fw::id::tune3, fw::id::tune4, fw::id::tune5
++        fw::id::stringGain0, fw::id::stringGain1, fw::id::stringGain2,
++        fw::id::stringGain3, fw::id::stringGain4, fw::id::stringGain5
+     };
+ 
+-    static const char* const kTuningNames[6] = { "E", "A", "D", "G", "B", "e" };
++
+ 
+     for (int i = 0; i < 6; ++i)
+     {
+         auto* cell = new KnobCell();
+-        cell->attach (state, kTuningIds[i], kTuningNames[i], true);
++        cell->attach (state, kStringGainIds[i], kStringCaptions[i], true);
+         cell->setBounds (maskCellRect (i));
+         page.addAndMakeVisible (cell);
+     }
+@@ -263,6 +277,20 @@ void SetupTabs::buildStrings (juce::Component& page, juce::AudioProcessorValueTr
+     knob (0, 2, fw::id::stringAge, "AGE", true);
+     knob (1, 2, fw::id::stiffness, "STIFF", true);
+     knob (2, 2, fw::id::sympathetic, "SYMP", true);
++
++    static const char* const kTuneIds[6] =
++    {
++        fw::id::tune0, fw::id::tune1, fw::id::tune2,
++        fw::id::tune3, fw::id::tune4, fw::id::tune5
++    };
++
++    for (int i = 0; i < 6; ++i)
++    {
++        auto* cell = new KnobCell();
++        cell->attach (state, kTuneIds[i], kStringCaptions[i], true);
++        cell->setBounds (maskCellRect (i, 3));
++        page.addAndMakeVisible (cell);
++    }
+ }
+ 
+ //==============================================================================
+diff --git a/Source/ui/SetupTabs.h b/Source/ui/SetupTabs.h
+index 35f0498..c0f58bd 100644
+--- a/Source/ui/SetupTabs.h
++++ b/Source/ui/SetupTabs.h
+@@ -33,7 +33,9 @@ public:
+ 
+     // Layout helper
+     static juce::Rectangle<int> cellRect (int col, int row, int colSpan = 1);
+-    static juce::Rectangle<int> maskCellRect (int index);
++    static juce::Rectangle<int> maskCellRect (int index, int row = 2);
++    // PluginEditor gives the tab stack this height; every page's rows must fit under the tab strip.
++    static constexpr int kPanelH = 272;
+ 
+     // Page builders
+     void buildBody (juce::Component& page, juce::AudioProcessorValueTreeState& state);
+@@ -58,10 +60,14 @@ private:
+     static constexpr int kMaskW = 48, kMaskGap = 6, kMaskX = 6;
+     static constexpr int kTabStrip = 28;
+ 
+-    // Height PluginEditor hands the tab stack (see PluginEditor::resized). Rows
+-    // must fit under the tab strip; the slack is split evenly top and bottom.
+-    static constexpr int kPanelH = 228;
+-    static_assert (kGridY + 2 * (kCellH + kGapY) + kCompactH <= kPanelH - kTabStrip,
++    // Rows 0-1 are full cells; rows 2 and up are compact strips stacked below them.
++    static constexpr int rowY (int row)
++    {
++        return row < 2 ? kGridY + row * (kCellH + kGapY)
++                       : kGridY + 2 * (kCellH + kGapY) + (row - 2) * (kCompactH + kGapY);
++    }
++
++    static_assert (kGridY + 2 * (kCellH + kGapY) + (kCompactH + kGapY) + kCompactH <= kPanelH - kTabStrip,
+                    "setup tab rows must fit the panel content height");
+ 
+     FretworkAudioProcessor& processor;
+diff --git a/Source/ui/TransportBar.cpp b/Source/ui/TransportBar.cpp
+index ed396c2..a35b988 100644
+--- a/Source/ui/TransportBar.cpp
++++ b/Source/ui/TransportBar.cpp
+@@ -105,7 +105,7 @@ public:
+         const auto r = getLocalBounds().toFloat().reduced (0.5f);
+         const bool enabled = isEnabled();
+ 
+-        waves::valueBox (g, r, juce::String (param.get(), 1), 14.0f, enabled, Palette::lcdText);
++        waves::valueBox (g, r, juce::String (param.get(), 1) + " BPM", 14.0f, enabled, Palette::lcdText);
+ 
+         if (enabled && (dragging || isMouseOver()))
+         {
+@@ -278,6 +278,16 @@ TransportBar::TransportBar (FretworkAudioProcessor& p, juce::AudioProcessorValue
+     transposeButton->onClick = [this] { nudgeTranspose (1); };
+     transposeButton->onRightClick = [this] { nudgeTranspose (-1); };
+ 
++    transposePrevButton = new FretButton ("<");
++    transposePrevButton->setFretFont (Palette::font (13.0f, juce::Font::bold));
++    addAndMakeVisible (transposePrevButton);
++    transposePrevButton->onClick = [this] { nudgeTranspose (-1); };
++
++    transposeNextButton = new FretButton (">");
++    transposeNextButton->setFretFont (Palette::font (13.0f, juce::Font::bold));
++    addAndMakeVisible (transposeNextButton);
++    transposeNextButton->onClick = [this] { nudgeTranspose (1); };
++
+     // ---- slot paging
+     slotPrevButton = new FretButton ("<");
+     slotPrevButton->setFretFont (Palette::font (13.0f, juce::Font::bold));
+@@ -382,7 +392,7 @@ TransportBar::~TransportBar()
+     metroAttachment.reset();
+ 
+     for (juce::Component* c : std::initializer_list<juce::Component*> {
+-             powerButton, transposeButton, slotPrevButton, playButton, slotNextButton,
++             powerButton, transposeButton, transposePrevButton, transposeNextButton, slotPrevButton, playButton, slotNextButton,
+              metroButton, bpmField, clearButton, copyButton, pasteButton, importButton,
+              presetPrevButton, presetField, presetNextButton, saveButton, undoButton, redoButton, abButton })
+         delete c;
+@@ -547,7 +557,6 @@ void TransportBar::paint (juce::Graphics& g)
+     waves::group (g, full.withTop (full.getY() - 7.0f));
+ 
+     waves::caption (g, transposeCaption, "Transpose", juce::Justification::centredRight);
+-    waves::caption (g, bpmCaption, "BPM", juce::Justification::centredLeft);
+ 
+     g.setColour (Palette::line);
+     for (const float x : dividers)
+@@ -579,7 +588,9 @@ void TransportBar::resized()
+     place (powerButton, 36, 12);
+     transposeCaption = { (float) x, (float) y, 80.0f, (float) h };
+     x += 80 + 6;
+-    place (transposeButton, 52, clusterGap);
++    place (transposePrevButton, 20, 2);
++    place (transposeButton, 52, 2);
++    place (transposeNextButton, 20, clusterGap);
+     divider (dividers[0]);
+ 
+     // < PLAY >
+@@ -590,9 +601,7 @@ void TransportBar::resized()
+ 
+     // metronome [100.0] BPM
+     place (metroButton, 36, 8);
+-    place (bpmField, 66, 6);
+-    bpmCaption = { (float) x, (float) y, 30.0f, (float) h };
+-    x += 30 + clusterGap;
++    place (bpmField, 84, clusterGap);
+     divider (dividers[2]);
+ 
+     // CLEAR COPY PASTE IMPORT edit the sequencer pattern, not the sound, so
+diff --git a/Source/ui/TransportBar.h b/Source/ui/TransportBar.h
+index 0726d1a..cde984d 100644
+--- a/Source/ui/TransportBar.h
++++ b/Source/ui/TransportBar.h
+@@ -80,6 +80,8 @@ private:
+ 
+     IconButton* powerButton = nullptr;
+     RightClickButton* transposeButton = nullptr;
++    FretButton* transposePrevButton = nullptr;
++    FretButton* transposeNextButton = nullptr;
+     FretButton* slotPrevButton = nullptr;
+     FretButton* playButton = nullptr;
+     FretButton* slotNextButton = nullptr;
+@@ -104,7 +106,7 @@ private:
+ 
+     // Paint-only layout from resized(): small-caps captions and the hairline
+     // dividers between the control clusters.
+-    juce::Rectangle<float> transposeCaption, bpmCaption;
++    juce::Rectangle<float> transposeCaption;
+     std::array<float, 5> dividers {};
+ 
+     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TransportBar)
+diff --git a/Tests/main.cpp b/Tests/main.cpp
+index f249a56..95c06cb 100644
+--- a/Tests/main.cpp
++++ b/Tests/main.cpp
+@@ -6,6 +6,7 @@
+ 
+ #include "PluginProcessor.h"
+ #include "Params.h"
++#include <juce_audio_formats/juce_audio_formats.h>
+ #include "Harness.h"
+ 
+ #include "SeqStore.h"
+@@ -1393,6 +1394,80 @@ int renderDemo (const juce::File& dir)
+     return 0;
+ }
+ 
++// --render <dir>: offline reverb renders for measurement. Two passages (sustain
++// and strum, note-off at 2.0 s, same timing as ModeMatrix) at room 0 as the
++// dry reference, plus every room type at Room Level 20 and 100. Room and room
++// type are set through the parameter tree. 24-bit stereo 48 kHz WAV.
++int renderAmbience (const juce::File& dir)
++{
++    dir.createDirectory();
++    struct Ev { int sample; bool on; int note; };
++    // Guitar notes sound an octave up in MIDI, as ModeMatrix writes them (note >= 38 gets +12).
++    const auto written = [] (int n) { return n < 38 ? n : n + 12; };
++    const std::vector<std::pair<juce::String, std::vector<Ev>>> passages {
++        { "sustain", { { 960, true, 40 }, { 96000, false, 40 } } },
++        { "strum", { { 960, true, 40 }, { 1680, true, 45 }, { 2400, true, 50 },
++                     { 3120, true, 55 }, { 3840, true, 59 }, { 4560, true, 64 },
++                     { 96000, false, 40 }, { 96000, false, 45 }, { 96000, false, 50 },
++                     { 96000, false, 55 }, { 96000, false, 59 }, { 96000, false, 64 } } } };
++
++    struct Case { juce::String name; int room; int type; };
++    const char* const typeNames[] = { "Booth", "Room", "Hall", "Plate" };
++    std::vector<Case> cases { { "room0", 0, 1 } };
++    for (int t = 0; t < 4; ++t)
++        for (int room : { 20, 100 })
++            cases.push_back ({ juce::String (typeNames[t]) + "_" + juce::String (room), room, t });
++
++    const auto renderOne = [&] (const std::vector<Ev>& evs, int room, int type, const juce::File& out)
++    {
++        auto procPtr = std::make_unique<FretworkAudioProcessor>();
++        auto& proc = *procPtr;
++        proc.prepareToPlay (48000.0, 512);
++        const auto set = [&] (const char* id, float v)
++        {
++            if (auto* p = proc.getState().getParameter (id))
++                p->setValueNotifyingHost (p->convertTo0to1 (v));
++        };
++        set (fw::id::room, (float) room);
++        set (fw::id::roomType, (float) type);
++
++        const int total = 6 * 48000;
++        juce::AudioBuffer<float> all (2, total);
++        all.clear();
++        for (int start = 0; start < total; start += 512)
++        {
++            const int n = std::min (512, total - start);
++            juce::AudioBuffer<float> buf (2, n);
++            buf.clear();
++            juce::MidiBuffer midi;
++            for (const auto& e : evs)
++                if (e.sample >= start && e.sample < start + n)
++                    midi.addEvent (e.on ? juce::MidiMessage::noteOn (1, written (e.note), (juce::uint8) 100)
++                                        : juce::MidiMessage::noteOff (1, written (e.note)),
++                                   e.sample - start);
++            proc.processBlock (buf, midi);
++            for (int c = 0; c < 2; ++c) all.copyFrom (c, start, buf, c, 0, n);
++        }
++
++        out.deleteFile();
++        std::unique_ptr<juce::FileOutputStream> fos (out.createOutputStream().release());
++        if (fos == nullptr) return false;
++        juce::WavAudioFormat wav;
++        std::unique_ptr<juce::AudioFormatWriter> w (wav.createWriterFor (fos.get(), 48000.0, 2, 24, {}, 0));
++        if (w == nullptr) return false;
++        fos.release();
++        return w->writeFromAudioSampleBuffer (all, 0, total);
++    };
++
++    for (const auto& [passage, evs] : passages)
++        for (const auto& c : cases)
++        {
++            const bool ok = renderOne (evs, c.room, c.type, dir.getChildFile (passage + "_" + c.name + ".wav"));
++            std::printf ("%s_%s: %s\n", passage.toRawUTF8(), c.name.toRawUTF8(), ok ? "ok" : "FAILED");
++        }
++    return 0;
++}
++
+ // --snapshot <dir>: renders the editor at 1x and 2x scale to PNGs, plus a
+ // strip of widget states (hover/down/on/disabled) for visual review.
+ int renderSnapshots (const juce::File& dir)
+@@ -1508,6 +1583,8 @@ int main (int argc, char** argv)
+ 
+     if (argc >= 3 && std::string (argv[1]) == "--demo")
+         return renderDemo (juce::File (juce::String (argv[2])));
++    if (argc >= 3 && std::string (argv[1]) == "--render")
++        return renderAmbience (juce::File (juce::String (argv[2])));
+ 
+     struct Test { const char* name; void (*fn)(); };
+ 
+diff --git a/Tools/SoundJudge.cpp b/Tools/SoundJudge.cpp
+index fee2e42..374765d 100644
+--- a/Tools/SoundJudge.cpp
++++ b/Tools/SoundJudge.cpp
+@@ -216,6 +216,49 @@ int main (int argc, char** argv)
+                        { { 0.02, 40, 126.f / 127.f, true }, { 3.4, 40, 0.f, false } }, 3.6,
+                        { { "guitarType", 1.f } } });
+ 
++    // Playing passages beyond single notes. Same render path, same features.
++    {
++        // Neck scale: low E string, frets 0-12 up, then 11-0 back down. 0.28 s per note.
++        std::vector<Note> scale;
++        std::vector<int> frets;
++        for (int f = 0; f <= 12; ++f) frets.push_back (f);
++        for (int f = 11; f >= 0; --f) frets.push_back (f);
++        double t = 0.02;
++        for (int f : frets)
++        {
++            scale.push_back ({ t, 40 + f, 0.80f, true });
++            scale.push_back ({ t + 0.24, 40 + f, 0.f, false });
++            t += 0.28;
++        }
++        cases.push_back ({ "neck_scale_low_E", scale, t + 0.4, {} });
++
++        // Sequencer-style repeated pattern: 8th notes at 0.22 s, two bars of 8, low E root.
++        std::vector<Note> seq;
++        const int pat[8] = { 40, 40, 47, 40, 45, 40, 43, 40 };
++        t = 0.02;
++        for (int rep = 0; rep < 2; ++rep)
++            for (int n : pat)
++            {
++                seq.push_back ({ t, n, 0.80f, true });
++                seq.push_back ({ t + 0.18, n, 0.f, false });
++                t += 0.22;
++            }
++        cases.push_back ({ "sequencer_pattern_low_E", seq, t + 0.4, {} });
++
++        // Strum: open E chord (E2 B2 E3 G#3 B3 E4), 12 ms between strings, held 3 s.
++        std::vector<Note> strum;
++        const int chord[6] = { 40, 47, 52, 56, 59, 64 };
++        for (int i = 0; i < 6; ++i)
++        {
++            strum.push_back ({ 0.02 + 0.012 * i, chord[i], 0.90f, true });
++            strum.push_back ({ 3.4, chord[i], 0.f, false });
++        }
++        cases.push_back ({ "strum_open_E", strum, 3.6, {} });
++
++        // Single note off the low E string: A2, fret 5.
++        cases.push_back ({ "single_note_A2", { { 0.02, 45, 126.f / 127.f, true }, { 3.4, 45, 0.f, false } }, 3.6, {} });
++    }
++
+     for (const auto& c : cases)
+     {
+         const auto buf = render (c.evs, c.secs, c.params);

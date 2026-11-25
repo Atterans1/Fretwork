@@ -59,7 +59,7 @@ FretLookAndFeel::FretLookAndFeel()
     setColour (juce::TextButton::textColourOnId,   juce::Colours::white);
 
     setColour (juce::ComboBox::backgroundColourId, Palette::lcd);
-    setColour (juce::ComboBox::textColourId,       Palette::lcdText);
+    setColour (juce::ComboBox::textColourId,       Palette::text);
     setColour (juce::ComboBox::outlineColourId,    juce::Colours::black);
     setColour (juce::ComboBox::arrowColourId,      Palette::caption);
 
@@ -99,8 +99,8 @@ FretLookAndFeel::FretLookAndFeel()
 }
 
 //==============================================================================
-// Atlas knob: LED dot ring around a glossy dark cap with a light pointer
-// notch; the amber dot on the ring marks the value.
+// Atlas knob: LED dot ring around a flat cap with a pointer notch; the amber
+// dot on the ring marks the value.
 void FretLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int width, int height,
                                         float sliderPos, float rotaryStartAngle,
                                         float rotaryEndAngle, juce::Slider& slider)
@@ -126,6 +126,13 @@ void FretLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int wid
 
     juce::Graphics::ScopedSaveState s (g);
     if (! enabled) g.setOpacity (0.45f);
+
+    // flat lit arc: a solid accent stroke from the minimum angle to the value
+    const float litEnd = start + (end - start) * juce::jlimit (0.0f, 1.0f, sliderPos);
+    juce::Path lit;
+    lit.addCentredArc (centre.x, centre.y, radius * 0.9f, radius * 0.9f, 0.0f, start, litEnd, true);
+    g.setColour (Palette::accent);
+    g.strokePath (lit, juce::PathStrokeType (juce::jmax (2.0f, radius * 0.09f)));
 
     waves::ledRing (g, centre, radius * 0.9f, start, end, sliderPos, enabled);
 
@@ -202,7 +209,7 @@ void FretLookAndFeel::drawLinearSlider (juce::Graphics& g, int x, int y, int wid
 }
 
 //==============================================================================
-// LCD selector: black well, glowing text, separate arrow cell (Waves Tune).
+// LCD selector: flat black well, separate arrow cell (Waves Tune).
 void FretLookAndFeel::drawComboBox (juce::Graphics& g, int width, int height, bool isButtonDown,
                                     int, int, int, int, juce::ComboBox& box)
 {
@@ -215,7 +222,7 @@ void FretLookAndFeel::drawComboBox (juce::Graphics& g, int width, int height, bo
 
     waves::lcd (g, r, 3.0f);
 
-    const float cellW = juce::jmin (22.0f, (float) height);
+    const float cellW = juce::jmin ((float) comboCellW, (float) height);
     const auto cell = r.withLeft (r.getRight() - cellW).reduced (1.0f);
     waves::buttonFace (g, cell, false, hover, isButtonDown, true, 2.5f);
 
@@ -234,8 +241,9 @@ void FretLookAndFeel::drawComboBox (juce::Graphics& g, int width, int height, bo
 
 void FretLookAndFeel::positionComboBoxText (juce::ComboBox& box, juce::Label& label)
 {
-    const int cellW = juce::jmin (22, box.getHeight());
-    label.setBounds (6, 1, box.getWidth() - cellW - 8, box.getHeight() - 2);
+    const int cellW = juce::jmin (comboCellW, box.getHeight());
+    label.setBounds (comboTextInsetX, comboTextInsetY,
+                     box.getWidth() - cellW - comboTextInsetR, box.getHeight() - 2 * comboTextInsetY);
     label.setFont (getComboBoxFont (box));
     label.setJustificationType (juce::Justification::centredLeft);
 }
@@ -281,7 +289,7 @@ void FretLookAndFeel::drawPopupMenuItem (juce::Graphics& g, const juce::Rectangl
     g.setFont (getPopupMenuFont());
     g.setColour (! isActive ? Palette::dim
                             : isHighlighted ? findColour (juce::PopupMenu::highlightedTextColourId)
-                                            : (isTicked ? Palette::lcdText : findColour (juce::PopupMenu::textColourId)));
+                                            : (isTicked ? Palette::text : findColour (juce::PopupMenu::textColourId)));
     g.drawFittedText (text, area.withTrimmedLeft (22).withTrimmedRight (8), juce::Justification::centredLeft, 1);
 }
 
@@ -336,17 +344,20 @@ void FretLookAndFeel::drawTabButton (juce::TabBarButton& button, juce::Graphics&
     const auto area = button.getLocalBounds().toFloat().reduced (4.0f, 5.0f);
     const bool front = button.isFrontTab();
 
+    // Pill tabs: the front tab is a full-round purple outline.
+    const float pill = area.getHeight() * 0.5f;
+
     if (front)
     {
         g.setColour (Palette::accent.withAlpha (0.12f));
-        g.fillRoundedRectangle (area, 3.0f);
+        g.fillRoundedRectangle (area, pill);
         g.setColour (Palette::accent);
-        g.drawRoundedRectangle (area, 3.0f, 1.2f);
+        g.drawRoundedRectangle (area, pill, 1.5f);
     }
     else if (isMouseOver)
     {
         g.setColour (juce::Colours::white.withAlpha (isMouseDown ? 0.08f : 0.04f));
-        g.fillRoundedRectangle (area, 3.0f);
+        g.fillRoundedRectangle (area, pill);
     }
 
     g.setFont (getTabButtonFont (button, (float) button.getHeight()));

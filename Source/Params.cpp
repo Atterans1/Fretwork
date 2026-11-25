@@ -133,6 +133,12 @@ juce::AudioProcessorValueTreeState::ParameterLayout createLayout()
     add (floatParam  (id::tune3,      "String 3 Fine", -50.f, 50.f, 0.f, "c", 0.5f));
     add (floatParam  (id::tune4,      "String 2 Fine", -50.f, 50.f, 0.f, "c", 0.5f));
     add (floatParam  (id::tune5,      "String 1 Fine", -50.f, 50.f, 0.f, "c", 0.5f));
+    add (floatParam  (id::stringGain0, "String 6 Gain", -12.f, 12.f, 0.f, "dB", 1.f));
+    add (floatParam  (id::stringGain1, "String 5 Gain", -12.f, 12.f, 0.f, "dB", 1.f));
+    add (floatParam  (id::stringGain2, "String 4 Gain", -12.f, 12.f, 0.f, "dB", 1.f));
+    add (floatParam  (id::stringGain3, "String 3 Gain", -12.f, 12.f, 0.f, "dB", 1.f));
+    add (floatParam  (id::stringGain4, "String 2 Gain", -12.f, 12.f, 0.f, "dB", 1.f));
+    add (floatParam  (id::stringGain5, "String 1 Gain", -12.f, 12.f, 0.f, "dB", 1.f));
     add (floatParam  (id::bodySize,   "Body Size",   0.85f, 1.15f, 1.f,  "x", 0.5f));
     add (floatParam  (id::bodyRes,    "Body Resonance", 0.f, 150.f, 100.f, "%", 0.5f));
     add (floatParam  (id::topDamp,    "Top Damp",    0.f, 100.f, 30.f,  "%",  0.5f));

@@ -1,0 +1,1820 @@
+{
+  "label": "highE_age100",
+  "file": "highE_age100.wav",
+  "samples": 1128000,
+  "firstFretSustainNoiseAboveM50": 21,
+  "notes": [
+    {
+      "fret": 0,
+      "pitch": 64,
+      "nominalHz": 329.63,
+      "fundHz": 331.05,
+      "centsOff": 7.5,
+      "fundAbsSus": 28.2,
+      "harm2to8Rel": [
+        0.9,
+        -8.3,
+        -26.9,
+        -29.8,
+        -54.6,
+        -46.6,
+        -61
+      ],
+      "floorMedianRel": -130.5,
+      "above12kRel": -97.5,
+      "above16kRel": -102,
+      "inharmonicAboveM50": 9,
+      "inharmonicFirstHz": 97,
+      "inhList": [
+        [
+          97,
+          -35.7
+        ],
+        [
+          185,
+          -39.1
+        ],
+        [
+          193,
+          -49.5
+        ],
+        [
+          281,
+          -44.8
+        ],
+        [
+          293,
+          -37.5
+        ],
+        [
+          311,
+          -35.5
+        ],
+        [
+          354,
+          -41.2
+        ],
+        [
+          410,
+          -45
+        ],
+        [
+          700,
+          -47
+        ]
+      ],
+      "noiseAttackRel": -51.3,
+      "noiseSustainRel": -60.5,
+      "noiseTailRel": -82.9,
+      "noiseSustainAbs": -32.3,
+      "fundAttackAbs": 32,
+      "fundSustainAbs": 28.2,
+      "fundTailAbs": 10.5,
+      "noiseTailAbs": -72.5,
+      "clickRelDb": -8.3,
+      "clickAbsDbFS": -36.1
+    },
+    {
+      "fret": 1,
+      "pitch": 65,
+      "nominalHz": 349.23,
+      "fundHz": 348.63,
+      "centsOff": -3,
+      "fundAbsSus": 27.7,
+      "harm2to8Rel": [
+        8.1,
+        -14.2,
+        -25,
+        -29,
+        -54,
+        -49.1,
+        -62.6
+      ],
+      "floorMedianRel": -132.7,
+      "above12kRel": -99.2,
+      "above16kRel": -104.5,
+      "inharmonicAboveM50": 13,
+      "inharmonicFirstHz": 97,
+      "inhList": [
+        [
+          97,
+          -49
+        ],
+        [
+          185,
+          -48.2
+        ],
+        [
+          278,
+          -43.9
+        ],
+        [
+          293,
+          -45.9
+        ],
+        [
+          311,
+          -48.7
+        ],
+        [
+          325,
+          -46.9
+        ],
+        [
+          334,
+          -42.3
+        ],
+        [
+          372,
+          -44.8
+        ],
+        [
+          381,
+          -47.2
+        ],
+        [
+          390,
+          -46.7
+        ],
+        [
+          407,
+          -38.6
+        ],
+        [
+          671,
+          -44.9
+        ],
+        [
+          683,
+          -45.7
+        ]
+      ],
+      "noiseAttackRel": -57.3,
+      "noiseSustainRel": -64,
+      "noiseTailRel": -84.8,
+      "noiseSustainAbs": -36.3,
+      "fundAttackAbs": 32,
+      "fundSustainAbs": 27.7,
+      "fundTailAbs": 8.8,
+      "noiseTailAbs": -76,
+      "clickRelDb": -16.8,
+      "clickAbsDbFS": -44.1
+    },
+    {
+      "fret": 2,
+      "pitch": 66,
+      "nominalHz": 369.99,
+      "fundHz": 369.14,
+      "centsOff": -4,
+      "fundAbsSus": 34.1,
+      "harm2to8Rel": [
+        -6.2,
+        -23.1,
+        -31.2,
+        -55.9,
+        -47.5,
+        -61.5,
+        -73.1
+      ],
+      "floorMedianRel": -135.8,
+      "above12kRel": -100,
+      "above16kRel": -103.3,
+      "inharmonicAboveM50": 3,
+      "inharmonicFirstHz": 354,
+      "inhList": [
+        [
+          354,
+          -46.5
+        ],
+        [
+          390,
+          -46.8
+        ],
+        [
+          407,
+          -41
+        ]
+      ],
+      "noiseAttackRel": -63.9,
+      "noiseSustainRel": -68.7,
+      "noiseTailRel": -92.1,
+      "noiseSustainAbs": -34.6,
+      "fundAttackAbs": 37.8,
+      "fundSustainAbs": 34.1,
+      "fundTailAbs": 17.1,
+      "noiseTailAbs": -74.9,
+      "clickRelDb": -14.9,
+      "clickAbsDbFS": -43.6
+    },
+    {
+      "fret": 3,
+      "pitch": 67,
+      "nominalHz": 392,
+      "fundHz": 392.58,
+      "centsOff": 2.6,
+      "fundAbsSus": 40.8,
+      "harm2to8Rel": [
+        -18.3,
+        -31.1,
+        -39.7,
+        -54.4,
+        -61.2,
+        -68.3,
+        -67.8
+      ],
+      "floorMedianRel": -145.2,
+      "above12kRel": -110.8,
+      "above16kRel": -115.2,
+      "inharmonicAboveM50": 1,
+      "inharmonicFirstHz": 407,
+      "inhList": [
+        [
+          407,
+          -39.4
+        ]
+      ],
+      "noiseAttackRel": -70.1,
+      "noiseSustainRel": -71.7,
+      "noiseTailRel": -99.5,
+      "noiseSustainAbs": -30.9,
+      "fundAttackAbs": 45.1,
+      "fundSustainAbs": 40.8,
+      "fundTailAbs": 23.3,
+      "noiseTailAbs": -76.2,
+      "clickRelDb": -20.4,
+      "clickAbsDbFS": -44.3
+    },
+    {
+      "fret": 4,
+      "pitch": 68,
+      "nominalHz": 415.3,
+      "fundHz": 416.02,
+      "centsOff": 3,
+      "fundAbsSus": 35,
+      "harm2to8Rel": [
+        -12.4,
+        -11.4,
+        -22.9,
+        -40.4,
+        -67.1,
+        -66.9,
+        -67.8
+      ],
+      "floorMedianRel": -137.9,
+      "above12kRel": -103.3,
+      "above16kRel": -107.1,
+      "inharmonicAboveM50": 1,
+      "inharmonicFirstHz": 439,
+      "inhList": [
+        [
+          439,
+          -48.3
+        ]
+      ],
+      "noiseAttackRel": -66.7,
+      "noiseSustainRel": -70.2,
+      "noiseTailRel": -90.3,
+      "noiseSustainAbs": -35.2,
+      "fundAttackAbs": 39.6,
+      "fundSustainAbs": 35,
+      "fundTailAbs": 17.7,
+      "noiseTailAbs": -72.6,
+      "clickRelDb": -16,
+      "clickAbsDbFS": -42.1
+    },
+    {
+      "fret": 5,
+      "pitch": 69,
+      "nominalHz": 440,
+      "fundHz": 439.45,
+      "centsOff": -2.2,
+      "fundAbsSus": 29.6,
+      "harm2to8Rel": [
+        -9.1,
+        -17.2,
+        -26.6,
+        -39.8,
+        -59.6,
+        -58.6,
+        -79
+      ],
+      "floorMedianRel": -134.5,
+      "above12kRel": -99.4,
+      "above16kRel": -104.4,
+      "inharmonicAboveM50": 7,
+      "inharmonicFirstHz": 390,
+      "inhList": [
+        [
+          390,
+          -49.7
+        ],
+        [
+          407,
+          -34.7
+        ],
+        [
+          457,
+          -45.4
+        ],
+        [
+          475,
+          -45.3
+        ],
+        [
+          483,
+          -48.3
+        ],
+        [
+          501,
+          -49.9
+        ],
+        [
+          3091,
+          -50
+        ]
+      ],
+      "noiseAttackRel": -58.8,
+      "noiseSustainRel": -63.6,
+      "noiseTailRel": -88.1,
+      "noiseSustainAbs": -34,
+      "fundAttackAbs": 33.5,
+      "fundSustainAbs": 29.6,
+      "fundTailAbs": 11.6,
+      "noiseTailAbs": -76.5,
+      "clickRelDb": -12.4,
+      "clickAbsDbFS": -44.1
+    },
+    {
+      "fret": 6,
+      "pitch": 70,
+      "nominalHz": 466.16,
+      "fundHz": 465.82,
+      "centsOff": -1.3,
+      "fundAbsSus": 29.4,
+      "harm2to8Rel": [
+        0.9,
+        -22.4,
+        -30.3,
+        -32.2,
+        -69.2,
+        -78.8,
+        -89.4
+      ],
+      "floorMedianRel": -132,
+      "above12kRel": -97,
+      "above16kRel": -100.5,
+      "inharmonicAboveM50": 12,
+      "inharmonicFirstHz": 407,
+      "inhList": [
+        [
+          407,
+          -39.7
+        ],
+        [
+          428,
+          -48.7
+        ],
+        [
+          439,
+          -44
+        ],
+        [
+          448,
+          -43.7
+        ],
+        [
+          483,
+          -40.1
+        ],
+        [
+          501,
+          -44.8
+        ],
+        [
+          510,
+          -47.7
+        ],
+        [
+          519,
+          -47
+        ],
+        [
+          917,
+          -44.6
+        ],
+        [
+          952,
+          -43.9
+        ],
+        [
+          967,
+          -48.8
+        ],
+        [
+          976,
+          -48.6
+        ]
+      ],
+      "noiseAttackRel": -58.6,
+      "noiseSustainRel": -64.3,
+      "noiseTailRel": -87.5,
+      "noiseSustainAbs": -34.9,
+      "fundAttackAbs": 34.1,
+      "fundSustainAbs": 29.4,
+      "fundTailAbs": 10.9,
+      "noiseTailAbs": -76.5,
+      "clickRelDb": -13.2,
+      "clickAbsDbFS": -41.8
+    },
+    {
+      "fret": 7,
+      "pitch": 71,
+      "nominalHz": 493.88,
+      "fundHz": 495.12,
+      "centsOff": 4.3,
+      "fundAbsSus": 34.5,
+      "harm2to8Rel": [
+        -9.9,
+        -27.9,
+        -38.5,
+        -51.5,
+        -64.7,
+        -74.4,
+        -77.2
+      ],
+      "floorMedianRel": -140,
+      "above12kRel": -106,
+      "above16kRel": -111.8,
+      "inharmonicAboveM50": 4,
+      "inharmonicFirstHz": 407,
+      "inhList": [
+        [
+          407,
+          -47.9
+        ],
+        [
+          475,
+          -45.4
+        ],
+        [
+          510,
+          -44.1
+        ],
+        [
+          519,
+          -45.3
+        ]
+      ],
+      "noiseAttackRel": -60.8,
+      "noiseSustainRel": -69.1,
+      "noiseTailRel": -92.3,
+      "noiseSustainAbs": -34.6,
+      "fundAttackAbs": 38.8,
+      "fundSustainAbs": 34.5,
+      "fundTailAbs": 15.5,
+      "noiseTailAbs": -76.8,
+      "clickRelDb": -14.3,
+      "clickAbsDbFS": -42.9
+    },
+    {
+      "fret": 8,
+      "pitch": 72,
+      "nominalHz": 523.25,
+      "fundHz": 524.41,
+      "centsOff": 3.8,
+      "fundAbsSus": 41.4,
+      "harm2to8Rel": [
+        -21.6,
+        -29.1,
+        -40,
+        -49.7,
+        -54.8,
+        -82.3,
+        -87.9
+      ],
+      "floorMedianRel": -142.6,
+      "above12kRel": -107.6,
+      "above16kRel": -110.3,
+      "inharmonicAboveM50": 0,
+      "inharmonicFirstHz": null,
+      "inhList": [],
+      "noiseAttackRel": -67.6,
+      "noiseSustainRel": -76.9,
+      "noiseTailRel": -100.9,
+      "noiseSustainAbs": -35.4,
+      "fundAttackAbs": 45.1,
+      "fundSustainAbs": 41.4,
+      "fundTailAbs": 23.1,
+      "noiseTailAbs": -77.8,
+      "clickRelDb": -17.9,
+      "clickAbsDbFS": -42.7
+    },
+    {
+      "fret": 9,
+      "pitch": 73,
+      "nominalHz": 554.37,
+      "fundHz": 553.71,
+      "centsOff": -2,
+      "fundAbsSus": 32.1,
+      "harm2to8Rel": [
+        -17.4,
+        -17.2,
+        -31.4,
+        -64.9,
+        -85.9,
+        -89,
+        -98.1
+      ],
+      "floorMedianRel": -137.2,
+      "above12kRel": -104,
+      "above16kRel": -109.6,
+      "inharmonicAboveM50": 3,
+      "inharmonicFirstHz": 407,
+      "inhList": [
+        [
+          407,
+          -49.8
+        ],
+        [
+          521,
+          -46
+        ],
+        [
+          530,
+          -45.8
+        ]
+      ],
+      "noiseAttackRel": -61.4,
+      "noiseSustainRel": -68.8,
+      "noiseTailRel": -91.2,
+      "noiseSustainAbs": -36.7,
+      "fundAttackAbs": 35.9,
+      "fundSustainAbs": 32.1,
+      "fundTailAbs": 13.5,
+      "noiseTailAbs": -77.7,
+      "clickRelDb": -10.6,
+      "clickAbsDbFS": -41.2
+    },
+    {
+      "fret": 10,
+      "pitch": 74,
+      "nominalHz": 587.33,
+      "fundHz": 585.94,
+      "centsOff": -4.1,
+      "fundAbsSus": 27.6,
+      "harm2to8Rel": [
+        -13.6,
+        -15.1,
+        -33,
+        -63.8,
+        -88.6,
+        -89.3,
+        -97
+      ],
+      "floorMedianRel": -131.4,
+      "above12kRel": -97.1,
+      "above16kRel": -101.2,
+      "inharmonicAboveM50": 15,
+      "inharmonicFirstHz": 407,
+      "inhList": [
+        [
+          407,
+          -47.1
+        ],
+        [
+          501,
+          -49.7
+        ],
+        [
+          519,
+          -46.8
+        ],
+        [
+          530,
+          -48.7
+        ],
+        [
+          542,
+          -45.8
+        ],
+        [
+          557,
+          -40.8
+        ],
+        [
+          618,
+          -48.3
+        ],
+        [
+          645,
+          -45.8
+        ],
+        [
+          650,
+          -45.5
+        ],
+        [
+          671,
+          -46.4
+        ],
+        [
+          700,
+          -48.1
+        ],
+        [
+          1187,
+          -48.6
+        ],
+        [
+          1201,
+          -49
+        ],
+        [
+          2367,
+          -49.7
+        ],
+        [
+          2950,
+          -48
+        ]
+      ],
+      "noiseAttackRel": -55.1,
+      "noiseSustainRel": -61.5,
+      "noiseTailRel": -83.3,
+      "noiseSustainAbs": -33.9,
+      "fundAttackAbs": 31.5,
+      "fundSustainAbs": 27.6,
+      "fundTailAbs": 7.4,
+      "noiseTailAbs": -75.9,
+      "clickRelDb": -8.1,
+      "clickAbsDbFS": -41.5
+    },
+    {
+      "fret": 11,
+      "pitch": 75,
+      "nominalHz": 622.25,
+      "fundHz": 621.09,
+      "centsOff": -3.2,
+      "fundAbsSus": 33.9,
+      "harm2to8Rel": [
+        -5.5,
+        -27.4,
+        -47.6,
+        -63.1,
+        -89.6,
+        -91.9,
+        -99
+      ],
+      "floorMedianRel": -136.9,
+      "above12kRel": -101.8,
+      "above16kRel": -107.5,
+      "inharmonicAboveM50": 3,
+      "inharmonicFirstHz": 645,
+      "inhList": [
+        [
+          645,
+          -43.7
+        ],
+        [
+          671,
+          -47.9
+        ],
+        [
+          2499,
+          -40.5
+        ]
+      ],
+      "noiseAttackRel": -62.3,
+      "noiseSustainRel": -68.3,
+      "noiseTailRel": -89,
+      "noiseSustainAbs": -34.3,
+      "fundAttackAbs": 37.9,
+      "fundSustainAbs": 33.9,
+      "fundTailAbs": 13.6,
+      "noiseTailAbs": -75.4,
+      "clickRelDb": -13.5,
+      "clickAbsDbFS": -41.5
+    },
+    {
+      "fret": 12,
+      "pitch": 76,
+      "nominalHz": 659.26,
+      "fundHz": 659.18,
+      "centsOff": -0.2,
+      "fundAbsSus": 35.4,
+      "harm2to8Rel": [
+        -21.5,
+        -39.9,
+        -55.7,
+        -83.4,
+        -96.7,
+        -108.3,
+        -105.1
+      ],
+      "floorMedianRel": -140.6,
+      "above12kRel": -106.8,
+      "above16kRel": -111.5,
+      "inharmonicAboveM50": 2,
+      "inharmonicFirstHz": 683,
+      "inhList": [
+        [
+          683,
+          -49.7
+        ],
+        [
+          700,
+          -46.5
+        ]
+      ],
+      "noiseAttackRel": -61.9,
+      "noiseSustainRel": -69,
+      "noiseTailRel": -87.9,
+      "noiseSustainAbs": -33.6,
+      "fundAttackAbs": 40.2,
+      "fundSustainAbs": 35.4,
+      "fundTailAbs": 14.1,
+      "noiseTailAbs": -73.8,
+      "clickRelDb": -14.2,
+      "clickAbsDbFS": -41.8
+    },
+    {
+      "fret": 13,
+      "pitch": 77,
+      "nominalHz": 698.46,
+      "fundHz": 697.27,
+      "centsOff": -3,
+      "fundAbsSus": 42.4,
+      "harm2to8Rel": [
+        -30.9,
+        -47.3,
+        -74.1,
+        -78.8,
+        -95.6,
+        -92.3,
+        -116.8
+      ],
+      "floorMedianRel": -144.8,
+      "above12kRel": -111.3,
+      "above16kRel": -115.8,
+      "inharmonicAboveM50": 0,
+      "inharmonicFirstHz": null,
+      "inhList": [],
+      "noiseAttackRel": -68.5,
+      "noiseSustainRel": -77.8,
+      "noiseTailRel": -95.2,
+      "noiseSustainAbs": -35.4,
+      "fundAttackAbs": 46.7,
+      "fundSustainAbs": 42.4,
+      "fundTailAbs": 21.1,
+      "noiseTailAbs": -74,
+      "clickRelDb": -17.9,
+      "clickAbsDbFS": -41.3
+    },
+    {
+      "fret": 14,
+      "pitch": 78,
+      "nominalHz": 739.99,
+      "fundHz": 741.21,
+      "centsOff": 2.9,
+      "fundAbsSus": 33.2,
+      "harm2to8Rel": [
+        -23.7,
+        -31.2,
+        -69.3,
+        -89.6,
+        -94.5,
+        -109.8,
+        -109.4
+      ],
+      "floorMedianRel": -138.7,
+      "above12kRel": -105.3,
+      "above16kRel": -111.2,
+      "inharmonicAboveM50": 5,
+      "inharmonicFirstHz": 671,
+      "inhList": [
+        [
+          671,
+          -49.3
+        ],
+        [
+          700,
+          -45
+        ],
+        [
+          709,
+          -47.8
+        ],
+        [
+          724,
+          -45.7
+        ],
+        [
+          765,
+          -49.7
+        ]
+      ],
+      "noiseAttackRel": -63.3,
+      "noiseSustainRel": -70.3,
+      "noiseTailRel": -87.2,
+      "noiseSustainAbs": -37.1,
+      "fundAttackAbs": 38.5,
+      "fundSustainAbs": 33.2,
+      "fundTailAbs": 11,
+      "noiseTailAbs": -76.2,
+      "clickRelDb": -10.6,
+      "clickAbsDbFS": -40.2
+    },
+    {
+      "fret": 15,
+      "pitch": 79,
+      "nominalHz": 783.99,
+      "fundHz": 785.16,
+      "centsOff": 2.6,
+      "fundAbsSus": 28.6,
+      "harm2to8Rel": [
+        -15,
+        -25.8,
+        -58.2,
+        -90.7,
+        -89.6,
+        -102.9,
+        -109.4
+      ],
+      "floorMedianRel": -133.1,
+      "above12kRel": -97.1,
+      "above16kRel": -104.8,
+      "inharmonicAboveM50": 9,
+      "inharmonicFirstHz": 671,
+      "inhList": [
+        [
+          671,
+          -49
+        ],
+        [
+          700,
+          -45.6
+        ],
+        [
+          735,
+          -49.1
+        ],
+        [
+          747,
+          -49.7
+        ],
+        [
+          753,
+          -48.3
+        ],
+        [
+          768,
+          -41.6
+        ],
+        [
+          800,
+          -47.2
+        ],
+        [
+          809,
+          -48.2
+        ],
+        [
+          3164,
+          -39.2
+        ]
+      ],
+      "noiseAttackRel": -61,
+      "noiseSustainRel": -64.9,
+      "noiseTailRel": -83.8,
+      "noiseSustainAbs": -36.3,
+      "fundAttackAbs": 34,
+      "fundSustainAbs": 28.6,
+      "fundTailAbs": 5.6,
+      "noiseTailAbs": -78.1,
+      "clickRelDb": -6.2,
+      "clickAbsDbFS": -39.1
+    },
+    {
+      "fret": 16,
+      "pitch": 80,
+      "nominalHz": 830.61,
+      "fundHz": 829.1,
+      "centsOff": -3.1,
+      "fundAbsSus": 29.9,
+      "harm2to8Rel": [
+        -2.8,
+        -58.5,
+        -71.2,
+        -81.2,
+        -111,
+        -115.6,
+        -116.1
+      ],
+      "floorMedianRel": -130.3,
+      "above12kRel": -83.2,
+      "above16kRel": -90.7,
+      "inharmonicAboveM50": 8,
+      "inharmonicFirstHz": 809,
+      "inhList": [
+        [
+          809,
+          -49.2
+        ],
+        [
+          1679,
+          -49.2
+        ],
+        [
+          1690,
+          -48
+        ],
+        [
+          1699,
+          -49.8
+        ],
+        [
+          1705,
+          -49.3
+        ],
+        [
+          2508,
+          -25.1
+        ],
+        [
+          3360,
+          -30.9
+        ],
+        [
+          4225,
+          -35.4
+        ]
+      ],
+      "noiseAttackRel": -52.9,
+      "noiseSustainRel": -55.7,
+      "noiseTailRel": -72.2,
+      "noiseSustainAbs": -25.8,
+      "fundAttackAbs": 33.8,
+      "fundSustainAbs": 29.9,
+      "fundTailAbs": 10.1,
+      "noiseTailAbs": -62.1,
+      "clickRelDb": -8.7,
+      "clickAbsDbFS": -40.4
+    },
+    {
+      "fret": 17,
+      "pitch": 81,
+      "nominalHz": 880,
+      "fundHz": 878.91,
+      "centsOff": -2.2,
+      "fundAbsSus": 25.4,
+      "harm2to8Rel": [
+        -12.6,
+        -55.7,
+        -69.2,
+        -83.5,
+        -102.7,
+        -104.1,
+        -114.4
+      ],
+      "floorMedianRel": -130.8,
+      "above12kRel": -95.7,
+      "above16kRel": -103.8,
+      "inharmonicAboveM50": 11,
+      "inharmonicFirstHz": 700,
+      "inhList": [
+        [
+          700,
+          -48.6
+        ],
+        [
+          838,
+          -48
+        ],
+        [
+          899,
+          -41.3
+        ],
+        [
+          917,
+          -40.8
+        ],
+        [
+          929,
+          -44.2
+        ],
+        [
+          943,
+          -49.6
+        ],
+        [
+          952,
+          -44.5
+        ],
+        [
+          967,
+          -46.8
+        ],
+        [
+          976,
+          -45.8
+        ],
+        [
+          1729,
+          -44.2
+        ],
+        [
+          2663,
+          -42.1
+        ]
+      ],
+      "noiseAttackRel": -59,
+      "noiseSustainRel": -62.3,
+      "noiseTailRel": -77.7,
+      "noiseSustainAbs": -36.9,
+      "fundAttackAbs": 30.8,
+      "fundSustainAbs": 25.4,
+      "fundTailAbs": -1.2,
+      "noiseTailAbs": -79,
+      "clickRelDb": -5.4,
+      "clickAbsDbFS": -40.7
+    },
+    {
+      "fret": 18,
+      "pitch": 82,
+      "nominalHz": 932.33,
+      "fundHz": 931.64,
+      "centsOff": -1.3,
+      "fundAbsSus": 35.7,
+      "harm2to8Rel": [
+        -34.1,
+        -64.9,
+        -90.6,
+        -91.4,
+        -106.8,
+        -98.6,
+        -113.3
+      ],
+      "floorMedianRel": -139.3,
+      "above12kRel": -102.8,
+      "above16kRel": -110.9,
+      "inharmonicAboveM50": 4,
+      "inharmonicFirstHz": 917,
+      "inhList": [
+        [
+          917,
+          -42.7
+        ],
+        [
+          952,
+          -43.6
+        ],
+        [
+          967,
+          -49
+        ],
+        [
+          976,
+          -49
+        ]
+      ],
+      "noiseAttackRel": -64.2,
+      "noiseSustainRel": -70.6,
+      "noiseTailRel": -88.4,
+      "noiseSustainAbs": -34.9,
+      "fundAttackAbs": 41.1,
+      "fundSustainAbs": 35.7,
+      "fundTailAbs": 11.5,
+      "noiseTailAbs": -76.9,
+      "clickRelDb": -13.2,
+      "clickAbsDbFS": -40.8
+    },
+    {
+      "fret": 19,
+      "pitch": 83,
+      "nominalHz": 987.77,
+      "fundHz": 987.3,
+      "centsOff": -0.8,
+      "fundAbsSus": 31.3,
+      "harm2to8Rel": [
+        -25.9,
+        -68.5,
+        -92.4,
+        -89.4,
+        -106.5,
+        -101.5,
+        -114.7
+      ],
+      "floorMedianRel": -133.4,
+      "above12kRel": -95.1,
+      "above16kRel": -103.3,
+      "inharmonicAboveM50": 2,
+      "inharmonicFirstHz": 952,
+      "inhList": [
+        [
+          952,
+          -43.4
+        ],
+        [
+          3003,
+          -36.5
+        ]
+      ],
+      "noiseAttackRel": -57.7,
+      "noiseSustainRel": -61.8,
+      "noiseTailRel": -76.5,
+      "noiseSustainAbs": -30.5,
+      "fundAttackAbs": 36.1,
+      "fundSustainAbs": 31.3,
+      "fundTailAbs": 7.1,
+      "noiseTailAbs": -69.4,
+      "clickRelDb": -8.3,
+      "clickAbsDbFS": -38.8
+    },
+    {
+      "fret": 20,
+      "pitch": 84,
+      "nominalHz": 1046.5,
+      "fundHz": 1045.9,
+      "centsOff": -1,
+      "fundAbsSus": 24.2,
+      "harm2to8Rel": [
+        -35,
+        -57.7,
+        -69.5,
+        -95.4,
+        -106.3,
+        -104.9,
+        -115.7
+      ],
+      "floorMedianRel": -127.1,
+      "above12kRel": -88.6,
+      "above16kRel": -97.3,
+      "inharmonicAboveM50": 11,
+      "inharmonicFirstHz": 917,
+      "inhList": [
+        [
+          917,
+          -49.9
+        ],
+        [
+          952,
+          -44.9
+        ],
+        [
+          967,
+          -44.1
+        ],
+        [
+          976,
+          -41.3
+        ],
+        [
+          993,
+          -44.7
+        ],
+        [
+          1020,
+          -41.9
+        ],
+        [
+          1078,
+          -48.4
+        ],
+        [
+          2106,
+          -22.5
+        ],
+        [
+          3176,
+          -47.5
+        ],
+        [
+          3190,
+          -41.6
+        ],
+        [
+          3202,
+          -44.2
+        ]
+      ],
+      "noiseAttackRel": -51.1,
+      "noiseSustainRel": -55.4,
+      "noiseTailRel": -72.4,
+      "noiseSustainAbs": -31.3,
+      "fundAttackAbs": 30.7,
+      "fundSustainAbs": 24.2,
+      "fundTailAbs": -0.1,
+      "noiseTailAbs": -72.5,
+      "clickRelDb": -3.5,
+      "clickAbsDbFS": -38.7
+    },
+    {
+      "fret": 21,
+      "pitch": 85,
+      "nominalHz": 1108.73,
+      "fundHz": 1107.42,
+      "centsOff": -2,
+      "fundAbsSus": 23.5,
+      "harm2to8Rel": [
+        -46.2,
+        -62,
+        -86.7,
+        -102.2,
+        -113.3,
+        -113.4,
+        -110.4
+      ],
+      "floorMedianRel": -124.5,
+      "above12kRel": -81.2,
+      "above16kRel": -87.4,
+      "inharmonicAboveM50": 19,
+      "inharmonicFirstHz": 952,
+      "inhList": [
+        [
+          952,
+          -48.4
+        ],
+        [
+          967,
+          -48.2
+        ],
+        [
+          976,
+          -45.7
+        ],
+        [
+          1034,
+          -47.2
+        ],
+        [
+          1058,
+          -49.2
+        ],
+        [
+          1078,
+          -47.4
+        ],
+        [
+          1087,
+          -47
+        ],
+        [
+          1122,
+          -40.5
+        ],
+        [
+          1128,
+          -39.3
+        ],
+        [
+          1201,
+          -49.3
+        ],
+        [
+          1216,
+          -48.8
+        ],
+        [
+          1248,
+          -48.5
+        ],
+        [
+          1254,
+          -47.7
+        ],
+        [
+          2238,
+          -5.6
+        ],
+        [
+          2250,
+          -41.3
+        ],
+        [
+          2285,
+          -49.6
+        ],
+        [
+          2303,
+          -49
+        ],
+        [
+          3401,
+          -24
+        ],
+        [
+          4608,
+          -35.7
+        ]
+      ],
+      "noiseAttackRel": -37.4,
+      "noiseSustainRel": -38.3,
+      "noiseTailRel": -47,
+      "noiseSustainAbs": -14.8,
+      "fundAttackAbs": 29.4,
+      "fundSustainAbs": 23.5,
+      "fundTailAbs": 1.1,
+      "noiseTailAbs": -46,
+      "clickRelDb": -5.1,
+      "clickAbsDbFS": -38.7
+    },
+    {
+      "fret": 22,
+      "pitch": 86,
+      "nominalHz": 1174.66,
+      "fundHz": 1174.8,
+      "centsOff": 0.2,
+      "fundAbsSus": 16.2,
+      "harm2to8Rel": [
+        -35.1,
+        -63.1,
+        -77,
+        -99.5,
+        -100.8,
+        -103.5,
+        -114.3
+      ],
+      "floorMedianRel": -120.4,
+      "above12kRel": -82.2,
+      "above16kRel": -92.6,
+      "inharmonicAboveM50": 38,
+      "inharmonicFirstHz": 97,
+      "inhList": [
+        [
+          97,
+          -48.8
+        ],
+        [
+          407,
+          -47
+        ],
+        [
+          671,
+          -48.9
+        ],
+        [
+          700,
+          -47.5
+        ],
+        [
+          917,
+          -47.6
+        ],
+        [
+          929,
+          -48.6
+        ],
+        [
+          952,
+          -44.1
+        ],
+        [
+          967,
+          -44.2
+        ],
+        [
+          976,
+          -41.9
+        ],
+        [
+          990,
+          -47.3
+        ],
+        [
+          1020,
+          -49.1
+        ],
+        [
+          1034,
+          -45.4
+        ],
+        [
+          1058,
+          -49
+        ],
+        [
+          1078,
+          -50
+        ],
+        [
+          1099,
+          -49.8
+        ],
+        [
+          1128,
+          -39.3
+        ],
+        [
+          1137,
+          -45.5
+        ],
+        [
+          1146,
+          -41.8
+        ],
+        [
+          1192,
+          -35.5
+        ],
+        [
+          1201,
+          -31.1
+        ],
+        [
+          1213,
+          -32.6
+        ],
+        [
+          1228,
+          -38.2
+        ],
+        [
+          1248,
+          -35.4
+        ],
+        [
+          1254,
+          -35
+        ],
+        [
+          1263,
+          -44.6
+        ],
+        [
+          1277,
+          -45.6
+        ],
+        [
+          1289,
+          -46.4
+        ],
+        [
+          1310,
+          -45
+        ],
+        [
+          2303,
+          -44.8
+        ],
+        [
+          2323,
+          -47.2
+        ],
+        [
+          2332,
+          -44.4
+        ],
+        [
+          2367,
+          -27.4
+        ],
+        [
+          2379,
+          -24.4
+        ],
+        [
+          2388,
+          -34
+        ],
+        [
+          2408,
+          -43.5
+        ],
+        [
+          2426,
+          -49.5
+        ],
+        [
+          2446,
+          -49.4
+        ],
+        [
+          3627,
+          -37.6
+        ]
+      ],
+      "noiseAttackRel": -49.7,
+      "noiseSustainRel": -52.4,
+      "noiseTailRel": -62.3,
+      "noiseSustainAbs": -36.2,
+      "fundAttackAbs": 25.7,
+      "fundSustainAbs": 16.2,
+      "fundTailAbs": -17.9,
+      "noiseTailAbs": -80.2,
+      "clickRelDb": 0.4,
+      "clickAbsDbFS": -39.7
+    },
+    {
+      "fret": 23,
+      "pitch": 87,
+      "nominalHz": 1244.51,
+      "fundHz": 1245.12,
+      "centsOff": 0.8,
+      "fundAbsSus": 27.6,
+      "harm2to8Rel": [
+        -57.2,
+        -80.3,
+        -100.4,
+        -101.3,
+        -118.1,
+        -102.9,
+        -113.7
+      ],
+      "floorMedianRel": -132.8,
+      "above12kRel": -100.5,
+      "above16kRel": -105.7,
+      "inharmonicAboveM50": 7,
+      "inharmonicFirstHz": 1201,
+      "inhList": [
+        [
+          1201,
+          -46.3
+        ],
+        [
+          1216,
+          -40.8
+        ],
+        [
+          1228,
+          -38.9
+        ],
+        [
+          1277,
+          -46.7
+        ],
+        [
+          1289,
+          -49.4
+        ],
+        [
+          1310,
+          -49.8
+        ],
+        [
+          2528,
+          -35.9
+        ]
+      ],
+      "noiseAttackRel": -62.6,
+      "noiseSustainRel": -63.5,
+      "noiseTailRel": -66.3,
+      "noiseSustainAbs": -36,
+      "fundAttackAbs": 37.4,
+      "fundSustainAbs": 27.6,
+      "fundTailAbs": -10.3,
+      "noiseTailAbs": -76.6,
+      "clickRelDb": -8.2,
+      "clickAbsDbFS": -38
+    },
+    {
+      "fret": 24,
+      "pitch": 88,
+      "nominalHz": 1318.51,
+      "fundHz": 1318.36,
+      "centsOff": -0.2,
+      "fundAbsSus": 12.2,
+      "harm2to8Rel": [
+        -47.5,
+        -68.5,
+        -84.7,
+        -95.8,
+        -103.3,
+        -82.8,
+        -104.4
+      ],
+      "floorMedianRel": -116,
+      "above12kRel": -80.8,
+      "above16kRel": -88.6,
+      "inharmonicAboveM50": 54,
+      "inharmonicFirstHz": 97,
+      "inhList": [
+        [
+          97,
+          -46.1
+        ],
+        [
+          185,
+          -47.8
+        ],
+        [
+          278,
+          -50
+        ],
+        [
+          407,
+          -44.4
+        ],
+        [
+          554,
+          -49.9
+        ],
+        [
+          650,
+          -48.8
+        ],
+        [
+          671,
+          -46.8
+        ],
+        [
+          700,
+          -45.4
+        ],
+        [
+          917,
+          -47
+        ],
+        [
+          929,
+          -48.1
+        ],
+        [
+          952,
+          -43.9
+        ],
+        [
+          967,
+          -44.2
+        ],
+        [
+          976,
+          -42.1
+        ],
+        [
+          990,
+          -47.8
+        ],
+        [
+          1034,
+          -47
+        ],
+        [
+          1128,
+          -47.1
+        ],
+        [
+          1163,
+          -48.6
+        ],
+        [
+          1184,
+          -47.2
+        ],
+        [
+          1192,
+          -47.2
+        ],
+        [
+          1201,
+          -39.4
+        ],
+        [
+          1216,
+          -36.4
+        ],
+        [
+          1228,
+          -38.2
+        ],
+        [
+          1254,
+          -28.5
+        ],
+        [
+          1263,
+          -36
+        ],
+        [
+          1277,
+          -33
+        ],
+        [
+          1289,
+          -29.6
+        ],
+        [
+          1345,
+          -29.6
+        ],
+        [
+          1362,
+          -43.5
+        ],
+        [
+          1374,
+          -47.3
+        ],
+        [
+          1383,
+          -45.2
+        ],
+        [
+          1392,
+          -42.6
+        ],
+        [
+          1406,
+          -47.8
+        ],
+        [
+          1421,
+          -48.6
+        ],
+        [
+          1453,
+          -49.8
+        ],
+        [
+          1471,
+          -47.8
+        ],
+        [
+          1690,
+          -48.2
+        ],
+        [
+          1705,
+          -46.4
+        ],
+        [
+          1729,
+          -45.9
+        ],
+        [
+          1746,
+          -45.2
+        ],
+        [
+          2669,
+          -42.5
+        ],
+        [
+          2681,
+          -40.9
+        ],
+        [
+          2687,
+          -38.1
+        ],
+        [
+          2701,
+          -29.5
+        ],
+        [
+          2716,
+          -45.3
+        ],
+        [
+          4131,
+          -45.6
+        ],
+        [
+          4140,
+          -44.6
+        ],
+        [
+          4148,
+          -45.4
+        ],
+        [
+          4157,
+          -39.5
+        ],
+        [
+          4166,
+          -31.8
+        ],
+        [
+          4172,
+          -27.8
+        ],
+        [
+          4184,
+          -33.2
+        ],
+        [
+          4216,
+          -44.6
+        ],
+        [
+          4230,
+          -47.8
+        ],
+        [
+          4248,
+          -43.2
+        ]
+      ],
+      "noiseAttackRel": -51.3,
+      "noiseSustainRel": -50.6,
+      "noiseTailRel": -55.2,
+      "noiseSustainAbs": -38.4,
+      "fundAttackAbs": 25.2,
+      "fundSustainAbs": 12.2,
+      "fundTailAbs": -24.7,
+      "noiseTailAbs": -79.9,
+      "clickRelDb": 4,
+      "clickAbsDbFS": -37.8
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+MSBuild version 17.14.51+25f168cee for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Generating FretworkTests_artefacts/JuceLibraryCode/FretworkTests_resources.rc
+  Building Custom Rule C:/Users/jeffr/Fretwork/CMakeLists.txt
+  FretworkTests_rc_lib.vcxproj -> C:\Users\jeffr\Fretwork\build_upscale\fretwork\FretworkTests_rc_lib.dir\Release\FretworkTests_rc_lib.lib
+  FretworkAssets.vcxproj -> C:\Users\jeffr\Fretwork\build_upscale\fretwork\Release\FretworkAssets.lib
+  FretworkCore.vcxproj -> C:\Users\jeffr\Fretwork\build_upscale\fretwork\Release\FretworkCore.lib
+  Building Custom Rule C:/Users/jeffr/Fretwork/CMakeLists.txt
+  AmpFxTests.cpp
+  ChordVoicingTests.cpp
+  FunctionalTests.cpp
+  ModeArticTests.cpp
+  RangeSweepTests.cpp
+  SevenStringTests.cpp
+  SoundEvalTests.cpp
+  VoiceProbeTests.cpp
+  main.cpp
+  zz_BaselineHash.cpp
+  zz_DumpRef.cpp
+  PluginEditor.cpp
+  FretLookAndFeel.cpp
+  FretboardView.cpp
+  GuitarArt.cpp
+  GuitarBodyView.cpp
+  KeyboardStrip.cpp
+  KnobCell.cpp
+  Segmented.cpp
+  SeqGrid.cpp
+  SetupTabs.cpp
+  TransportBar.cpp
+  juce_audio_utils.cpp
+  juce_audio_processors.cpp
+  juce_gui_extra.cpp
+  juce_gui_basics.cpp
+  juce_graphics.cpp
+  juce_graphics_Harfbuzz.cpp
+  juce_events.cpp
+  juce_core.cpp
+  juce_core_CompilationTime.cpp
+  juce_data_structures.cpp
+  juce_audio_processors_headless.cpp
+  juce_audio_processors_headless_ara.cpp
+  juce_audio_processors_headless_lv2_libs.cpp
+  juce_audio_basics.cpp
+  juce_audio_formats.cpp
+  juce_audio_devices.cpp
+  juce_dsp.cpp
+  juce_graphics_Sheenbidi.c
+  FretworkTests.vcxproj -> C:\Users\jeffr\Fretwork\build_upscale\fretwork\FretworkTests_artefacts\Release\FretworkTests.exe

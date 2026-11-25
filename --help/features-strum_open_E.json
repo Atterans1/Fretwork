@@ -1,0 +1,21 @@
+{
+  "case": "strum_open_E",
+  "envelope": {
+    "body_0_6s_rms": 0.07591,
+    "mid_1_1_6s_rms": 0.03725,
+    "tail_2_8_3_4s_rms": 0.01175,
+    "peak": 0.32268,
+    "decay_db_per_sec": -6.75
+  },
+  "rhythm": {
+    "onset_count": 2,
+    "last_onset_gap_sec": 0.0900
+  },
+  "timbre": {
+    "brightness_attack_hz": 421.1,
+    "brightness_body_hz": 263.6
+  },
+  "intonation": {
+    "pitch_dev_cents": 7.70
+  }
+}

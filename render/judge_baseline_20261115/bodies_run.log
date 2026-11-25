@@ -1,0 +1,7 @@
+body_dreadnought: body 0.0494 tail 0.0128 decay -4.9 dB/s onsets 2 attack 264 Hz body 125 Hz pitch dev 2.9 c
+body_classical: body 0.0711 tail 0.0158 decay -5.4 dB/s onsets 2 attack 247 Hz body 160 Hz pitch dev 2.5 c
+body_solidelectric: body 0.0435 tail 0.0167 decay -3.5 dB/s onsets 2 attack 375 Hz body 211 Hz pitch dev 2.9 c
+body_semihollow: body 0.0497 tail 0.0159 decay -4.1 dB/s onsets 2 attack 342 Hz body 197 Hz pitch dev 3.1 c
+guitar_baritone: body 0.0494 tail 0.0128 decay -4.9 dB/s onsets 2 attack 264 Hz body 125 Hz pitch dev 2.9 c
+guitar_nylon12: body 0.0599 tail 0.0162 decay -4.7 dB/s onsets 2 attack 283 Hz body 171 Hz pitch dev 1.5 c
+guitar_7string: body 0.0494 tail 0.0128 decay -4.9 dB/s onsets 2 attack 264 Hz body 125 Hz pitch dev 2.9 c

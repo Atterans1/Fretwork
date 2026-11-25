@@ -216,6 +216,62 @@ int main (int argc, char** argv)
                        { { 0.02, 40, 126.f / 127.f, true }, { 3.4, 40, 0.f, false } }, 3.6,
                        { { "guitarType", 1.f } } });
 
+    // Playing passages beyond single notes. Same render path, same features.
+    {
+        // Neck scale: low E string, frets 0-12 up, then 11-0 back down. 0.28 s per note.
+        std::vector<Note> scale;
+        std::vector<int> frets;
+        for (int f = 0; f <= 12; ++f) frets.push_back (f);
+        for (int f = 11; f >= 0; --f) frets.push_back (f);
+        double t = 0.02;
+        for (int f : frets)
+        {
+            scale.push_back ({ t, 40 + f, 0.80f, true });
+            scale.push_back ({ t + 0.24, 40 + f, 0.f, false });
+            t += 0.28;
+        }
+        cases.push_back ({ "neck_scale_low_E", scale, t + 0.4, {} });
+
+        // Sequencer-style repeated pattern: 8th notes at 0.22 s, two bars of 8, low E root.
+        std::vector<Note> seq;
+        const int pat[8] = { 40, 40, 47, 40, 45, 40, 43, 40 };
+        t = 0.02;
+        for (int rep = 0; rep < 2; ++rep)
+            for (int n : pat)
+            {
+                seq.push_back ({ t, n, 0.80f, true });
+                seq.push_back ({ t + 0.18, n, 0.f, false });
+                t += 0.22;
+            }
+        cases.push_back ({ "sequencer_pattern_low_E", seq, t + 0.4, {} });
+
+        // Strum: open E chord (E2 B2 E3 G#3 B3 E4), 12 ms between strings, held 3 s.
+        std::vector<Note> strum;
+        const int chord[6] = { 40, 47, 52, 56, 59, 64 };
+        for (int i = 0; i < 6; ++i)
+        {
+            strum.push_back ({ 0.02 + 0.012 * i, chord[i], 0.90f, true });
+            strum.push_back ({ 3.4, chord[i], 0.f, false });
+        }
+        cases.push_back ({ "strum_open_E", strum, 3.6, {} });
+
+        // Single note off the low E string: A2, fret 5.
+        cases.push_back ({ "single_note_A2", { { 0.02, 45, 126.f / 127.f, true }, { 3.4, 45, 0.f, false } }, 3.6, {} });
+
+        // Sympathetic-resonance evidence: E2 + E3 together, E2 muted (0.05 s
+        // release) just before E3, and E3 alone. The ring-minus-muted delta in
+        // the tail is the sympathetic transfer through bridge and body.
+        cases.push_back ({ "symp_ring",
+                           { { 0.02, 40, 0.90f, true }, { 1.0, 52, 0.90f, true },
+                             { 3.4, 40, 0.f, false }, { 3.4, 52, 0.f, false } }, 3.6, {} });
+        cases.push_back ({ "symp_muted",
+                           { { 0.02, 40, 0.90f, true }, { 0.90, 40, 0.f, false },
+                             { 1.0, 52, 0.90f, true }, { 3.4, 52, 0.f, false } }, 3.6,
+                           { { "release", 0.05f } } });
+        cases.push_back ({ "symp_solo",
+                           { { 1.0, 52, 0.90f, true }, { 3.4, 52, 0.f, false } }, 3.6, {} });
+    }
+
     for (const auto& c : cases)
     {
         const auto buf = render (c.evs, c.secs, c.params);

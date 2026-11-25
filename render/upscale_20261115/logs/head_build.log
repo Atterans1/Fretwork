@@ -1,0 +1,77 @@
+MSBuild version 17.14.51+25f168cee for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Generating ScaleRenderHead_artefacts/JuceLibraryCode/ScaleRenderHead_resources.rc
+  Building Custom Rule C:/Users/jeffr/Fretwork/render/upscale_20261115/head/CMakeLists.txt
+  ScaleRenderHead_rc_lib.vcxproj -> C:\Users\jeffr\Fretwork\build_upscale_head\ScaleRenderHead_rc_lib.dir\Release\ScaleRenderHead_rc_lib.lib
+  Building Custom Rule C:/Users/jeffr/AppData/Local/Temp/fw_head/CMakeLists.txt
+  Params.cpp
+  SeqStore.cpp
+  PatchManager.cpp
+  SeqImport.cpp
+  MidiExpressionMapper.cpp
+  PluginProcessor.cpp
+  AmpFx.cpp
+  ArticulationNoise.cpp
+  BodyModel.cpp
+  Excitation.cpp
+  GuitarEngine.cpp
+  GuitarString.cpp
+  LoopDesign.cpp
+  OutputStage.cpp
+  PickupModel.cpp
+  ArpEngine.cpp
+  ChordDetect.cpp
+  ChordState.cpp
+  Clock.cpp
+  KeyswitchMap.cpp
+  PerformanceEngine.cpp
+  SeqEngine.cpp
+  StrumEngine.cpp
+  Voicing.cpp
+  juce_audio_utils.cpp
+C:\Users\jeffr\AppData\Local\Temp\fw_head\Source\engine\StrumEngine.cpp(167,19): warning C4456: declaration of 'h' hides previous local declaration [C:\Users\jeffr\Fretwork\build_upscale_head\fretwork_head\FretworkCore.vcxproj]
+      C:\Users\jeffr\AppData\Local\Temp\fw_head\Source\engine\StrumEngine.cpp(100,17):
+      see declaration of 'h'
+  
+  juce_audio_processors.cpp
+  juce_gui_extra.cpp
+  juce_gui_basics.cpp
+  juce_graphics.cpp
+  juce_graphics_Harfbuzz.cpp
+  juce_events.cpp
+  juce_core.cpp
+  juce_core_CompilationTime.cpp
+  juce_data_structures.cpp
+  juce_audio_processors_headless.cpp
+  juce_audio_processors_headless_ara.cpp
+  juce_audio_processors_headless_lv2_libs.cpp
+  juce_audio_basics.cpp
+  juce_audio_formats.cpp
+  juce_audio_devices.cpp
+  juce_dsp.cpp
+  juce_graphics_Sheenbidi.c
+  FretworkCore.vcxproj -> C:\Users\jeffr\Fretwork\build_upscale_head\fretwork_head\Release\FretworkCore.lib
+  Building Custom Rule C:/Users/jeffr/Fretwork/render/upscale_20261115/head/CMakeLists.txt
+  ScaleRender.cpp
+  juce_audio_utils.cpp
+  juce_audio_processors.cpp
+  juce_gui_extra.cpp
+  juce_gui_basics.cpp
+  juce_graphics.cpp
+  juce_graphics_Harfbuzz.cpp
+  juce_events.cpp
+  juce_core.cpp
+  juce_core_CompilationTime.cpp
+  juce_data_structures.cpp
+  juce_audio_processors_headless.cpp
+  juce_audio_processors_headless_ara.cpp
+  juce_audio_processors_headless_lv2_libs.cpp
+  juce_audio_basics.cpp
+  juce_audio_formats.cpp
+  juce_audio_devices.cpp
+  juce_dsp.cpp
+  juce_graphics_Sheenbidi.c
+  ScaleRenderHead.vcxproj -> C:\Users\jeffr\Fretwork\build_upscale_head\ScaleRenderHead_artefacts\Release\ScaleRenderHead.exe
+BUILD=0

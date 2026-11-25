@@ -89,13 +89,6 @@ void KeyboardStrip::drawWhiteNote (int midiNoteNumber, juce::Graphics& g, juce::
     g.setColour (fill);
     g.fillRect (area);
 
-    // subtle shade towards the front edge of the key
-    const auto shade = area.withTop (area.getBottom() - area.getHeight() * 0.16f);
-    g.setGradientFill (juce::ColourGradient (juce::Colours::transparentBlack, 0.0f, shade.getY(),
-                                             juce::Colours::black.withAlpha (isDown ? 0.20f : 0.10f),
-                                             0.0f, shade.getBottom(), false));
-    g.fillRect (shade);
-
     // octave label on the C keys, bottom-left like Waves Tune
     if (const auto text = getWhiteNoteText (midiNoteNumber); text.isNotEmpty())
     {
@@ -128,9 +121,7 @@ void KeyboardStrip::drawBlackNote (int midiNoteNumber, juce::Graphics& g, juce::
     else if (isOver)
         base = base.brighter (0.25f);
 
-    // body gradient, lighter at the top
-    g.setGradientFill (juce::ColourGradient (base.brighter (lit ? 0.15f : 0.12f), 0.0f, area.getY(),
-                                             base.darker (lit ? 0.25f : 0.35f), 0.0f, area.getBottom(), false));
+    g.setColour (base);
     g.fillRect (area);
 
     if (isKeyswitch (midiNoteNumber) && ! lit)
@@ -139,18 +130,8 @@ void KeyboardStrip::drawBlackNote (int midiNoteNumber, juce::Graphics& g, juce::
         g.fillRect (area);
     }
 
-    // top highlight down the middle of the key
-    const auto glossH = area.getHeight() * 0.45f;
-    g.setGradientFill (juce::ColourGradient (juce::Colours::white.withAlpha (isOver ? 0.22f : 0.14f), 0.0f, area.getY(),
-                                             juce::Colours::transparentWhite, 0.0f, area.getY() + glossH, false));
-    g.fillRect (area.reduced (area.getWidth() * 0.14f, 0.0f).withHeight (glossH));
-
-    // the key's front lip
-    const auto lipH = juce::jmin (6.0f, area.getHeight() * 0.07f);
-    g.setColour (juce::Colours::white.withAlpha (lit ? 0.18f : 0.08f));
-    g.fillRect (area.reduced (1.5f, 0.0f).withTop (area.getBottom() - lipH));
-
-    g.setColour (juce::Colours::black.withAlpha (0.6f));
+    // one edge line, flat
+    g.setColour (Palette::lcd);
     g.drawRect (area, 1.0f);
 }
 

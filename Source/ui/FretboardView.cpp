@@ -56,7 +56,7 @@ void FretboardView::paint (juce::Graphics& g)
         }
     }
 
-    // ---- inlay markers at 3, 5, 7, 9, 12 (double) and 15, dim, between the
+    // ---- inlay markers at 3, 5, 7, 9, 12 (double), dim, between the
     // middle strings like a real neck
     const auto inlay = [&fretX] (int fret)
     {
@@ -68,7 +68,7 @@ void FretboardView::paint (juce::Graphics& g)
 
     g.setColour (Palette::dim.withAlpha (0.35f));
 
-    for (int f : { 3, 5, 7, 9, 15 })
+    for (int f : { 3, 5, 7, 9 })
         g.fillEllipse (inlay (f) - d, midY - d, d * 2.0f, d * 2.0f);
 
     {
