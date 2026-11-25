@@ -313,7 +313,8 @@ void testBodyAndMaterial()
 
     const auto dread = render (0, 0, 70.f, 1);
     const auto solid = render (2, 1, 0.f, 1);
-    const auto neck  = render (0, 0, 70.f, 2);
+    // Acoustic bodies carry no magnetic pickup, so compare positions on the solid electric.
+    const auto neck  = render (2, 1, 0.f, 2);
 
     CHECK (rmsOf (dread) > 0.0, "dreadnought renders audible output");
     CHECK (rmsOf (solid) > 0.0, "solid electric renders audible output");
@@ -333,9 +334,9 @@ void testBodyAndMaterial()
     double pickDiff = 0.0, pickTotal = 0.0;
     for (std::size_t i = 0; i < n; ++i)
     {
-        const double d = (double) dread[i] - neck[i];
+        const double d = (double) solid[i] - neck[i];
         pickDiff += d * d;
-        pickTotal += (double) dread[i] * dread[i];
+        pickTotal += (double) solid[i] * solid[i];
     }
     CHECK (pickTotal > 1e-9 && pickDiff / pickTotal > 0.05, "neck and middle pickups differ");
 }
@@ -1020,11 +1021,15 @@ std::vector<float> renderProcessor (double fs, int prepBlock, bool variable, int
 // ---- note lifecycle across the neck --------------------------------------
 struct NoteEv { int sample; int note; float vel; bool on; };
 
-std::vector<float> renderEvents (double fs, int block, const std::vector<NoteEv>& evs, double seconds)
+std::vector<float> renderEvents (double fs, int block, const std::vector<NoteEv>& evs, double seconds, bool dry = false)
 {
     auto procPtr = std::make_unique<FretworkAudioProcessor>();
     auto& proc = *procPtr;
     proc.prepareToPlay (fs, block);
+    // dry: Room Level 0, so release checks measure the string and not the reverb tail.
+    if (dry)
+        if (auto* r = proc.getState().getParameter (fw::id::room))
+            r->setValueNotifyingHost (r->convertTo0to1 (0.f));
     const int total = (int) (seconds * fs);
     std::vector<float> out;
     out.reserve ((size_t) total);
@@ -1097,7 +1102,7 @@ void testLifecycleAcrossNeck()
             const float vel = vi == 0 ? 0.40f : 126.f / 127.f;
             // note on at 10 ms, off at 1.2 s, observe to 1.8 s
             const int onAt = (int) (0.010 * fs), offAt = (int) (1.2 * fs);
-            const auto x = renderEvents (fs, 480, { { onAt, note, vel, true }, { offAt, note, 0.f, false } }, 1.8);
+            const auto x = renderEvents (fs, 480, { { onAt, note, vel, true }, { offAt, note, 0.f, false } }, 1.8, true);
 
             const double cents = 1200.0 * std::log2 (finePitch (x, fs, 0.3, 0.8, hz) / hz);
             const double early = segBrightness (x, fs, 0.06, 0.12);

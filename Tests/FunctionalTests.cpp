@@ -390,6 +390,7 @@ FW_TEST ("midi: note-on sounds at the right pitch, note-off releases it")
     for (int note : { 40, 52, 64, 76 })
     {
         fwtest::Plugin p;
+        p.set ("room", 0.f);   // judge the string's release, not the reverb tail
         p.noteOn (0.01, note, 0.8f).noteOff (1.0, note);
         const auto t = p.render (2.0);
         const double hz = t.pitch (0.3, 0.8, fwtest::midiToHz (note));
@@ -678,7 +679,7 @@ FW_TEST ("modes: Seq plays a drawn pattern on its 16th-note grid")
     // a stroke every 0.3 s. The grid used to advance one step per bar.
     fwtest::Plugin p;
     p.processor().getSeqStore().deserialiseSlot (0, "0,0,1,100;1,2,1,90;0,4,1,100;1,6,1,90;0,8,1,100;1,10,1,90;0,12,1,100;1,14,1,90");
-    p.set ("mode", 3.f).set ("seqPlay", 1.f).set ("seqSlot", 0.f).set ("bpm", 100.f);
+    p.set ("mode", 3.f).set ("seqPlay", 1.f).set ("seqSlot", 0.f).set ("bpm", 100.f).set ("room", 0.f);
     p.chord (0.01, { 60, 64, 67 }, 0.8f);
     const auto t = p.render (2.5);
 

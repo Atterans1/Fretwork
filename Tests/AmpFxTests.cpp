@@ -71,8 +71,8 @@ FW_TEST ("amp: Treble and Bass move their bands")
 {
     const auto lowT  = pluckWith ({ { "ampModel", 1.f }, { "cab", 0.f }, { "ampTreble", 0.f } });
     const auto highT = pluckWith ({ { "ampModel", 1.f }, { "cab", 0.f }, { "ampTreble", 100.f } });
-    const auto lowB  = pluckWith ({ { "ampModel", 1.f }, { "cab", 0.f }, { "ampBass", 0.f } });
-    const auto highB = pluckWith ({ { "ampModel", 1.f }, { "cab", 0.f }, { "ampBass", 100.f } });
+    const auto lowB  = pluckWith ({ { "ampModel", 1.f }, { "cab", 0.f }, { "room", 0.f }, { "ampBass", 0.f } });
+    const auto highB = pluckWith ({ { "ampModel", 1.f }, { "cab", 0.f }, { "room", 0.f }, { "ampBass", 100.f } });
     const double t0 = bandShare (lowT, 3000.0, true, 0.05, 0.5), t1 = bandShare (highT, 3000.0, true, 0.05, 0.5);
     const double b0 = bandShare (lowB, 150.0, false, 0.05, 0.5), b1 = bandShare (highB, 150.0, false, 0.05, 0.5);
     std::printf ("    treble 0/100: above 3 kHz %.3f / %.3f %%; bass 0/100: below 150 Hz %.2f / %.2f %%\n", 100 * t0, 100 * t1, 100 * b0, 100 * b1);
