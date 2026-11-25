@@ -31,11 +31,18 @@ struct AmpFxParams
     the master output stage.
 
     Amp: the stereo instrument is summed to mono like a real amp input, high-
-    passed, driven through a 4x oversampled waveshaper (Clean: soft symmetric;
-    Crunch: asymmetric, even harmonics; Lead: two cascaded stages), DC-blocked,
-    shaped by a Bass/Mid/Treble stack and trimmed by Level. Cabinet: speaker
-    response as high-pass, low resonance, presence peak and a steep top roll-off
-    per size. Chorus: two modulated short delays, LFOs 90 degrees apart. Delay:
+    passed and driven through a 4x oversampled preamp. Each gain stage thins
+    the lows before it clips (the small coupling and cathode caps a real
+    preamp uses), so bass notes stay tight instead of turning to mud, and
+    smooths the top after it (the Miller capacitance of a triode), so
+    distortion is warm rather than fizzy. Clean: one soft symmetric stage;
+    Crunch: one asymmetric stage with even harmonics; Lead: two cascaded
+    stages with a coupling high-pass between them. Then a DC blocker, the
+    Bass/Mid/Treble stack, and the power amp's sag: a loud chord pulls the
+    supply down and the amp compresses and blooms back. Cabinet: speaker
+    response per size: the cone's low resonance, a low-mid dip on closed
+    backs, the presence peak, the notch and peak of cone break-up, and a
+    4th-order top roll-off. Chorus: two modulated short delays, LFOs 90 degrees apart. Delay:
     stereo, darkened feedback, smoothed time.
 
     With the amp Off and both effect mixes at 0 the audio is not touched, so
@@ -67,11 +74,16 @@ private:
     std::unique_ptr<juce::dsp::Oversampling<float>> os_;
     std::vector<float> mono_;
     Biquad inHp_, bass_, mid_, treble_;
+    // preamp, at the oversampled rate
+    double osFs_ = 192000.0;
+    Biquad preThin1_, preThin2_, interHp_, postLp1_, postLp2_;
+    // power amp sag
+    float sagEnv_ = 0.f, sagAtt_ = 0.f, sagRel_ = 0.f;
     float dcX_ = 0.f, dcY_ = 0.f, dcR_ = 0.995f;
     float gainNow_ = 0.f, levelNow_ = 1.f;
 
     // cabinet
-    std::array<Biquad, 5> cab_ {};
+    std::array<Biquad, 8> cab_ {};
 
     // chorus
     std::vector<float> chL_, chR_;

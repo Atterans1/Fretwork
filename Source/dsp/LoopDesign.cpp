@@ -273,9 +273,10 @@ void designLoop (const LoopDesignParams& p, int damping, LoopDesignResult& out) 
     out.loopPeriod = loopPeriod;
     out.delay    = totalLoopDelay (f0, fs, out.fracPart, out.lpC, out.dispA);
 
-    // No interpolator compensation is needed: the delay line is read with a
-    // four-point Catmull-Rom interpolation, whose phase error is small enough
-    // that budgeting for it would over-shorten the loop.
+    // No interpolator delay compensation is needed: the delay line is read
+    // with four-point Lagrange interpolation, whose phase delay at the
+    // partials that set the pitch is the fraction itself; the string takes
+    // its fixed smoother's delay (kReaderTap) off the read itself.
 
     out.loopGain = onePoleMag (out.lpC, out.lpG, 2.0 * kPi * f0 / fs);
 

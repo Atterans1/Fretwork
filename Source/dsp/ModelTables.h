@@ -82,9 +82,14 @@ inline constexpr int kBodyMaxFret[4] = { 24, 24, 24, 24 };
 // voltage, which is where the in-between-string character comes from.
 enum class PickupSel : int { Bridge = 0, Middle, Neck, BridgeNeck };
 
+// Measured from the saddle on real instruments: a Strat's bridge, middle and
+// neck pickups sit about 41, 99 and 162 mm along a 648 mm scale (0.063, 0.153,
+// 0.25); a Les Paul's bridge and neck humbuckers about 37 and 150 mm along
+// 628 mm (0.059, 0.24). The neck pickup's distance from the bridge is what
+// makes it round and warm, so it has to sit near a quarter of the scale.
 inline constexpr float kPickupPosBridge = 0.060f;
-inline constexpr float kPickupPosMiddle = 0.120f;
-inline constexpr float kPickupPosNeck   = 0.190f;
+inline constexpr float kPickupPosMiddle = 0.152f;
+inline constexpr float kPickupPosNeck   = 0.245f;
 
 // The two coils of a humbucker sit this far apart in scale-length fraction,
 // and cancel part of each other, which is why it sounds thicker.

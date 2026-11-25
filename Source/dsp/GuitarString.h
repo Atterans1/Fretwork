@@ -12,6 +12,10 @@ namespace fw::dsp {
 // 73.4 Hz) at 96 kHz is about 1310 samples, plus bend and comb headroom.
 inline constexpr int kMaxStringDelay = 8192;
 
+// Tap of the fixed smoother after the delay read (see GuitarString.cpp,
+// readInterp): a (1 - a) = 1/6.
+inline constexpr double kReaderTap = 0.21132486540518713;
+
 // Longest one-shot transient: the Dead-note thump is 25 ms.
 inline constexpr int kMaxBurst = 8192;
 
@@ -26,6 +30,15 @@ inline constexpr int kMaxBurst = 8192;
 //
 // The bridge signal is the delay read, taken before the write, so the loop
 // latency is exactly D_live.
+//
+// A real string vibrates in two planes at once. The plane square to the top
+// (vertical) drives the bridge hard, so it is loud and loses energy fast; the
+// plane parallel to the top (horizontal) barely moves the bridge, so it is
+// quiet and rings on. The two sit a cent or so apart because the saddle is
+// slightly stiffer one way than the other. A second, lighter loop carries the
+// horizontal plane: the note fades in two stages (a quick first drop, then a
+// long soft tail) and the upper partials beat slowly as the planes drift in
+// and out of phase. That is the 'alive' shimmer a single loop cannot make.
 class GuitarString
 {
 public:
@@ -49,6 +62,10 @@ public:
 
     void reset();
 
+    // The horizontal plane is on by default. Off gives the single-plane string
+    // (what Fretwork was before), for comparison and for CPU-bound hosts.
+    void setSecondPlane (bool on) noexcept { secondPlane_ = on; }
+
     // Current period including bend and vibrato; the pickup combs need this.
     float periodSamples() const noexcept;
 
@@ -58,6 +75,10 @@ public:
 private:
     float readInterp (double pos) const noexcept;
     void  writeAt   (double pos, float v) noexcept;
+    float readInterpH (double pos) const noexcept;
+
+    // Semitones of the slide/legato glide at progress u (0..1).
+    float glideShape (float u) const noexcept;
 
     void  design (const StringEvent& e);
     void  inject (float scale);
@@ -93,12 +114,36 @@ private:
     float semiSmoothed_  = 0.f;
     float semiIncCoeff_  = 0.f;
 
-    // Legato / slide glide, in semitones, ramped linearly.
+    // Legato / slide glide, in semitones. Progress u runs 0..1 at glideDu_ per
+    // sample; glideShape maps it to pitch (eased, and fret by fret for slides).
     float glideFrom_   = 0.f;
     float glideTo_     = 0.f;
     float glidePos_    = 0.f;
-    float glideStep_   = 0.f;
+    float glideU_      = 1.f;
+    float glideDu_     = 0.f;
+    bool  glideFretted_ = false;
     float glideSec_    = 0.09f;
+
+    // Tension modulation: a hard pluck stretches the string, so the note starts
+    // a few cents sharp and settles as the swing dies down. In semitones.
+    float attackSemi_  = 0.f;
+    float attackCoef_  = 0.f;    // per-sample decay of attackSemi_
+
+    // Horizontal polarisation (see the class comment).
+    std::array<float, kMaxStringDelay> lineH_ {};
+    float  lpPrevH_     = 0.f;
+    std::array<float, 4> apXH_ {};
+    std::array<float, 4> apYH_ {};
+    double lpCH_        = 0.0;
+    double lpGH_        = 0.0;
+    double chainDelayH_ = 0.0;
+    double detuneH_     = 1.0;    // period scale of the horizontal plane
+    float  gainBoostH_  = 1.f;    // its own loop gain over the vertical one
+    float  outH_        = 0.f;    // how much of it reaches the bridge
+    float  planeTrim_   = 1.f;    // keeps the attack level the same with two planes
+    float  readPrev_    = 0.f, readPrevH_ = 0.f;   // last raw reads, for the smoother
+    float  injectH_     = 0.f;    // share of the pluck that goes into it
+    bool   secondPlane_ = true;
 
     double baseF0_ = 82.41;
 

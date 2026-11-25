@@ -141,7 +141,7 @@ void PickupModel::rebuild() noexcept
 
 float PickupModel::processString (int stringIndex, float bridge, float periodSamples) noexcept
 {
-    if (stringIndex < 0 || stringIndex >= kNumStrings) return 0.f;
+    if (stringIndex < 0 || stringIndex >= kPickupChannels) return 0.f;
 
     if (dirty_) rebuild();
 
@@ -151,11 +151,15 @@ float PickupModel::processString (int stringIndex, float bridge, float periodSam
     float sum = 0.f;
     for (int t = 0; t < numTaps_; ++t)
     {
-        int d = (int) (tapFrac_[(std::size_t) t] * periodSamples + 0.5f);
-        d = std::clamp (d, 1, kTapHistory - 1);
-        const int idx = s.write - d;
-        const int rd = idx < 0 ? idx + kTapHistory : idx;
-        sum += tapGain_[(std::size_t) t] * (bridge - s.hist[(std::size_t) rd]);
+        // Fractional delay, so the comb's notches sit where the pickup really
+        // is on high notes too, where a period is only a few dozen samples.
+        const float dly = std::clamp (tapFrac_[(std::size_t) t] * periodSamples, 1.f, (float) (kTapHistory - 2));
+        const int   d   = (int) dly;
+        const float fr  = dly - (float) d;
+        int i0 = s.write - d;     if (i0 < 0) i0 += kTapHistory;
+        int i1 = i0 - 1;          if (i1 < 0) i1 += kTapHistory;
+        const float past = s.hist[(std::size_t) i0] + fr * (s.hist[(std::size_t) i1] - s.hist[(std::size_t) i0]);
+        sum += tapGain_[(std::size_t) t] * (bridge - past);
     }
     s.write = (s.write + 1) % kTapHistory;
 
