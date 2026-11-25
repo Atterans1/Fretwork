@@ -12,6 +12,10 @@ namespace fw::dsp {
 // 73.4 Hz) at 96 kHz is about 1310 samples, plus bend and comb headroom.
 inline constexpr int kMaxStringDelay = 8192;
 
+// Tap of the fixed smoother after the delay read (see GuitarString.cpp,
+// readInterp): a (1 - a) = 1/6.
+inline constexpr double kReaderTap = 0.21132486540518713;
+
 // Longest one-shot transient: the Dead-note thump is 25 ms.
 inline constexpr int kMaxBurst = 8192;
 
@@ -137,6 +141,7 @@ private:
     float  gainBoostH_  = 1.f;    // its own loop gain over the vertical one
     float  outH_        = 0.f;    // how much of it reaches the bridge
     float  planeTrim_   = 1.f;    // keeps the attack level the same with two planes
+    float  readPrev_    = 0.f, readPrevH_ = 0.f;   // last raw reads, for the smoother
     float  injectH_     = 0.f;    // share of the pluck that goes into it
     bool   secondPlane_ = true;
 

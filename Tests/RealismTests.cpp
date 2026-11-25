@@ -226,3 +226,29 @@ FW_TEST ("realism: steel-string vibrato bends up from the note; classical swings
     std::printf ("    classical vibrato: %+.0f to %+.0f c\n", lo, hi);
     EXPECT_MSG (lo < -40.0 && hi > 40.0, "a classical roll swings both ways");
 }
+
+FW_TEST ("realism: neighbouring notes ring alike in the treble")
+{
+    // On a real string, how long the upper partials ring changes smoothly from
+    // fret to fret. The delay line used to be read with linear interpolation,
+    // whose loss depends on the fraction of a sample each note's delay lands
+    // on, so neighbouring notes differed by up to 2x (25 against 50 dB/s near
+    // 3 kHz). Now each step along the string changes it by little.
+    double prev = 0.0;
+    for (int note = 52; note <= 64; ++note)
+    {
+        fw::dsp::GuitarString s;
+        s.prepare (kFs);
+        s.setModel (fw::dsp::StringModelParams {});
+        s.setSecondPlane (false);
+        s.pluck (pluckAt ((float) note, 0.6f), 3);
+        const auto y = renderString (s, 1.6);
+        const double f0 = 440.0 * std::pow (2.0, (note - 69.0) / 12.0);
+        const double hz = std::round (3000.0 / f0) * f0;
+        const double rate = partialDb (y, 0.2, 0.5, hz) - partialDb (y, 1.2, 1.5, hz);   // dB per second
+        std::printf ("    note %d: partial near 3 kHz decays %.1f dB/s\n", note, rate);
+        if (prev > 0.0)
+            EXPECT_MSG (std::max (rate, prev) / std::min (rate, prev) < 1.25, "a semitone apart, the treble decays alike");
+        prev = rate;
+    }
+}

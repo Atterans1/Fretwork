@@ -32,10 +32,23 @@ namespace {
     {
         switch (model)
         {
-            case 1:  return 0.524f;
-            case 2:  return 0.222f;
-            case 3:  return 0.145f;
+            case 1:  return 0.675f;
+            case 2:  return 0.478f;
+            case 3:  return 0.277f;
             default: return 1.0f;
+        }
+    }
+
+    // How hard the power amp sags, per model (a clean amp has the most
+    // headroom; a crunch amp is run where the supply starts to give).
+    float sagFor (int model) noexcept
+    {
+        switch (model)
+        {
+            case 1:  return 0.4f;
+            case 2:  return 1.0f;
+            case 3:  return 0.6f;
+            default: return 0.f;
         }
     }
 
@@ -70,6 +83,9 @@ void AmpFx::prepare (double sampleRate, int maxBlockSize)
     dlR_.assign (dlL_.size(), 0.f);
 
     dcR_ = (float) std::exp (-kTwoPi * 10.0 / fs_);
+    osFs_ = fs_ * 4.0;
+    sagAtt_ = (float) (1.0 - std::exp (-1.0 / (0.005 * fs_)));
+    sagRel_ = (float) (1.0 - std::exp (-1.0 / (0.120 * fs_)));
     fbCoef_ = (float) (1.0 - std::exp (-kTwoPi * 4500.0 / fs_));
     lastCab_ = -1;
     reset();
@@ -79,9 +95,10 @@ void AmpFx::prepare (double sampleRate, int maxBlockSize)
 void AmpFx::reset() noexcept
 {
     if (os_ != nullptr) os_->reset();
-    for (auto* b : { &inHp_, &bass_, &mid_, &treble_ }) b->reset();
+    for (auto* b : { &inHp_, &bass_, &mid_, &treble_, &preThin1_, &preThin2_, &interHp_, &postLp1_, &postLp2_ }) b->reset();
     for (auto& b : cab_) b.reset();
     dcX_ = dcY_ = 0.f;
+    sagEnv_ = 0.f;
     std::fill (chL_.begin(), chL_.end(), 0.f);
     std::fill (chR_.begin(), chR_.end(), 0.f);
     std::fill (dlL_.begin(), dlL_.end(), 0.f);
@@ -115,9 +132,10 @@ void AmpFx::setParams (const AmpFxParams& p) noexcept
     if (modelChanged && lastModel_ == 0 && p_.ampModel > 0)
     {
         if (os_ != nullptr) os_->reset();
-        for (auto* b : { &inHp_, &bass_, &mid_, &treble_ }) b->reset();
+        for (auto* b : { &inHp_, &bass_, &mid_, &treble_, &preThin1_, &preThin2_, &interHp_, &postLp1_, &postLp2_ }) b->reset();
         for (auto& b : cab_) b.reset();
         dcX_ = dcY_ = 0.f;
+        sagEnv_ = 0.f;
         gainNow_ = driveFor (p_.ampModel, clamp01 (p_.gain01));
         levelNow_ = (float) std::pow (10.0, p_.levelDb / 20.0) * makeupFor (p_.ampModel);
     }
@@ -133,30 +151,74 @@ void AmpFx::updateFilters() noexcept
     mid_.setPeak (fs_, 700.0, 0.7, db (p_.mid01));
     treble_.setHighShelf (fs_, 3200.0, db (p_.treble01));
 
+    // Preamp voicing per model, at the oversampled rate. The low shelf thins
+    // what goes into the clipper; the low-passes after it take off the
+    // harsh top that clipping makes.
+    switch (p_.ampModel)
+    {
+        case 1:   // Clean: a little thinning, a gentle top
+            preThin1_.setLowShelf (osFs_, 120.0, -2.0);
+            preThin2_.setPassthrough();
+            interHp_.setPassthrough();
+            postLp1_.setLowPass (osFs_, 11000.0, 0.7071);
+            postLp2_.setPassthrough();
+            break;
+        case 2:   // Crunch
+            preThin1_.setLowShelf (osFs_, 200.0, -4.5);
+            preThin2_.setPassthrough();
+            interHp_.setPassthrough();
+            postLp1_.setLowPass (osFs_, 7500.0, 0.7071);
+            postLp2_.setPassthrough();
+            break;
+        case 3:   // Lead: tight into the first stage, coupled into the second
+            preThin1_.setLowShelf (osFs_, 250.0, -6.0);
+            preThin2_.setLowShelf (osFs_, 150.0, -2.5);
+            interHp_.setHighPass (osFs_, 50.0, 0.6);
+            postLp1_.setLowPass (osFs_, 9000.0, 0.7071);
+            postLp2_.setLowPass (osFs_, 6500.0, 0.7071);
+            break;
+        default:
+            break;
+    }
+
     if (p_.cab == lastCab_) return;
     lastCab_ = p_.cab;
     for (auto& b : cab_) b.setPassthrough();
+    // Each cabinet: cone resonance (high-pass plus a peak just above it), the
+    // body of the low mids, the presence peak, the notch and peak where the
+    // cone stops moving as one piece, and two low-passes for the steep top
+    // roll-off a 12-inch speaker has (about 24 dB per octave).
     switch (p_.cab)
     {
-        case 1:   // 1x12 open back: lighter low end
-            cab_[0].setHighPass (fs_, 95.0, 0.7071);
-            cab_[1].setPeak (fs_, 2200.0, 1.2, 3.0);
-            cab_[2].setLowPass (fs_, 5500.0, 0.7071);
-            cab_[3].setLowPass (fs_, 7000.0, 0.5);
+        case 1:   // 1x12 open back: lighter low end, airier top
+            cab_[0].setHighPass (fs_, 90.0, 0.7071);
+            cab_[1].setPeak (fs_, 110.0, 1.2, 2.0);
+            cab_[2].setPeak (fs_, 1600.0, 1.5, 1.5);
+            cab_[3].setPeak (fs_, 2600.0, 1.4, 3.0);
+            cab_[4].setPeak (fs_, 3800.0, 3.0, -4.0);
+            cab_[5].setPeak (fs_, 4800.0, 2.0, 2.0);
+            cab_[6].setLowPass (fs_, 6000.0, 0.6);
+            cab_[7].setLowPass (fs_, 7200.0, 0.8);
             break;
         case 2:   // 2x12
-            cab_[0].setHighPass (fs_, 80.0, 0.7071);
-            cab_[1].setPeak (fs_, 120.0, 1.0, 2.0);
-            cab_[2].setPeak (fs_, 2500.0, 1.3, 3.0);
-            cab_[3].setLowPass (fs_, 5000.0, 0.7071);
-            cab_[4].setLowPass (fs_, 6000.0, 0.5);
+            cab_[0].setHighPass (fs_, 75.0, 0.7071);
+            cab_[1].setPeak (fs_, 115.0, 1.4, 3.0);
+            cab_[2].setPeak (fs_, 500.0, 0.8, -1.5);
+            cab_[3].setPeak (fs_, 2400.0, 1.3, 3.0);
+            cab_[4].setPeak (fs_, 3600.0, 3.0, -4.0);
+            cab_[5].setPeak (fs_, 4500.0, 2.5, 2.0);
+            cab_[6].setLowPass (fs_, 5400.0, 0.6);
+            cab_[7].setLowPass (fs_, 6400.0, 0.8);
             break;
         case 3:   // 4x12 closed back: thump, scooped low mids, darker top
-            cab_[0].setHighPass (fs_, 70.0, 0.7071);
-            cab_[1].setPeak (fs_, 100.0, 1.0, 4.0);
-            cab_[2].setPeak (fs_, 400.0, 0.9, -3.0);
+            cab_[0].setHighPass (fs_, 70.0, 0.8);
+            cab_[1].setPeak (fs_, 95.0, 1.6, 4.5);
+            cab_[2].setPeak (fs_, 420.0, 0.9, -3.0);
             cab_[3].setPeak (fs_, 2800.0, 1.5, 4.0);
-            cab_[4].setLowPass (fs_, 4200.0, 0.7071);
+            cab_[4].setPeak (fs_, 3900.0, 3.0, -5.0);
+            cab_[5].setPeak (fs_, 4600.0, 2.5, 1.5);
+            cab_[6].setLowPass (fs_, 4400.0, 0.6);
+            cab_[7].setLowPass (fs_, 5000.0, 0.8);
             break;
         default:
             break;
@@ -205,10 +267,23 @@ void AmpFx::processAmp (float* left, float* right, int n) noexcept
     const size_t un = up.getNumSamples();
     const float gStep = (gainTarget - gainNow_) / (float) std::max<size_t> (1, un);
     float g = gainNow_;
+    const bool twoStage = model == 3;
     for (size_t i = 0; i < un; ++i)
     {
         g += gStep;
-        u[i] = shape (model, u[i] * g);
+        if (twoStage)
+        {
+            // Lead: the same two-stage curve as before, now split so each
+            // stage sees its own coupling filters.
+            float x = preThin1_.process (u[i]) * g;
+            float s1 = x >= 0.f ? std::tanh (x) : std::tanh (0.5f * x) * 1.6f;
+            s1 = postLp1_.process (preThin2_.process (interHp_.process (s1)));
+            u[i] = postLp2_.process (std::tanh (2.5f * s1));
+        }
+        else
+        {
+            u[i] = postLp1_.process (shape (model, preThin1_.process (u[i]) * g));
+        }
     }
     gainNow_ = gainTarget;
     os_->processSamplesDown (block);
@@ -222,6 +297,11 @@ void AmpFx::processAmp (float* left, float* right, int n) noexcept
         dcY_ = x - dcX_ + dcR_ * dcY_;
         dcX_ = x;
         float y = treble_.process (mid_.process (bass_.process (dcY_)));
+        // Power amp sag: the supply droops under a loud passage, so the amp
+        // gives a little, then recovers as the chord rings out.
+        const float a = std::fabs (y);
+        sagEnv_ += (a - sagEnv_) * (a > sagEnv_ ? sagAtt_ : sagRel_);
+        y *= 1.f / (1.f + sagFor (model) * sagEnv_);
         if (p_.cab > 0)
             for (auto& b : cab_) y = b.process (y);
         lv += lStep;

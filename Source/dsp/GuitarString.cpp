@@ -52,6 +52,7 @@ void GuitarString::reset()
     writePos_ = 0.0;
 
     lpPrev_ = 0.f;
+    readPrev_ = readPrevH_ = 0.f;
     apX_.fill (0.f);
     apY_.fill (0.f);
 
@@ -87,37 +88,56 @@ void GuitarString::setModel (const StringModelParams& p)
 }
 
 //==============================================================================
-// Fractional delay read with linear interpolation.
+// Fractional delay read: four-point (cubic) Lagrange interpolation.
 //
-// A four-point Catmull-Rom read was tried here and measured worse: its extra
-// phase shifted high pitches up by ~11 cents against linear's ~3.5, so the
-// two-tap form is what stays.
+// A two-tap linear read loses high frequencies by an amount that depends on
+// the fraction it reads at (none at 0, |cos(w/2)| at 0.5), and inside the loop
+// that loss compounds every pass. So each note's upper partials died at a rate
+// set by where its delay happened to fall: neighbouring notes on one string
+// differed by 2x in how long their treble rang. Cubic Lagrange is maximally
+// flat in both gain and phase delay at low frequencies, so its loss is small
+// and nearly the same at every fraction, and it keeps the pitch accurate.
+// (A Catmull-Rom read, which is not Lagrange, was tried earlier and shifted
+// high pitches up by ~11 cents; this one does not, see the tuning test.)
+// The loop was tuned by ear with the linear read, though, and its average
+// loss is part of that tuning. So after the Lagrange read the loop runs a
+// fixed two-tap smoother, (1 - a) x[n] + a x[n-1]: the linear read's own
+// filter at one fraction a, the same on every note. Averaged over all
+// fractions the linear loss is about f (1 - f) (1 - cos w), mean 1/6, so
+// a (1 - a) = 1/6, a = 0.2113: every note now loses what the average note
+// lost before, at every frequency, and the smoother's a samples of delay come
+// off the read.
+namespace
+{
+    inline float lagrange4 (const float* line, double pos) noexcept
+    {
+        double p = std::fmod (pos, (double) kMaxStringDelay);
+        if (p < 0.0) p += (double) kMaxStringDelay;
+
+        const int i0 = (int) p;
+        const float f = (float) (p - (double) i0);
+        const int im = i0 == 0 ? kMaxStringDelay - 1 : i0 - 1;
+        const int i1 = i0 + 1 >= kMaxStringDelay ? i0 + 1 - kMaxStringDelay : i0 + 1;
+        const int i2 = i1 + 1 >= kMaxStringDelay ? i1 + 1 - kMaxStringDelay : i1 + 1;
+
+        const float xm = line[im], x0 = line[i0], x1 = line[i1], x2 = line[i2];
+        const float fm1 = f - 1.f, fm2 = f - 2.f, fp1 = f + 1.f;
+        const float hm = -f * fm1 * fm2 * (1.f / 6.f);
+        const float h0 =  fp1 * fm1 * fm2 * 0.5f;
+        const float h1 = -fp1 * f * fm2 * 0.5f;
+        const float h2 =  fp1 * f * fm1 * (1.f / 6.f);
+        return hm * xm + h0 * x0 + h1 * x1 + h2 * x2;
+    }
+}
+
 float GuitarString::readInterp (double pos) const noexcept
 {
-    double p = std::fmod (pos, (double) kMaxStringDelay);
-    if (p < 0.0) p += (double) kMaxStringDelay;
-
-    const int i0 = (int) p;
-    const double f = p - (double) i0;
-    const int i1 = (i0 + 1) % kMaxStringDelay;
-
-    const float a = line_[(std::size_t) i0];
-    const float b = line_[(std::size_t) i1];
-    return a + (float) f * (b - a);
+    return lagrange4 (line_.data(), pos);
 }
 
 float GuitarString::readInterpH (double pos) const noexcept
 {
-    double p = std::fmod (pos, (double) kMaxStringDelay);
-    if (p < 0.0) p += (double) kMaxStringDelay;
-
-    const int i0 = (int) p;
-    const double f = p - (double) i0;
-    const int i1 = (i0 + 1) % kMaxStringDelay;
-
-    const float a = lineH_[(std::size_t) i0];
-    const float b = lineH_[(std::size_t) i1];
-    return a + (float) f * (b - a);
+    return lagrange4 (lineH_.data(), pos);
 }
 
 void GuitarString::writeAt (double pos, float v) noexcept
@@ -236,9 +256,9 @@ void GuitarString::design (const StringEvent& e)
     if (secondPlane_) lp.sustain01 /= 1.0 + 0.12 * (kH - 1.0);
 
     designLoop (lp, (int) e.art.damp, design_);
-
     chainDelay_ = design_.delay - design_.fracPart;
     if (chainDelay_ < 0.0) chainDelay_ = 0.0;
+
 
     // A new note starts with clean filter state so the burst is not coloured
     // by whatever the previous note left ringing.
@@ -255,6 +275,12 @@ void GuitarString::design (const StringEvent& e)
     // a harmonic node damps both planes the same. Its own lowpass sets the
     // decay; it keeps the vertical loop's dispersion so its partials stay
     // where the vertical ones are, a cent or so apart.
+    // 0.5 to 1.3 cents apart, sharp or flat, new on every pluck: the saddle
+    // and the pick angle never sit quite the same way twice.
+    Rng rng (seed_ ^ 0x7f4a7c15u);
+    const double cents = (rng.uniform() < 0.5f ? -1.0 : 1.0) * (0.5 + 0.8 * (double) rng.uniform());
+    detuneH_ = std::pow (2.0, -cents / 1200.0);
+
     const double kHarmH = 0.8;
     solveLoopOnePole (baseF0_, fs_, design_.t60Fund * kH, design_.t60Harm * kHarmH, lpCH_, lpGH_);
     chainDelayH_ = onePolePhaseDelay (baseF0_, fs_, lpCH_)
@@ -264,12 +290,6 @@ void GuitarString::design (const StringEvent& e)
     const double gV = loopGainAt (baseF0_, design_.t60Fund);
     const double gH = loopGainAt (baseF0_, design_.t60Fund * kH);
     gainBoostH_ = gV > 1e-9 ? (float) std::min (gH / gV, 1.01) : 1.f;
-
-    // 0.5 to 1.3 cents apart, sharp or flat, new on every pluck: the saddle
-    // and the pick angle never sit quite the same way twice.
-    Rng rng (seed_ ^ 0x7f4a7c15u);
-    const double cents = (rng.uniform() < 0.5f ? -1.0 : 1.0) * (0.5 + 0.8 * (double) rng.uniform());
-    detuneH_ = std::pow (2.0, -cents / 1200.0);
 
     // A pick drives the string mostly square to the top; a finger or thumb
     // rolls it, putting more into the horizontal plane.
@@ -503,10 +523,12 @@ float GuitarString::tick (float sympatheticIn, float coupling)
     // so the loop filters are never retuned mid note.
     const double bendScale = std::pow (2.0, -semi / 12.0);
 
-    double dLive = design_.loopPeriod * bendScale - chainDelay_;
+    double dLive = design_.loopPeriod * bendScale - chainDelay_ - kReaderTap;
     if (dLive < 4.0) dLive = 4.0;
 
-    const float bridge = readInterp (writePos_ - dLive);
+    const float raw = readInterp (writePos_ - dLive);
+    const float bridge = (1.f - (float) kReaderTap) * raw + (float) kReaderTap * readPrev_;
+    readPrev_ = raw;
     float x = bridge;
 
     // Loop lowpass: y[n] = k*x[n] + c*y[n-1], k = g*(1-c).
@@ -568,10 +590,12 @@ float GuitarString::tick (float sympatheticIn, float coupling)
     float bridgeH = 0.f;
     if (secondPlane_)
     {
-        double dLiveH = design_.loopPeriod * bendScale * detuneH_ - chainDelayH_;
+        double dLiveH = design_.loopPeriod * bendScale * detuneH_ - chainDelayH_ - kReaderTap;
         if (dLiveH < 4.0) dLiveH = 4.0;
 
-        bridgeH = readInterpH (writePos_ - dLiveH);
+        const float rawH = readInterpH (writePos_ - dLiveH);
+        bridgeH = (1.f - (float) kReaderTap) * rawH + (float) kReaderTap * readPrevH_;
+        readPrevH_ = rawH;
         float h = bridgeH;
 
         const float k = (float) (lpGH_ * (1.0 - lpCH_));

@@ -7,12 +7,17 @@
 
 namespace fw::dsp {
 
-// Longest comb tap we ever need. The neck pickup sits at 0.19 of the scale
-// length, which at MIDI 38 and 96 kHz is about 250 samples.
-inline constexpr int kTapHistory = 1024;
+// Longest comb tap we ever need. The neck humbucker's far coil sits at 0.27 of
+// the scale length, which at MIDI 28 (baritone low E) and 96 kHz is about 630
+// samples; 2048 leaves room for lower tunings.
+inline constexpr int kTapHistory = 2048;
 
 // Bridge and neck humbuckers, two coils each.
 inline constexpr int kMaxTaps = 4;
+
+// One comb history per string and one per paired course string (12-string),
+// for up to seven strings: string s is channel s, its course kMaxStrings + s.
+inline constexpr int kPickupChannels = 2 * kMaxStrings;
 
 struct PickupParams
 {
@@ -46,7 +51,9 @@ public:
     void prepare (double sampleRate);
     void setParams (const PickupParams& p);
 
-    float processString (int stringIndex, float bridge, float periodSamples) noexcept;
+    // channel: the string index, or kMaxStrings + index for its course string.
+    // Each channel keeps its own history, so two strings never share a comb.
+    float processString (int channel, float bridge, float periodSamples) noexcept;
     void  reset() noexcept;
 
     // Analog peak frequency and Q of the loaded coil, for tests and the UI.
@@ -65,7 +72,7 @@ private:
 
     double fs_ = 44100.0;
 
-    std::array<StringState, kNumStrings> strings_ {};
+    std::array<StringState, kPickupChannels> strings_ {};
 
     std::array<float, kMaxTaps> tapFrac_ {};
     std::array<float, kMaxTaps> tapGain_ {};

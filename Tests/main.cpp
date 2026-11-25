@@ -1070,6 +1070,28 @@ double segBrightness (const std::vector<float>& x, double fs, double t0, double 
 }
 
 // Pitch with parabolic interpolation of the autocorrelation peak.
+// Level in dB of the strongest component within +-1 % of hz over [t0, t1):
+// a Hann-windowed Goertzel at 11 points, so a stretched partial is still found.
+double partialLevelDb (const std::vector<float>& x, double fs, double t0, double t1, double hz)
+{
+    const double pi = 3.14159265358979323846;
+    const size_t a = (size_t) (t0 * fs), b = std::min (x.size(), (size_t) (t1 * fs));
+    double best = 0.0;
+    for (int k = -5; k <= 5; ++k)
+    {
+        const double c = 2.0 * std::cos (2.0 * pi * hz * (1.0 + 0.002 * k) / fs);
+        double s1 = 0.0, s2 = 0.0;
+        for (size_t i = a; i < b; ++i)
+        {
+            const double w = 0.5 - 0.5 * std::cos (2.0 * pi * (double) (i - a) / (double) (b - a));
+            const double s0 = x[i] * w + c * s1 - s2;
+            s2 = s1; s1 = s0;
+        }
+        best = std::max (best, s1 * s1 + s2 * s2 - c * s1 * s2);
+    }
+    return 10.0 * std::log10 (best + 1e-30);
+}
+
 double finePitch (const std::vector<float>& x, double fs, double t0, double t1, double expectHz)
 {
     const size_t a = (size_t) (t0 * fs), b = std::min (x.size(), (size_t) (t1 * fs));
@@ -1112,6 +1134,17 @@ void testLifecycleAcrossNeck()
             // lifts every partial a few cents, which moves them against the
             // body's resonances and changes the brightness for its own reasons.
             const double late  = segBrightness (x, fs, 0.42, 0.58);
+            // The same check partial by partial: how far the 6th to 10th
+            // harmonics fall between the two windows against the fundamental.
+            // The brightness figure above also takes in the body's low thump,
+            // which is loudest in the early window and pulls it down; on the
+            // open G that thump alone can make early read darker than late.
+            double fundDrop = 0.0, upperDrop = 0.0;
+            {
+                const auto drop = [&] (double f) { return partialLevelDb (x, fs, 0.06, 0.18, f) - partialLevelDb (x, fs, 0.42, 0.54, f); };
+                fundDrop = drop (hz);
+                for (int k = 6; k <= 10; ++k) upperDrop += drop (k * hz) / 5.0;
+            }
             const double sus   = segRms (x, fs, 0.30, 0.40);
             const double held  = segRms (x, fs, 1.05, 1.15);
             const double tail  = segRms (x, fs, 1.60, 1.80);
@@ -1121,13 +1154,14 @@ void testLifecycleAcrossNeck()
             for (int i = offAt - 240; i < offAt + 480; ++i) stepAt  = std::max (stepAt,  (double) std::fabs (x[(size_t) i] - x[(size_t) i - 1]));
             for (int i = offAt - 4800; i < offAt - 2400; ++i) stepRef = std::max (stepRef, (double) std::fabs (x[(size_t) i] - x[(size_t) i - 1]));
 
-            std::printf ("    note=%d vel=%.2f  cents=%+.2f bright %4.0f->%4.0f Hz  sus=%.4f held=%.4f tail=%.6f  offStep=%.4f/ref %.4f\n",
-                         note, vel, cents, early, late, sus, held, tail, stepAt, stepRef);
+            std::printf ("    note=%d vel=%.2f  cents=%+.2f bright %4.0f->%4.0f Hz  drop fund %.1f dB, h6-10 %.1f dB  sus=%.4f held=%.4f tail=%.6f  offStep=%.4f/ref %.4f\n",
+                         note, vel, cents, early, late, fundDrop, upperDrop, sus, held, tail, stepAt, stepRef);
 
             char msg[96];
             std::snprintf (msg, sizeof msg, "note %d tuned within 5 cents", note);
             CHECK (std::fabs (cents) < 5.0, msg);
-            CHECK (late < early, "upper partials decay faster than the fundamental");
+            CHECK (upperDrop > fundDrop, "upper partials decay faster than the fundamental");
+            CHECK (late < early + 20.0, "the note does not brighten as it rings");
             CHECK (held > 0.0 && held < sus, "held note decays naturally");
             CHECK (held > sus * 0.05, "held note still sustains after one second");
             CHECK (tail < held * 0.1, "release damps the string (-20 dB within 0.5 s)");

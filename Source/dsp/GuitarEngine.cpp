@@ -409,7 +409,7 @@ void GuitarEngine::render (float* left, float* right, int n)
 
             const float v = pickup_.processString (s, b, strings_[(std::size_t) s].periodSamples());
             const float vc = courseOut != 0.f
-                ? pickup_.processString (s, courseOut, course_[(std::size_t) s]->periodSamples())
+                ? pickup_.processString (kMaxStrings + s, courseOut, course_[(std::size_t) s]->periodSamples())
                 : 0.f;
             el += (v + vc * courseLevel_) * panL_[(std::size_t) s] * outGain;
             er += (v + vc * courseLevel_) * panR_[(std::size_t) s] * outGain;
